@@ -8,8 +8,9 @@ import type { ChatAttachmentStorage } from 'coding-agent-chat/core';
  * Project-rooted, durable Node.js storage for {@link ChatAttachmentContract}.
  *
  * Writes are flushed to a temporary file in the destination directory and
- * atomically renamed into place. Both contract and legacy reads are confined
- * to `projectRoot`.
+ * atomically renamed into place. Content-addressed retries are idempotent even
+ * on platforms where rename cannot replace an existing destination. Both
+ * contract and legacy reads are confined to `projectRoot`.
  */
 export class NodeChatAttachmentStorage implements ChatAttachmentStorage {
   readonly projectRoot: string;
@@ -32,7 +33,15 @@ export class NodeChatAttachmentStorage implements ChatAttachmentStorage {
       await handle.sync();
       await handle.close();
       handle = null;
-      await rename(temporary, destination);
+      try {
+        await rename(temporary, destination);
+      } catch (error) {
+        // Windows does not consistently let rename replace an existing file.
+        // A retry or concurrent persist of the same content already satisfies
+        // the write contract, so accept it only after comparing every byte.
+        const existing = await readFile(destination).catch(() => null);
+        if (existing === null || !equalBytes(existing, bytes)) throw error;
+      }
     } finally {
       await handle?.close().catch(() => undefined);
       await rm(temporary, { force: true }).catch(() => undefined);
@@ -70,4 +79,9 @@ function nodeErrorCode(error: unknown): string | undefined {
   return typeof error === 'object' && error !== null && 'code' in error
     ? String((error as { code: unknown }).code)
     : undefined;
+}
+
+function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.byteLength !== right.byteLength) return false;
+  return left.every((byte, index) => byte === right[index]);
 }

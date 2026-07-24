@@ -47,6 +47,33 @@ describe('NodeChatAttachmentStorage', () => {
     expect(Array.from(resolution.bytes)).toEqual(Array.from(hello()));
   });
 
+  it('keeps content-addressed retries idempotent, including concurrent writes', async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), 'coding-agent-chat-'));
+    temporaryRoots.push(projectRoot);
+
+    const contract = new ChatAttachmentContract(new NodeChatAttachmentStorage(projectRoot));
+    const input = {
+      content: hello(),
+      mime: 'image/png',
+      alt: 'clipboard image',
+    };
+
+    const [first, second] = await Promise.all([
+      contract.persist('task/CAC-12', input),
+      contract.persist('task/CAC-12', input),
+    ]);
+    const retried = await contract.persist('task/CAC-12', input);
+
+    expect(second).toEqual(first);
+    expect(retried).toEqual(first);
+    expect(Array.from(await readFile(join(projectRoot, ...first.relativePath.split('/'))))).toEqual(
+      Array.from(hello()),
+    );
+
+    const restartedProcess = new ChatAttachmentContract(new NodeChatAttachmentStorage(projectRoot));
+    expect(Array.from((await restartedProcess.bytes(first)) ?? [])).toEqual(Array.from(hello()));
+  });
+
   it('confines direct storage operations to the configured project root', async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), 'coding-agent-chat-'));
     temporaryRoots.push(projectRoot);
