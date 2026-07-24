@@ -42,7 +42,9 @@ jobs:
           # setup-node's .npmrc references ${NODE_AUTH_TOKEN}; npm 10 refuses
           # any install when the variable is unset. OIDC needs no real token.
           NODE_AUTH_TOKEN: 'oidc-unused'
-        run: npm install -g npm@latest && npm --version
+        # Pinned to 11: >=11.5 provides OIDC; 12 changed the pack --json shape
+        # that scripts/stamp-release.mjs consumes.
+        run: npm install -g npm@11 && npm --version
 
       - name: Derive version from tag
         id: ver
