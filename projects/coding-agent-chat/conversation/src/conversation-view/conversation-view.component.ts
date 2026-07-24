@@ -642,6 +642,17 @@ export class ConversationViewComponent {
     this.visibleEnd.set(Math.min(total, firstVisibleRow + visibleRows + buffer));
   }
 
+  /**
+   * Resume following the newest entry and immediately re-slice a virtualised
+   * feed. `scrollTop` writes do not synchronously emit `scroll` in every
+   * browser, so relying on the template's scroll handler can leave the
+   * viewport pinned at the bottom while its old window still renders.
+   */
+  jumpToLatest(): void {
+    this.stick()?.scrollToBottom();
+    this.onScroll();
+  }
+
   readonly statusKind = computed<'working' | 'queued' | null>(() => {
     if (this.isRunning()) return 'working';
     if (this.queuedFollowUp()) return 'queued';
