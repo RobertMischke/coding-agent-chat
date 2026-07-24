@@ -150,6 +150,11 @@ export class StickToBottomDirective implements AfterViewInit, OnDestroy {
   /** Re-pin to the bottom and resume sticking (the "jump to latest" action). */
   scrollToBottom(): void {
     this._stuck.set(true);
+    // A deliberate jump is user input, not background following. Apply its
+    // first pin synchronously so the control cannot look inert while waiting
+    // for the next paint; retain the scheduled pass for content (for example
+    // lazy images) that settles during that paint.
+    this.pinToBottom();
     this.scheduleScrollToBottom();
   }
 
@@ -214,31 +219,40 @@ export class StickToBottomDirective implements AfterViewInit, OnDestroy {
     this.cancelPendingScroll();
     this.scrollFrame = requestAnimationFrame(() => {
       this.scrollFrame = null;
-      const el = this.container ?? (this.container = this.resolveScrollContainer());
-      if (!el) return;
-      if (this.isDocumentContainer()) return; // never drive the user's page
-      if (this.editableFocused) return;
-      if (!this._stuck()) return;
-      // Idempotent pin: if we're already at the bottom (within a 1px
-      // tolerance) there is nothing to correct, so don't write. An
-      // unconditional write perturbs a virtualised / subpixel scroller, whose
-      // reactive re-render the MutationObserver picks up and bounces straight
-      // back into this path — the two ping-pong by a single pixel (the
-      // reported nervous 1px flicker). No correction needed → no write → the
-      // loop cannot start. See PIN_TOLERANCE_PX.
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      if (distanceFromBottom <= PIN_TOLERANCE_PX) return;
-      // The write fires exactly one scroll event (no smooth behaviour);
-      // suppress it so handleScroll doesn't misread the transient position
-      // and flip `stuck` off. Cleared on the next frame.
-      this.suppressScrollEvent = true;
-      el.scrollTop = el.scrollHeight;
-      // Move the baseline with the programmatic jump so the next genuine
-      // scroll is measured against the pinned position, not a stale one.
-      this.lastScrollTop = el.scrollTop;
-      requestAnimationFrame(() => {
-        this.suppressScrollEvent = false;
-      });
+      this.pinToBottom();
+    });
+  }
+
+  /**
+   * Perform one guarded pin. Kept separate from scheduling because an
+   * explicit jump-to-latest must take effect in the click turn, while normal
+   * streaming/content growth should still be coalesced to the next frame.
+   */
+  private pinToBottom(): void {
+    const el = this.container ?? (this.container = this.resolveScrollContainer());
+    if (!el) return;
+    if (this.isDocumentContainer()) return; // never drive the user's page
+    if (this.editableFocused) return;
+    if (!this._stuck()) return;
+    // Idempotent pin: if we're already at the bottom (within a 1px
+    // tolerance) there is nothing to correct, so don't write. An
+    // unconditional write perturbs a virtualised / subpixel scroller, whose
+    // reactive re-render the MutationObserver picks up and bounces straight
+    // back into this path — the two ping-pong by a single pixel (the
+    // reported nervous 1px flicker). No correction needed → no write → the
+    // loop cannot start. See PIN_TOLERANCE_PX.
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom <= PIN_TOLERANCE_PX) return;
+    // The write fires exactly one scroll event (no smooth behaviour);
+    // suppress it so handleScroll doesn't misread the transient position
+    // and flip `stuck` off. Cleared on the next frame.
+    this.suppressScrollEvent = true;
+    el.scrollTop = el.scrollHeight;
+    // Move the baseline with the programmatic jump so the next genuine
+    // scroll is measured against the pinned position, not a stale one.
+    this.lastScrollTop = el.scrollTop;
+    requestAnimationFrame(() => {
+      this.suppressScrollEvent = false;
     });
   }
 

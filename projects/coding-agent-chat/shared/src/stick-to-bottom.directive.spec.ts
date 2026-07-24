@@ -307,6 +307,9 @@ describe('StickToBottomDirective', () => {
     state.scrollHeight = 1600;
     stick.scrollToBottom();
     expect(stick.stuck()).toBe(true);
+    // The click path pins synchronously; the scheduled follow-up pass only
+    // catches layout that settles in the next frame.
+    expect(scroller.scrollTop).toBe(1600);
     flushFrames();
     expect(scroller.scrollTop).toBe(1600);
   });
