@@ -60,11 +60,14 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Test (kernel + component specs)
-        run: npx ng test
-
+      # The website/lab specs compile against the built package entry points
+      # (coding-agent-chat/core, dist theme css), so the library build must
+      # precede the test run.
       - name: Build library
         run: npm run build
+
+      - name: Test (kernel + component specs)
+        run: npx ng test
 
       - name: Stamp release metadata + manifest
         run: node scripts/stamp-release.mjs --dist dist/coding-agent-chat --version "${{ steps.ver.outputs.version }}" --tag "${GITHUB_REF_NAME}" --commit "${GITHUB_SHA}"
