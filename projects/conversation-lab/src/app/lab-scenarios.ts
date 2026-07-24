@@ -342,7 +342,7 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
     kind: 'replay',
     title: 'Langer Lauf (10 Blöcke)',
     description:
-      '~120 Zeilen über zehn Arbeitsblöcke — für Scroll-Verhalten, Tool-Burst-Faltung und Rendering-Performance. Gestreamt abgespielt simuliert das eine echte lange Session.',
+      '~120 Zeilen über zehn Arbeitsblöcke — für Scroll-Verhalten, den „Jump to latest“-Rücksprung, Tool-Burst-Faltung und Rendering-Performance. Gestreamt abgespielt simuliert das eine echte lange Session.',
     lines: longRunLines(),
   },
   {

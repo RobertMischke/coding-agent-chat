@@ -37,6 +37,21 @@ class InlineHostComponent {
   readonly stick = viewChild.required(StickToBottomDirective);
 }
 
+/** Host whose scroll owner changes after initial render, as an embedded pane
+ * does when its host applies the post-layout overflow rule. */
+@Component({
+  standalone: true,
+  imports: [StickToBottomDirective],
+  template: `
+    <div class="dynamic-outer">
+      <div class="dynamic-host" cacStickToBottom><div class="content">line</div></div>
+    </div>
+  `,
+})
+class DynamicOwnerHostComponent {
+  readonly stick = viewChild.required(StickToBottomDirective);
+}
+
 interface ScrollState {
   scrollHeight: number;
   clientHeight: number;
@@ -71,6 +86,7 @@ describe('StickToBottomDirective', () => {
   let rafCallbacks: Map<number, FrameRequestCallback>;
   let nextRafId: number;
   let resizeCallbacks: ResizeObserverCallback[];
+  let dynamicOwner: 'host' | 'outer';
 
   beforeEach(() => {
     // Deterministic rAF: queue callbacks and flush manually via flushFrames().
@@ -87,6 +103,7 @@ describe('StickToBottomDirective', () => {
 
     // jsdom has no ResizeObserver: record callbacks and trigger them manually.
     resizeCallbacks = [];
+    dynamicOwner = 'host';
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -108,6 +125,12 @@ describe('StickToBottomDirective', () => {
     ) => {
       if (el instanceof HTMLElement && el.classList.contains('scroller')) {
         return { overflowY: 'auto' } as CSSStyleDeclaration;
+      }
+      if (el instanceof HTMLElement && el.classList.contains('dynamic-host')) {
+        return { overflowY: dynamicOwner === 'host' ? 'auto' : 'visible' } as CSSStyleDeclaration;
+      }
+      if (el instanceof HTMLElement && el.classList.contains('dynamic-outer')) {
+        return { overflowY: dynamicOwner === 'outer' ? 'auto' : 'visible' } as CSSStyleDeclaration;
       }
       return realGetComputedStyle(el, pseudo);
     }) as typeof window.getComputedStyle);
@@ -312,6 +335,29 @@ describe('StickToBottomDirective', () => {
     expect(scroller.scrollTop).toBe(1600);
     flushFrames();
     expect(scroller.scrollTop).toBe(1600);
+  });
+
+  it('jumps to the current pane scroller when scroll ownership changes after init', async () => {
+    const fixture = TestBed.createComponent(DynamicOwnerHostComponent);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const host = root.querySelector<HTMLElement>('.dynamic-host')!;
+    const outer = root.querySelector<HTMLElement>('.dynamic-outer')!;
+    const hostState = mockScrollMetrics(host, { scrollHeight: 1000, clientHeight: 200 });
+    const outerState = mockScrollMetrics(outer, { scrollHeight: 1600, clientHeight: 200 });
+    const stick = fixture.componentInstance.stick();
+    flushFrames();
+
+    hostState.scrollTop = 100;
+    host.dispatchEvent(new Event('scroll'));
+    expect(stick.stuck()).toBe(false);
+
+    dynamicOwner = 'outer';
+    stick.scrollToBottom();
+
+    expect(stick.stuck()).toBe(true);
+    expect(outerState.scrollTop).toBe(1600);
+    expect(hostState.scrollTop).toBe(100);
   });
 
   it('does not re-pin while an editable element inside the container has focus', async () => {
