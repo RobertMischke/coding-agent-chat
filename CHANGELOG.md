@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/). Releases are cut by
 pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 `release` workflow builds and publishes to npm.
 
+## [0.3.2] - 2026-07-24
+
+### Fixed
+
+- Structured short answers remain fully visible, while messages over 40 source
+  lines or 3000 characters collapse behind a per-message control whose expanded
+  state survives component remounts for the browser session.
+
 ## [0.3.1] - 2026-07-24
 
 ### Fixed

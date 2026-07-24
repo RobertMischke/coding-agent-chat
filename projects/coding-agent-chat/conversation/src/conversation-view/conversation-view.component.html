@@ -104,8 +104,11 @@
               <ol class="msg__items" data-testid="conversation-message-items">
                 @for (item of row.items; track item.id) {
                   <li class="msg__item"
+                      [class.msg__item--collapsible]="item.collapsible"
+                      [class.msg__item--expanded]="isItemExpanded(item.id)"
                       [attr.data-testid]="'conversation-message-item'"
-                      [attr.data-item-id]="item.id">
+                      [attr.data-item-id]="item.id"
+                      [attr.data-collapsed]="item.collapsible && !isItemExpanded(item.id) ? 'true' : 'false'">
                     @if (item.target) {
                       <span class="msg__target">→ {{ item.target }}</span>
                     }
@@ -116,6 +119,14 @@
                           <li><code>{{ a }}</code></li>
                         }
                       </ul>
+                    }
+                    @if (item.collapsible) {
+                      <button type="button"
+                              class="msg__item-toggle"
+                              data-testid="conversation-message-item-expand"
+                              [attr.aria-expanded]="isItemExpanded(item.id)"
+                              [cacTooltip]="isItemExpanded(item.id) ? 'Collapse this message' : 'Show full message'"
+                              (click)="toggleItem(item.id)">{{ isItemExpanded(item.id) ? 'collapse' : 'expand' }}</button>
                     }
                   </li>
                 }

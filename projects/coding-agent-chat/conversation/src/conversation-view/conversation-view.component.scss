@@ -324,6 +324,32 @@
 }
 .msg__body :first-child { margin-top: 0; }
 .msg__body :last-child { margin-bottom: 0; }
+
+/* Short summaries, lists, and tables stay fully visible. Only source bodies
+ * beyond the transcript threshold are clipped behind an explicit control. */
+.msg__item--collapsible:not(.msg__item--expanded) .msg__body {
+  max-height: 18em;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black 70%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent);
+}
+.msg__item-toggle {
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, currentColor 68%, transparent);
+  font: inherit;
+  font-size: 10.5px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.msg__item-toggle:hover,
+.msg__item-toggle:focus-visible {
+  color: inherit;
+}
+
 /* Dezent rate-limit indicator: a single dot next to the time. The full
  * payload (window, status, resetsAt, ...) lives in the header tooltip. */
 .msg__rate-dot {

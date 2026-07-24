@@ -79,6 +79,10 @@ async function render(
 }
 
 describe('ConversationViewComponent', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
   it('shows the shared compact indicator on an attributed message boundary', async () => {
     const fixture = await render([
       msg('message.taskAgent', 'Working.', { model: 'gpt-5-codex', thinkingLevel: 'high' }),
@@ -184,35 +188,72 @@ describe('ConversationViewComponent', () => {
     expect(agentRow.textContent).toContain('Flag added, wiring the projection next.');
   });
 
-  it('keeps short and long normal messages fully visible without disclosure controls', async () => {
-    const longLines = Array.from({ length: 24 }, (_, index) => `complete line ${index + 1}`);
-    const codeLines = Array.from({ length: 18 }, (_, index) => `const value${index + 1} = ${index + 1};`);
+  it('keeps structured board summaries and moderate messages fully visible', async () => {
+    const boardSummary = [
+      '## Board summary',
+      '- Ready: 3',
+      '- In progress: 2',
+      '- Review: 1',
+      '- Blocked: 0',
+      '- Done today: 4',
+    ].join('\n');
+    const moderateLines = Array.from({ length: 40 }, (_, index) => `complete line ${index + 1}`);
     const fixture = await render([
       msg('message.taskAgent', 'Short answer.'),
-      ...Array.from({ length: 5 }, (_, index) =>
-        msg('message.taskAgent', `Intermediate answer ${index + 1}.`)
-      ),
-      msg(
-        'message.taskAgent',
-        `${longLines.join('\n\n')}\n\n\`\`\`ts\n${codeLines.join('\n')}\n\`\`\``
-      ),
+      msg('message.orchestrator', boardSummary, { id: 'board-summary' }),
+      msg('message.taskAgent', moderateLines.join('\n'), { id: 'at-line-limit' }),
     ]);
     const el: HTMLElement = fixture.nativeElement;
-    const row = el.querySelector('[data-actor="message.taskAgent"]')!;
+    const summary = el.querySelector<HTMLElement>('[data-item-id="board-summary"]');
+    const moderate = el.querySelector<HTMLElement>('[data-item-id="at-line-limit"]');
 
-    expect(row.querySelectorAll('[data-testid="conversation-message-item"]')).toHaveLength(7);
-    expect(row.textContent).toContain('Short answer.');
-    expect(row.textContent).toContain('Intermediate answer 5.');
-    expect(row.textContent).toContain('complete line 24');
-    expect(row.textContent).toContain('const value18 = 18;');
-    expect(row.querySelector('[data-testid="conversation-message-item-expand"]')).toBeNull();
-    expect(row.querySelector('[data-testid="conversation-message-show-more"]')).toBeNull();
-    expect(row.querySelector('.msg__item--clampable')).toBeNull();
+    expect(summary?.textContent).toContain('Done today: 4');
+    expect(summary?.getAttribute('data-collapsed')).toBe('false');
+    expect(summary?.querySelector('[data-testid="conversation-message-item-expand"]')).toBeNull();
+    expect(moderate?.textContent).toContain('complete line 40');
+    expect(moderate?.getAttribute('data-collapsed')).toBe('false');
+    expect(moderate?.querySelector('[data-testid="conversation-message-item-expand"]')).toBeNull();
+  });
 
-    const code = row.querySelector<HTMLElement>('.msg__body pre');
-    expect(code).toBeTruthy();
-    expect(code?.style.maxHeight).toBe('');
-    expect(code?.style.overflow).toBe('');
+  it('collapses long diffs and remembers expansion by message id for the session', async () => {
+    const longDiff = ['```diff', ...Array.from({ length: 41 }, (_, index) => `+ changed line ${index + 1}`), '```'].join('\n');
+    const event = msg('message.orchestrator', longDiff, { id: 'long-diff' });
+    const fixture = await render([event]);
+    const el: HTMLElement = fixture.nativeElement;
+    const item = el.querySelector<HTMLElement>('[data-item-id="long-diff"]');
+    const toggle = item?.querySelector<HTMLButtonElement>('[data-testid="conversation-message-item-expand"]');
+
+    expect(item?.getAttribute('data-collapsed')).toBe('true');
+    expect(toggle?.textContent?.trim()).toBe('expand');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+
+    toggle?.click();
+    fixture.detectChanges();
+
+    expect(item?.getAttribute('data-collapsed')).toBe('false');
+    expect(toggle?.textContent?.trim()).toBe('collapse');
+    expect(JSON.parse(sessionStorage.getItem('coding-agent-chat.expanded-message-ids') ?? '[]')).toContain('long-diff');
+
+    fixture.destroy();
+    const remounted = await render([event]);
+    const remembered = (remounted.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-item-id="long-diff"]',
+    );
+    expect(remembered?.getAttribute('data-collapsed')).toBe('false');
+    expect(remembered?.querySelector('[data-testid="conversation-message-item-expand"]')?.textContent?.trim()).toBe('collapse');
+  });
+
+  it('collapses only after the character threshold and never collapses user messages', async () => {
+    const fixture = await render([
+      msg('message.orchestrator', 'x'.repeat(3000), { id: 'at-char-limit' }),
+      msg('message.orchestrator', 'x'.repeat(3001), { id: 'over-char-limit' }),
+      msg('message.user', 'x'.repeat(3001), { id: 'long-user-message' }),
+    ]);
+    const el: HTMLElement = fixture.nativeElement;
+
+    expect(el.querySelector('[data-item-id="at-char-limit"]')?.getAttribute('data-collapsed')).toBe('false');
+    expect(el.querySelector('[data-item-id="over-char-limit"]')?.getAttribute('data-collapsed')).toBe('true');
+    expect(el.querySelector('[data-item-id="long-user-message"]')?.getAttribute('data-collapsed')).toBe('false');
   });
 
   it('renders a tool burst between agent turns, keeps the role continuous, and hides bursts when toolsVisible is false', async () => {

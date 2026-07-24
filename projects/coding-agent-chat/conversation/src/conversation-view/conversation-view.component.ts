@@ -7,8 +7,11 @@ import { PixelProgressComponent } from '../pixel-progress/pixel-progress.compone
 import { PlanChecklistComponent } from '../plan-checklist/plan-checklist.component';
 import {
   ArrowKeyScrollDirective,
+  isMessageCollapsible,
   MarkdownImageLightboxDirective,
   ModelLevelIndicatorComponent,
+  persistExpandedMessageIds,
+  readExpandedMessageIds,
   StickToBottomDirective,
   TooltipDirective,
   type StructuredTooltip,
@@ -44,6 +47,8 @@ interface MessageGroupItem {
   target?: string;
   attachments?: readonly string[];
   severity?: ConversationEventSeverity;
+  /** True only for transcript-sized non-user messages. */
+  collapsible: boolean;
 }
 
 interface SessionMeta {
@@ -232,6 +237,8 @@ export class ConversationViewComponent {
   readonly openFollowUp = output<string>();
   /** Raised when a rendered tool output hit is clicked. The host may open a richer file viewer later. */
   readonly openSourceLocation = output<ToolOutputHit & { rawRange: RawLineRange }>();
+
+  private readonly expandedItems = signal<ReadonlySet<string>>(readExpandedMessageIds());
 
   /** The stick-to-bottom directive on the scroll root (see the template). */
   private readonly stick = viewChild(StickToBottomDirective);
@@ -500,6 +507,7 @@ export class ConversationViewComponent {
           target: m.target,
           attachments: m.attachments,
           severity: m.severity,
+          collapsible: m.kind !== 'message.user' && isMessageCollapsible(body),
         });
         group.lastTs = ts;
         if (classified.sessionId) {
@@ -809,6 +817,20 @@ export class ConversationViewComponent {
     if (n < 1000) return `${n}`;
     if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`;
     return `${(n / 1_000_000).toFixed(1)}M`;
+  }
+
+  // ── Progressive disclosure ──────────────────────────────────────────
+
+  isItemExpanded(itemId: string): boolean {
+    return this.expandedItems().has(itemId);
+  }
+
+  toggleItem(itemId: string): void {
+    const next = new Set(this.expandedItems());
+    if (next.has(itemId)) next.delete(itemId);
+    else next.add(itemId);
+    this.expandedItems.set(next);
+    persistExpandedMessageIds(next);
   }
 
   // ── Session-meta tooltip ────────────────────────────────────────────

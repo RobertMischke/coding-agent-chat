@@ -20,3 +20,4 @@ export * from './anchored-popover.directive';
 export * from './media-lightbox.token';
 export * from './markdown-image-lightbox.directive';
 export * from './model-level-indicator.component';
+export * from './message-collapse';
