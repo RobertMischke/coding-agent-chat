@@ -3,7 +3,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  HostListener,
   OnDestroy,
   computed,
   effect,
@@ -16,7 +15,6 @@ import {
 import { FormsModule } from '@angular/forms';
 import {
   ArrowKeyScrollDirective,
-  AnchoredPopoverDirective,
   MarkdownImageLightboxDirective,
   TooltipDirective,
 } from 'coding-agent-chat/shared';
@@ -64,10 +62,6 @@ interface RenderedMessage {
   message: ChatMessage;
   /** Top-right provenance chips shown inline when values exist. */
   provenanceChips: readonly MessageProvenanceChip[];
-  /** True when the details popover has anything useful to show. */
-  hasDetails: boolean;
-  /** Rich details rendered in the popover. */
-  detailRows: readonly MessageDetailRow[];
   /**
    * F7: true when this is an error message that belongs to an older
    * super-phase (i.e. session). Stale errors get a dimmed look so the
@@ -100,6 +94,7 @@ interface MessageProvenanceChip {
   tooltip?: string;
 }
 
+/** Normalised metadata structure retained for internal diagnostics. */
 interface MessageDetailRow {
   label: string;
   value: string;
@@ -131,7 +126,6 @@ type RenderedItem = RenderedMessage | RenderedEvent;
   imports: [
     FormsModule,
     RoleBadgeComponent,
-    AnchoredPopoverDirective,
     MarkdownImageLightboxDirective,
     MarkdownViewComponent,
     TooltipDirective,
@@ -264,10 +258,6 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
   readonly attachmentError = signal<string | null>(null);
   readonly stickToBottom = signal(true);
   readonly isDragging = signal(false);
-  /** Per-message-id overrides for the turn-details popover. */
-  readonly openMessageDetailsIds = signal<ReadonlySet<string>>(new Set());
-  /** Anchor element for the currently open turn-details popover. */
-  readonly activeMessageDetailsAnchor = signal<HTMLElement | null>(null);
   /** Per-event-id override: ids of events the user has expanded. */
   readonly expandedEventIds = signal<ReadonlySet<string>>(new Set());
 
@@ -336,7 +326,6 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
       // orchestrator replies render with the same GFM, code, link, and
       // sanitisation path used elsewhere.
       const provenanceChips = this.messageProvenanceChips(message);
-      const detailRows = this.messageDetailRows(message);
       return {
         kind: 'message',
         id: message.id,
@@ -344,10 +333,6 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
         formattedTime: this.formatTime(message.timestamp),
         message,
         provenanceChips,
-        // Timestamp is always present, but it is not enough on its own to
-        // justify a disclosure control. Legacy turns stay clean.
-        hasDetails: provenanceChips.length > 0 || detailRows.length > 1,
-        detailRows,
         staleError: isStaleError(message.timestamp, !!message.error),
       };
     });
@@ -646,55 +631,11 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
 
   jumpToBottom(): void {
     this.stickToBottom.set(true);
+    // This is an explicit user action, so land on the newest rendered row in
+    // the click turn. The queued pass remains for lazy content that settles
+    // after the browser's next layout.
+    this.pinToBottom();
     this.scheduleScrollToBottom();
-  }
-
-  toggleMessageDetails(messageId: string, event: MouseEvent): void {
-    const anchor = event.currentTarget as HTMLElement | null;
-    const isOpen = this.openMessageDetailsIds().has(messageId);
-    if (isOpen) {
-      this.closeMessageDetails(messageId);
-      return;
-    }
-    this.openMessageDetailsIds.set(new Set([messageId]));
-    this.activeMessageDetailsAnchor.set(anchor);
-  }
-
-  closeMessageDetails(messageId: string): void {
-    if (!this.openMessageDetailsIds().has(messageId)) return;
-    const anchor = this.activeMessageDetailsAnchor();
-    this.openMessageDetailsIds.set(new Set());
-    this.activeMessageDetailsAnchor.set(null);
-    queueMicrotask(() => anchor?.focus());
-  }
-
-  isMessageDetailsOpen(messageId: string): boolean {
-    return this.openMessageDetailsIds().has(messageId);
-  }
-
-  @HostListener('document:keydown.escape', ['$event'])
-  onMessageDetailsEscape(event: Event): void {
-    const messageId = this.openMessageDetailsIds().values().next().value;
-    if (!messageId) return;
-    event.preventDefault();
-    event.stopPropagation();
-    this.closeMessageDetails(messageId);
-  }
-
-  async copyToClipboard(text: string): Promise<void> {
-    if (!text) return;
-    const clip = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
-    if (clip?.writeText) {
-      await clip.writeText(text);
-    }
-  }
-
-  copyMessageDetail(messageId: string, text: string): void {
-    void this.copyToClipboard(text);
-  }
-
-  copyMessageSummary(message: ChatMessage): void {
-    void this.copyToClipboard(this.messageDetailsCopyText(message));
   }
 
   onEventAction(event: Event, eventId: string): void {
@@ -901,12 +842,6 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
     return rows;
   }
 
-  messageDetailsCopyText(message: ChatMessage): string {
-    return this.messageDetailRows(message)
-      .map((row) => `${row.label}: ${row.copyText ?? row.value}`)
-      .join('\n');
-  }
-
   private cleanText(value: string | number | null | undefined): string {
     if (value === null || value === undefined) return '';
     const text = String(value).trim();
@@ -1027,6 +962,23 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
         return 'Memory refreshed';
     }
     return '';
+  }
+
+  /** Apply the immediate half of an explicit Jump to latest action. */
+  private pinToBottom(): void {
+    this.observeLatestAnchor();
+    const el = this.bodyRef()?.nativeElement;
+    if (!el || !this.stickToBottom()) return;
+    this.suppressScrollEvent = true;
+    el.scrollTop = el.scrollHeight;
+    this.lastScrollTop = el.scrollTop;
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => {
+        this.suppressScrollEvent = false;
+      });
+    } else {
+      this.suppressScrollEvent = false;
+    }
   }
 
   private scheduleScrollToBottom(): void {

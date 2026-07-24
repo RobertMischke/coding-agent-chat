@@ -258,6 +258,8 @@ describe('ChatComponent', () => {
     fixture.detectChanges();
     query<HTMLButtonElement>(fixture, '[data-testid="chat-jump-bottom"]')!.click();
     fixture.detectChanges();
+    // Jump-to-latest is an immediate action, not a deferred rAF-only hint.
+    expect(state.scrollTop).toBe(3_600);
     flushFrames();
     expect(state.scrollTop).toBe(3_600);
 
@@ -561,8 +563,7 @@ describe('ChatComponent', () => {
     expect(query(fixture, '[data-testid="chat-msg-system"]')).toBeNull();
   });
 
-  it('shows compact provenance and a details popover when the host supplies immutable turn metadata', async () => {
-    const clipboard = navigator.clipboard.writeText as unknown as ReturnType<typeof vi.fn>;
+  it('shows compact provenance without a disclosure control on a normal message', async () => {
     const fixture = await createChat({
       messages: [
         {
@@ -574,47 +575,13 @@ describe('ChatComponent', () => {
       ],
     });
 
-    expect(query(fixture, '[data-testid="chat-msg-details-toggle-m1"]')).toBeTruthy();
     const chips = Array.from(
       fixture.nativeElement.querySelectorAll('.chat__msg-meta-chip') as NodeListOf<HTMLElement>,
     ).map((el) => el.textContent ?? '');
     expect(chips.join(' | ')).toContain('Codex CLI');
     expect(chips.join(' | ')).toContain('gpt-5.4-mini');
-
-    const detailsToggle = query<HTMLButtonElement>(
-      fixture,
-      '[data-testid="chat-msg-details-toggle-m1"]',
-    )!;
-    expect(detailsToggle.getAttribute('aria-controls')).toBe('chat-msg-details-m1');
-    detailsToggle.focus();
-    detailsToggle.click();
-    await fixture.whenStable();
-
-    const popover = query(fixture, '[data-testid="chat-msg-details-m1"]');
-    expect(popover).toBeTruthy();
-    expect(popover?.id).toBe('chat-msg-details-m1');
-    expect(popover?.textContent).toContain('CAC-6');
-    expect(popover?.textContent).toContain('conversation');
-    expect(popover?.textContent).toContain('sess-abc');
-    expect(popover?.textContent).toContain('Timestamp');
-    expect(popover?.textContent).toContain('Run');
-    expect(popover?.textContent).toContain('shot');
-    expect(popover?.textContent).toContain('Technical error');
-
-    query<HTMLButtonElement>(
-      fixture,
-      '[data-testid="chat-msg-details-m1"] .chat__msg-detail-copy',
-    )!.click();
-    await fixture.whenStable();
-    expect(clipboard).toHaveBeenCalled();
-
-    document.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-    );
-    await fixture.whenStable();
-    await Promise.resolve();
+    expect(query(fixture, '[data-testid="chat-msg-details-toggle-m1"]')).toBeNull();
     expect(query(fixture, '[data-testid="chat-msg-details-m1"]')).toBeNull();
-    expect(document.activeElement).toBe(detailsToggle);
   });
 
   it('renders legacy turns cleanly without metadata chrome', async () => {

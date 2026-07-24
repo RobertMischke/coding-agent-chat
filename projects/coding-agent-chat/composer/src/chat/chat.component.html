@@ -77,20 +77,6 @@
                           <span class="chat__msg-meta-value">{{ chip.value }}</span>
                         </span>
                       }
-                      @if (item.hasDetails) {
-                        <button
-                          type="button"
-                          class="chat__msg-details-toggle"
-                          [attr.data-testid]="'chat-msg-details-toggle-' + item.message.id"
-                          [attr.aria-haspopup]="'dialog'"
-                          [attr.aria-expanded]="isMessageDetailsOpen(item.message.id)"
-                          [attr.aria-controls]="'chat-msg-details-' + item.message.id"
-                          [cacTooltip]="'Open turn details'"
-                          (click)="toggleMessageDetails(item.message.id, $event)"
-                        >
-                          Details
-                        </button>
-                      }
                     </div>
                   </header>
                   <cac-markdown
@@ -137,86 +123,6 @@
                   }
                   @if (item.message.error) {
                     <div class="chat__msg-error">{{ item.message.error }}</div>
-                  }
-                  @if (item.hasDetails && isMessageDetailsOpen(item.message.id)) {
-                    <div
-                      class="chat__msg-details-backdrop"
-                      [attr.data-testid]="'chat-msg-details-backdrop-' + item.message.id"
-                      (mousedown)="closeMessageDetails(item.message.id); $event.preventDefault()"
-                    ></div>
-                    <div
-                      class="chat__msg-details"
-                      [id]="'chat-msg-details-' + item.message.id"
-                      role="dialog"
-                      aria-modal="false"
-                      [cacAnchoredPopover]="activeMessageDetailsAnchor()"
-                      popoverAlign="right"
-                      [attr.data-testid]="'chat-msg-details-' + item.message.id"
-                      [attr.aria-label]="'Turn details for ' + item.message.id"
-                      (mousedown)="$event.stopPropagation()"
-                    >
-                      <div class="chat__msg-details-head">
-                        <strong>Turn details</strong>
-                        <button
-                          type="button"
-                          class="chat__msg-details-close"
-                          [cacTooltip]="'Close turn details'"
-                          (click)="closeMessageDetails(item.message.id)"
-                        >
-                          Close
-                        </button>
-                      </div>
-                      @if (item.detailRows.length > 0) {
-                        <div class="chat__msg-details-rows">
-                          @for (row of item.detailRows; track row.label + ':' + row.value) {
-                            <div
-                              class="chat__msg-detail-row"
-                              [class.chat__msg-detail-row--mono]="row.mono"
-                            >
-                              <span class="chat__msg-detail-label">{{ row.label }}</span>
-                              <span
-                                class="chat__msg-detail-value"
-                                [attr.data-testid]="
-                                  'chat-msg-detail-value-' +
-                                  item.message.id +
-                                  '-' +
-                                  row.label.toLowerCase()
-                                "
-                              >
-                                {{ row.value }}
-                              </span>
-                              <button
-                                type="button"
-                                class="chat__msg-detail-copy"
-                                [cacTooltip]="'Copy ' + row.label.toLowerCase()"
-                                (click)="
-                                  copyMessageDetail(item.message.id, row.copyText ?? row.value)
-                                "
-                              >
-                                Copy
-                              </button>
-                            </div>
-                          }
-                        </div>
-                      } @else {
-                        <div class="chat__msg-details-empty">No extra metadata.</div>
-                      }
-                      <div class="chat__msg-details-foot">
-                        <button
-                          type="button"
-                          class="chat__msg-details-copy-all"
-                          [disabled]="item.detailRows.length === 0"
-                          [cacTooltip]="
-                            item.detailRows.length === 0
-                              ? 'Nothing to copy'
-                              : 'Copy all turn details'
-                          "
-                          (click)="copyMessageSummary(item.message)"
-                        >
-                          Copy all
-                        </button>
-                      </div>
-                    </div>
                   }
                 </article>
               }
