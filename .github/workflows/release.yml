@@ -35,6 +35,11 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
+      # Trusted Publishing (OIDC) requires npm >= 11.5; Node 22 bundles npm 10,
+      # which silently falls back to an unauthenticated PUT (404).
+      - name: Upgrade npm for OIDC publishing
+        run: npm install -g npm@latest && npm --version
+
       - name: Derive version from tag
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
