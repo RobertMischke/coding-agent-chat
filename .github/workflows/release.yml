@@ -38,6 +38,10 @@ jobs:
       # Trusted Publishing (OIDC) requires npm >= 11.5; Node 22 bundles npm 10,
       # which silently falls back to an unauthenticated PUT (404).
       - name: Upgrade npm for OIDC publishing
+        env:
+          # setup-node's .npmrc references ${NODE_AUTH_TOKEN}; npm 10 refuses
+          # any install when the variable is unset. OIDC needs no real token.
+          NODE_AUTH_TOKEN: 'oidc-unused'
         run: npm install -g npm@latest && npm --version
 
       - name: Derive version from tag
