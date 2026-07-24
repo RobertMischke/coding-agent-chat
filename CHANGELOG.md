@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/). Releases are cut by
 pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 `release` workflow builds and publishes to npm.
 
+## [0.3.1] - 2026-07-24
+
+### Fixed
+
+- Conversation auto-follow releases when the user scrolls up and only
+  re-engages at the bottom; jump-to-latest works again and composer input no
+  longer fights the scroll position (stick-to-bottom rewrite).
+
 ## [0.3.0] - 2026-07-24
 
 ### Added
