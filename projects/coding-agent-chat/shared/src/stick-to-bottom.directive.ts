@@ -150,6 +150,13 @@ export class StickToBottomDirective implements AfterViewInit, OnDestroy {
   /** Re-pin to the bottom and resume sticking (the "jump to latest" action). */
   scrollToBottom(): void {
     this._stuck.set(true);
+    // The embedded conversation does not own scrolling. Its pane can become
+    // scrollable after the component first paints (or hand ownership to a
+    // different wrapper during a host layout change), so a container cached
+    // at init may no longer be the element the user is looking at. Resolve it
+    // again for the explicit jump: this is the reliable, user-visible path
+    // and keeps the control from appearing to do nothing after such a change.
+    this.refreshScrollContainer();
     // A deliberate jump is user input, not background following. Apply its
     // first pin synchronously so the control cannot look inert while waiting
     // for the next paint; retain the scheduled pass for content (for example
@@ -269,5 +276,33 @@ export class StickToBottomDirective implements AfterViewInit, OnDestroy {
    */
   private resolveScrollContainer(): HTMLElement | null {
     return resolveScrollContainer(this.host.nativeElement);
+  }
+
+  /**
+   * Rebind listeners when a host changes scroll ownership after this directive
+   * initialized. This is intentionally used for the explicit jump action,
+   * where resolving the current pane is more important than preserving a
+   * stale initial ancestor.
+   */
+  private refreshScrollContainer(): void {
+    const next = this.resolveScrollContainer();
+    const previous = this.container;
+    if (next === previous) return;
+
+    if (previous && !this.isDocumentContainer()) {
+      previous.removeEventListener('scroll', this.onScroll);
+      previous.removeEventListener('focusin', this.onFocusIn);
+      previous.removeEventListener('focusout', this.onFocusOut);
+      this.resizeObserver?.unobserve(previous);
+    }
+
+    this.container = next;
+
+    if (next && !this.isDocumentContainer()) {
+      next.addEventListener('scroll', this.onScroll, { passive: true });
+      next.addEventListener('focusin', this.onFocusIn);
+      next.addEventListener('focusout', this.onFocusOut);
+      this.resizeObserver?.observe(next);
+    }
   }
 }

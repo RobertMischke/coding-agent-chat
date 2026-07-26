@@ -4,6 +4,9 @@
 // session-init meta card lift, and the empty-feed state.
 
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { vi } from 'vitest';
+import { StickToBottomDirective } from 'coding-agent-chat/shared';
 
 import type {
   ArtifactImageEvent,
@@ -517,6 +520,42 @@ describe('ConversationViewComponent', () => {
       expect(c.rows().length).toBe(10);
       expect(c.windowedRows().length).toBe(10);
       expect(c.topSpacerPx()).toBe(0);
+      expect(c.bottomSpacerPx()).toBe(0);
+    });
+
+    it('re-slices the virtual feed to its tail when Jump to latest is clicked', async () => {
+      const fixture = await render(manyRows(40), { virtualised: true }); // 80 rows
+      const el: HTMLElement = fixture.nativeElement;
+      const c = fixture.componentInstance;
+      const root = el.querySelector<HTMLElement>('[data-testid="conversation-view"]')!;
+      const state = { scrollHeight: 9600, clientHeight: 600, scrollTop: 0 };
+      Object.defineProperties(root, {
+        scrollHeight: { configurable: true, get: () => state.scrollHeight },
+        clientHeight: { configurable: true, get: () => state.clientHeight },
+        scrollTop: {
+          configurable: true,
+          get: () => state.scrollTop,
+          set: (value: number) => { state.scrollTop = value; },
+        },
+      });
+      c.visibleStart.set(0);
+      c.visibleEnd.set(25);
+      const stick = fixture.debugElement
+        .query(By.css('.conv'))
+        .injector.get(StickToBottomDirective);
+      (stick as unknown as { _stuck: { set(value: boolean): void } })._stuck.set(false);
+      fixture.detectChanges();
+      vi.spyOn(stick, 'scrollToBottom').mockImplementation(() => {
+        state.scrollTop = state.scrollHeight - state.clientHeight;
+      });
+
+      const jumpButton = el.querySelector<HTMLButtonElement>('[data-testid="conversation-jump-latest"]');
+      expect(jumpButton).toBeTruthy();
+      jumpButton!.click();
+
+      expect(stick.scrollToBottom).toHaveBeenCalledOnce();
+      expect(c.visibleEnd()).toBe(c.rows().length);
+      expect(c.visibleStart()).toBeGreaterThan(0);
       expect(c.bottomSpacerPx()).toBe(0);
     });
   });
