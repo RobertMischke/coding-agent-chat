@@ -27,7 +27,7 @@ the runner produces the server-side event stream, this library renders it.
 
 It stays **host-agnostic**. Task keys, ticket ids, model catalogs, media
 storage, and history transport all arrive through injection seams that default
-to safe no-ops, so the library never learns what your references *mean*.
+to safe no-ops, so the library never learns what your references _mean_.
 
 <img alt="Conversation view: streaming reply with code block, working indicator and composer" src="docs/media/conversation-view-dark.png" width="460">
 
