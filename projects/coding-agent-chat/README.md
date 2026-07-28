@@ -1,13 +1,22 @@
 # coding-agent-chat
 
+[![npm](https://img.shields.io/npm/v/coding-agent-chat.svg?label=npm)](https://www.npmjs.com/package/coding-agent-chat)
+[![npm downloads](https://img.shields.io/npm/dm/coding-agent-chat.svg?label=downloads)](https://www.npmjs.com/package/coding-agent-chat)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/agent-orc/chat/blob/main/LICENSE)
+
 Best-in-class Angular library for rendering **coding-agent conversations** — the
 frontend counterpart to [`coding-agent-runner`](https://github.com/agent-orc/runner).
 The runner produces the server-side event stream; `coding-agent-chat` renders it
 client-side: from raw evidence (CLI output lines, run timeline, tokens, screenshots,
 commits) to a fully grouped, progressively-disclosed conversation.
 
-> Status: **early bootstrap.** The public surface is being carved out of the
-> agent-taskboard frontend per the extraction plan. APIs are not yet stable.
+[Live demo](https://agent-orchestrator.dev/chat/) ·
+[source](https://github.com/agent-orc/chat) ·
+[changelog](https://github.com/agent-orc/chat/blob/main/CHANGELOG.md)
+
+> Status: **pre-1.0.** In production use inside Agent Studio, but the public
+> surface can still shift between minor versions — pin a version and read the
+> changelog before upgrading.
 
 ## Install
 
@@ -17,6 +26,30 @@ npm install coding-agent-chat
 
 Peer dependencies: `@angular/core`, `@angular/common`, `@angular/forms` (`>=21 <22`)
 and `rxjs ~7.8`.
+
+```ts
+// app.config.ts — every integration point has a safe default
+import { provideCodingAgentChat } from 'coding-agent-chat';
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideCodingAgentChat()],
+};
+```
+
+```ts
+// any component
+import { ConversationViewComponent } from 'coding-agent-chat/conversation';
+import type { ConversationEvent } from 'coding-agent-chat/core';
+
+@Component({
+  imports: [ConversationViewComponent],
+  template: '<cac-conversation-view [events]="events()" [isRunning]="running()" />',
+})
+export class RunView {
+  readonly events = signal<readonly ConversationEvent[]>([]);
+  readonly running = signal(false);
+}
+```
 
 ## Entry points
 
@@ -325,6 +358,27 @@ An optional drop-in stylesheet with the studio look ships with the package:
 
 Dark by default; light theme via `data-studio-theme="light"` on a parent.
 
+## Agent Orchestrator ecosystem
+
+`coding-agent-chat` is the conversation-rendering layer of the
+[agent-orc](https://github.com/agent-orc) stack, and is usable on its own — any
+Angular host with an event stream can render it.
+[agent-studio](https://github.com/agent-orc/agent-studio) is the orchestrator on
+top, [runner](https://github.com/agent-orc/runner) is the .NET process/protocol
+layer that produces the stream,
+[token-economy](https://github.com/agent-orc/token-economy) accounts for token
+cost, and [quality-studio](https://github.com/agent-orc/quality-studio) gates the
+resulting changes. More on the
+[Agent Orchestrator website](https://agent-orchestrator.dev/).
+
+## Contributing
+
+Issues and pull requests are welcome — see
+[CONTRIBUTING.md](https://github.com/agent-orc/chat/blob/main/CONTRIBUTING.md).
+Report vulnerabilities through the private process in
+[SECURITY.md](https://github.com/agent-orc/chat/blob/main/SECURITY.md), not
+through a public issue.
+
 ## License
 
-[Apache-2.0](../../LICENSE)
+[Apache-2.0](../../LICENSE) © 2026 Robert Mischke.
