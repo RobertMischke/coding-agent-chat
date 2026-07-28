@@ -22,10 +22,10 @@ early.
 
 The two test commands cover different halves of the suite and both should pass:
 
-| Command | Covers |
-| --- | --- |
-| `npm test` | pure kernel specs — wire contract, projection, markdown utils, attachment storage |
-| `npx ng test` | `*.component.spec.ts` through the `@angular/build:unit-test` builder |
+| Command       | Covers                                                                            |
+| ------------- | --------------------------------------------------------------------------------- |
+| `npm test`    | pure kernel specs — wire contract, projection, markdown utils, attachment storage |
+| `npx ng test` | `*.component.spec.ts` through the `@angular/build:unit-test` builder              |
 
 Run the demo surfaces while working on rendering:
 
@@ -45,7 +45,7 @@ a rendering bug.
 - Formatting is Prettier + `.editorconfig` (100 columns, single quotes). Run
   `npx prettier --write <changed files>` before committing.
 - The library stays **host-agnostic**: it owns rendering and matching mechanics,
-  never what a task key, model id, or reference *means*. New host knowledge
+  never what a task key, model id, or reference _means_. New host knowledge
   belongs behind an injection seam (see `provideCodingAgentChat`), not in a
   component.
 - `coding-agent-chat/core` must stay free of Angular imports — backends, SSR and
@@ -62,7 +62,7 @@ defaults and their measurements are documented in
 
 ## Scope
 
-This library is the *rendering* layer for coding-agent conversations: it turns
+This library is the _rendering_ layer for coding-agent conversations: it turns
 the event stream produced by
 [`coding-agent-runner`](https://github.com/agent-orc/runner) into a grouped,
 progressively-disclosed conversation. It deliberately does **not** include

@@ -6,9 +6,9 @@
 released minor version. Older minor versions are not supported.
 
 | Version | Supported |
-| --- | --- |
-| 0.3.x | Yes |
-| < 0.3 | No |
+| ------- | --------- |
+| 0.3.x   | Yes       |
+| < 0.3   | No        |
 
 ## Reporting a vulnerability
 
