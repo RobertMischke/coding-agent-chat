@@ -1,0 +1,10 @@
+{
+  "relatedTasks": [
+    {
+      "key": "CAC-16",
+      "title": "Conversation: Jump-to-latest dead \u002B expand links still on normal messages (0.3.0 regression suspicion)",
+      "linkedAt": "2026-07-24T21:56:29.8243063Z",
+      "source": "auto"
+    }
+  ]
+}
