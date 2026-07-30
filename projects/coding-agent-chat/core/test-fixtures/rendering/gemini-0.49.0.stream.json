@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "cli": "gemini",
+  "cliVersion": "0.49.0",
+  "transport": "runner-normalized-stream-json",
+  "capturedAt": "2026-07-24T15:42:10.000Z",
+  "sanitized": true,
+  "frames": [
+    {
+      "type": "init",
+      "session_id": "<redacted>",
+      "model": "gemini-2.5-pro"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": "{\"source\":\"public sealed class Sample\\n{\\n    public string Name { get; init; } = \\\"fixture\\\";\\n}\",\"diff\":\"diff --git a/sample.cs b/sample.cs\\n--- a/sample.cs\\n+++ b/sample.cs\\n@@ -1 +1 @@\\n-old\\n+new\",\"html\":\"<!doctype html><html><body><ul><li>Gemini</li></ul></body></html>\",\"markdown\":\"# Gemini result\\n\\n- parsed\\n- retained\",\"image\":\"![Gemini graph](results/graph.png)\",\"json\":\"{\\\"provider\\\":\\\"gemini\\\",\\\"ok\\\":true}\",\"logs\":\"2026-07-24T15:42:09Z INFO render started\\n2026-07-24T15:42:10Z ERROR sample failure\",\"longLine\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"mixed\":\"Gemini prose before.\\n\\n```ts\\nexport const provider: string = 'gemini';\\n```\\n\\nGemini prose after.\",\"table\":\"| Provider | State |\\n| --- | --- |\\n| Gemini | ready |\",\"mermaid\":\"```mermaid\\nflowchart LR\\n  Gemini --> Renderer\\n```\",\"ansi\":\"\\u001b[31mERROR\\u001b[0m\"}"
+    },
+    {
+      "type": "result",
+      "status": "success"
+    }
+  ]
+}

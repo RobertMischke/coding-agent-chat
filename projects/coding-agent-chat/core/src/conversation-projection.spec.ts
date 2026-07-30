@@ -134,6 +134,40 @@ describe('projectConversation', () => {
     expect(joined).toContain('host inventory');
   });
 
+  it('projects Codex JSONL agent content as typed payloads instead of raw Markdown', () => {
+    const diff = [
+      'diff --git a/src/Worker.cs b/src/Worker.cs',
+      '--- a/src/Worker.cs',
+      '+++ b/src/Worker.cs',
+      '@@ -1 +1 @@',
+      '-return oldValue;',
+      '+return newValue;',
+    ].join('\n');
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [
+        line('{"type":"turn.started"}'),
+        line(JSON.stringify({
+          type: 'item.completed',
+          item: { id: 'item_1', type: 'agent_message', text: diff },
+        })),
+      ],
+    });
+
+    const message = events.find(isTaskAgentEvent);
+    expect(message?.body).toBe(diff);
+    expect(message?.content).toEqual([{ type: 'diff', text: diff, format: 'git' }]);
+  });
+
+  it('keeps captured INFO/ERROR log bodies as typed agent content', () => {
+    const logs = '2026-07-30T10:00:00Z INFO Started\n2026-07-30T10:00:01Z ERROR Failed';
+    const events = projectConversation({ source: SOURCE, lines: [line(logs)] });
+    const message = events.find(isTaskAgentEvent);
+
+    expect(message?.body).toBe(logs);
+    expect(message?.content).toEqual([{ type: 'raw-log', text: logs, ansi: false }]);
+  });
+
   it('keeps a fenced code block with blank lines intact instead of splitting it', () => {
     // A ``` fence whose body has blank lines used to split across message
     // items — an empty code box, then the content leaking out as live

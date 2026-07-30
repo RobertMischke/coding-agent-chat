@@ -9,7 +9,16 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Capture-backed, opt-in `MachineBound` rendering fixtures now cover Claude,
+  Codex, and Gemini across source, git diff, HTML files, Markdown, image
+  references, JSON, logs, long lines, mixed turns, tables, Mermaid, and ANSI.
+
+### Fixed
+
+- Codex JSONL agent messages now project renderer-safe typed content payloads,
+  and raw source, diff, HTML, JSON, and log bodies bypass Markdown parsing.
 
 ## [0.3.2] - 2026-07-24
 

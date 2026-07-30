@@ -11,6 +11,7 @@ Install Node.js 22 (or newer) and run these commands from the repository root:
 npm ci
 npm run build      # ng build coding-agent-chat → dist/coding-agent-chat
 npm test           # vitest: zero-Angular kernel specs (core, markdown, node)
+npm run test:render-fixtures # opt-in captured CLI rendering parity fixtures
 npx ng test        # Angular component specs across all entry points
 ```
 
@@ -20,12 +21,14 @@ points in `dist/`, not against the sources. That is deliberate — it exercises
 the published partial-Ivy compile mode and catches strict-template mismatches
 early.
 
-The two test commands cover different halves of the suite and both should pass:
+The standard commands cover the kernel and Angular suites; the capture-backed
+rendering parity suite is an explicit opt-in:
 
-| Command       | Covers                                                                            |
-| ------------- | --------------------------------------------------------------------------------- |
-| `npm test`    | pure kernel specs — wire contract, projection, markdown utils, attachment storage |
-| `npx ng test` | `*.component.spec.ts` through the `@angular/build:unit-test` builder              |
+| Command                        | Covers                                                                            |
+| ------------------------------ | --------------------------------------------------------------------------------- |
+| `npm test`                     | pure kernel specs — wire contract, projection, markdown utils, attachment storage |
+| `npm run test:render-fixtures` | opt-in MachineBound Claude/Codex/Gemini capture classification snapshots          |
+| `npx ng test`                  | `*.component.spec.ts` through the `@angular/build:unit-test` builder              |
 
 Run the demo surfaces while working on rendering:
 

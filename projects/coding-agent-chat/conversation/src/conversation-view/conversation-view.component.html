@@ -112,7 +112,35 @@
                     @if (item.target) {
                       <span class="msg__target">→ {{ item.target }}</span>
                     }
-                    <cac-markdown class="msg__body" cacMarkdownLightbox [source]="item.body" />
+                    <div class="msg__body" cacMarkdownLightbox>
+                      @for (payload of item.content; track $index) {
+                        @switch (payload.type) {
+                          @case ('markdown') {
+                            <cac-markdown class="msg__payload msg__payload--markdown"
+                                          data-payload-type="markdown"
+                                          [source]="payload.text" />
+                          }
+                          @case ('image-reference') {
+                            <figure class="msg__payload msg__payload--image"
+                                    data-payload-type="image-reference">
+                              <img class="msg__payload-image"
+                                   loading="lazy"
+                                   [src]="payload.uri"
+                                   [alt]="payload.alt"
+                                   [title]="payload.title ?? null" />
+                              @if (payload.alt) {
+                                <figcaption>{{ payload.alt }}</figcaption>
+                              }
+                            </figure>
+                          }
+                          @default {
+                            <pre class="msg__payload msg__payload--raw"
+                                 [attr.data-payload-type]="payload.type"
+                                 [attr.data-language]="payload.type === 'code-block' ? (payload.language ?? null) : null"><code>{{ payload.text }}</code></pre>
+                          }
+                        }
+                      }
+                    </div>
                     @if (item.attachments?.length) {
                       <ul class="msg__attachments" aria-label="Attachments">
                         @for (a of item.attachments; track a) {

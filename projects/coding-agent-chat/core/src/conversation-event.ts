@@ -164,6 +164,15 @@ export interface MessageEvent extends ConversationEventBase {
     | 'message.supportingAgent';
   /** Plain or markdown text. The renderer decides how to format. */
   body: string;
+  /**
+   * Renderer-safe semantic content derived from {@link body}. Only
+   * `markdown` payloads may enter a Markdown parser; source files, diffs,
+   * HTML, JSON, and raw logs must be rendered by their typed surface.
+   *
+   * Optional for backwards wire compatibility with archived events. New
+   * projections always populate it.
+   */
+  content?: readonly import('./message-content').MessageContentPayload[];
   /** Display name for the actor (e.g. `Orchestrator`, `Agent`, `You`). */
   actor: string;
   /** Optional target chip ("→ task: foo") used by user steering messages. */

@@ -10,6 +10,7 @@
  */
 
 export * from './conversation-event';
+export * from './message-content';
 export * from './conversation-session-meta';
 export * from './merge-by-timestamp';
 export * from './chat-types';

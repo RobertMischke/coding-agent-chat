@@ -1,0 +1,332 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+// MachineBound: updated only through `npm run test:render-fixtures -- --update`.
+
+exports[`rendering stream fixtures [MachineBound] > claude classifies every captured content type 1`] = `
+{
+  "cases": {
+    "ansi": [
+      {
+        "ansi": true,
+        "characters": 15,
+        "lines": 1,
+        "type": "raw-log",
+      },
+    ],
+    "diff": [
+      {
+        "characters": 94,
+        "format": "git",
+        "lines": 6,
+        "type": "diff",
+      },
+    ],
+    "html": [
+      {
+        "characters": 112,
+        "lines": 1,
+        "mediaType": "text/html",
+        "type": "html-file",
+      },
+    ],
+    "image": [
+      {
+        "alt": "Graph",
+        "type": "image-reference",
+        "uri": "results/graph.png",
+      },
+    ],
+    "json": [
+      {
+        "characters": 25,
+        "lines": 1,
+        "type": "json",
+      },
+    ],
+    "logs": [
+      {
+        "ansi": false,
+        "characters": 86,
+        "lines": 2,
+        "type": "raw-log",
+      },
+    ],
+    "longLine": [
+      {
+        "characters": 498,
+        "lines": 1,
+        "type": "markdown",
+      },
+    ],
+    "markdown": [
+      {
+        "characters": 33,
+        "lines": 5,
+        "type": "markdown",
+      },
+    ],
+    "mermaid": [
+      {
+        "characters": 72,
+        "language": "mermaid",
+        "lines": 4,
+        "type": "code-block",
+      },
+    ],
+    "mixed": [
+      {
+        "characters": 40,
+        "lines": 1,
+        "type": "markdown",
+      },
+      {
+        "characters": 87,
+        "language": "typescript",
+        "lines": 3,
+        "type": "code-block",
+      },
+      {
+        "characters": 41,
+        "lines": 1,
+        "type": "markdown",
+      },
+    ],
+    "source": [
+      {
+        "characters": 53,
+        "language": "csharp",
+        "lines": 4,
+        "type": "code-block",
+      },
+    ],
+    "table": [
+      {
+        "characters": 57,
+        "lines": 4,
+        "type": "markdown",
+      },
+    ],
+  },
+  "cli": "claude",
+  "cliVersion": "2.1.220",
+}
+`;
+
+exports[`rendering stream fixtures [MachineBound] > codex classifies every captured content type 1`] = `
+{
+  "cases": {
+    "ansi": [
+      {
+        "ansi": true,
+        "characters": 19,
+        "lines": 1,
+        "type": "raw-log",
+      },
+    ],
+    "diff": [
+      {
+        "characters": 72,
+        "format": "git",
+        "lines": 6,
+        "type": "diff",
+      },
+    ],
+    "html": [
+      {
+        "characters": 120,
+        "lines": 1,
+        "mediaType": "text/html",
+        "type": "html-file",
+      },
+    ],
+    "image": [
+      {
+        "alt": "Graph",
+        "type": "image-reference",
+        "uri": "results/graph.png",
+      },
+    ],
+    "json": [
+      {
+        "characters": 11,
+        "lines": 1,
+        "type": "json",
+      },
+    ],
+    "logs": [
+      {
+        "ansi": false,
+        "characters": 67,
+        "lines": 2,
+        "type": "raw-log",
+      },
+    ],
+    "longLine": [
+      {
+        "characters": 576,
+        "lines": 1,
+        "type": "markdown",
+      },
+    ],
+    "markdown": [
+      {
+        "characters": 19,
+        "lines": 3,
+        "type": "markdown",
+      },
+    ],
+    "mermaid": [
+      {
+        "characters": 20,
+        "language": "mermaid",
+        "lines": 2,
+        "type": "code-block",
+      },
+    ],
+    "mixed": [
+      {
+        "characters": 7,
+        "lines": 1,
+        "type": "markdown",
+      },
+      {
+        "characters": 20,
+        "language": "typescript",
+        "lines": 1,
+        "type": "code-block",
+      },
+      {
+        "characters": 6,
+        "lines": 1,
+        "type": "markdown",
+      },
+    ],
+    "source": [
+      {
+        "characters": 51,
+        "language": "csharp",
+        "lines": 4,
+        "type": "code-block",
+      },
+    ],
+    "table": [
+      {
+        "characters": 40,
+        "lines": 3,
+        "type": "markdown",
+      },
+    ],
+  },
+  "cli": "codex",
+  "cliVersion": "0.146.0",
+}
+`;
+
+exports[`rendering stream fixtures [MachineBound] > gemini classifies every captured content type 1`] = `
+{
+  "cases": {
+    "ansi": [
+      {
+        "ansi": true,
+        "characters": 14,
+        "lines": 1,
+        "type": "raw-log",
+      },
+    ],
+    "diff": [
+      {
+        "characters": 88,
+        "format": "git",
+        "lines": 6,
+        "type": "diff",
+      },
+    ],
+    "html": [
+      {
+        "characters": 65,
+        "lines": 1,
+        "mediaType": "text/html",
+        "type": "html-file",
+      },
+    ],
+    "image": [
+      {
+        "alt": "Gemini graph",
+        "type": "image-reference",
+        "uri": "results/graph.png",
+      },
+    ],
+    "json": [
+      {
+        "characters": 31,
+        "lines": 1,
+        "type": "json",
+      },
+    ],
+    "logs": [
+      {
+        "ansi": false,
+        "characters": 82,
+        "lines": 2,
+        "type": "raw-log",
+      },
+    ],
+    "longLine": [
+      {
+        "characters": 512,
+        "lines": 1,
+        "type": "markdown",
+      },
+    ],
+    "markdown": [
+      {
+        "characters": 36,
+        "lines": 4,
+        "type": "markdown",
+      },
+    ],
+    "mermaid": [
+      {
+        "characters": 34,
+        "language": "mermaid",
+        "lines": 2,
+        "type": "code-block",
+      },
+    ],
+    "mixed": [
+      {
+        "characters": 20,
+        "lines": 1,
+        "type": "markdown",
+      },
+      {
+        "characters": 41,
+        "language": "typescript",
+        "lines": 1,
+        "type": "code-block",
+      },
+      {
+        "characters": 19,
+        "lines": 1,
+        "type": "markdown",
+      },
+    ],
+    "source": [
+      {
+        "characters": 81,
+        "language": "csharp",
+        "lines": 4,
+        "type": "code-block",
+      },
+    ],
+    "table": [
+      {
+        "characters": 53,
+        "lines": 3,
+        "type": "markdown",
+      },
+    ],
+  },
+  "cli": "gemini",
+  "cliVersion": "0.49.0",
+}
+`;

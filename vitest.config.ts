@@ -21,6 +21,6 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     include: ['projects/coding-agent-chat/{core,markdown,node}/**/*.spec.ts'],
-    exclude: ['**/*.component.spec.ts', '**/node_modules/**'],
+    exclude: ['**/*.component.spec.ts', '**/*.machine-bound.ts', '**/node_modules/**'],
   },
 });

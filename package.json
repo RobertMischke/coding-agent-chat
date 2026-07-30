@@ -14,6 +14,7 @@
     "release:verify": "node scripts/verify-release.mjs",
     "benchmark:history": "npm run build && node scripts/benchmark-history-window.mjs",
     "test": "vitest run",
+    "test:render-fixtures": "vitest run --config vitest.machine-bound.config.ts --maxWorkers=1 --no-file-parallelism",
     "test:watch": "vitest",
     "website:live": "ng serve website --configuration live"
   },

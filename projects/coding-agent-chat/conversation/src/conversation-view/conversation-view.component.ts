@@ -16,7 +16,7 @@ import {
   TooltipDirective,
   type StructuredTooltip,
 } from 'coding-agent-chat/shared';
-import { parseRateLimit, type SessionCardData } from 'coding-agent-chat/core';
+import { parseRateLimit, type MessageContentPayload, type SessionCardData } from 'coding-agent-chat/core';
 import type {
   AgentNeedsInputEvent,
   ArtifactImageEvent,
@@ -44,6 +44,7 @@ interface MessageGroupItem {
   id: string;
   timestamp: string;
   body: string;
+  content: readonly MessageContentPayload[];
   target?: string;
   attachments?: readonly string[];
   severity?: ConversationEventSeverity;
@@ -504,6 +505,9 @@ export class ConversationViewComponent {
           id: m.id,
           timestamp: ts,
           body,
+          content: body === m.body && m.content?.length
+            ? m.content
+            : [{ type: 'markdown', text: body }],
           target: m.target,
           attachments: m.attachments,
           severity: m.severity,

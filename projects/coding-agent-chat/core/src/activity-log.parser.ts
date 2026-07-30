@@ -242,7 +242,11 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
       continue;
     }
 
-    const kind: ActivityLogKind = line.stream === 'stderr' || /error|failed|exited with error/i.test(line.text)
+    // Do not classify an assistant body as a failed run merely because it
+    // contains source/log text with words such as "ERROR" or "failed".
+    // Stream provenance and explicit leading failure frames are reliable;
+    // arbitrary message contents are not.
+    const kind: ActivityLogKind = line.stream === 'stderr' || isExplicitFailureFrame(line.text)
       ? 'error'
       : 'message';
     current = {
@@ -261,6 +265,10 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
   }
 
   return compressActivityGroups(groups);
+}
+
+function isExplicitFailureFrame(text: string): boolean {
+  return /^\s*(?:error(?:\s*:|\b)|failed\b|fatal(?:\s*:|\b)|exited with error\b)/i.test(text);
 }
 
 type CodexJsonlParseResult =

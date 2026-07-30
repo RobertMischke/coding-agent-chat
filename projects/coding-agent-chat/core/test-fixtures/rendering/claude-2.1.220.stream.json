@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "cli": "claude",
+  "cliVersion": "2.1.220",
+  "transport": "stream-json",
+  "capturedAt": "2026-07-30T01:29:28.071Z",
+  "sanitized": true,
+  "frames": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "model": "claude-fable-5",
+      "claude_code_version": "2.1.220"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "model": "claude-fable-5",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"source\":\"public class Point\\n{\\n    public int X { get; set; }\\n}\",\"diff\":\"diff --git a/app.ts b/app.ts\\n--- a/app.ts\\n+++ b/app.ts\\n@@ -1 +1 @@\\n-const x = 1;\\n+const x = 2;\",\"html\":\"<!DOCTYPE html><html><head><title>Fixture</title></head><body><ul><li>alpha</li><li>beta</li></ul></body></html>\",\"markdown\":\"# Results\\n\\n- alpha\\n- beta\\n- gamma\",\"image\":\"![Graph](results/graph.png)\",\"json\":\"{\\\"status\\\":\\\"ok\\\",\\\"count\\\":3}\",\"logs\":\"2026-07-30T12:00:00Z INFO Server started\\n2026-07-30T12:00:01Z ERROR Connection refused\",\"longLine\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"mixed\":\"The helper below sums the parsed values.\\n\\n```ts\\nexport function total(xs: number[]): number {\\n  return xs.reduce((a, b) => a + b, 0);\\n}\\n```\\n\\nCall it after validating the input array.\",\"table\":\"| Name | Value |\\n| --- | --- |\\n| alpha | 1 |\\n| beta | 2 |\",\"mermaid\":\"```mermaid\\nflowchart TD\\n  A[Start] --> B{Valid?}\\n  B -->|yes| C[Done]\\n  B -->|no| A\\n```\",\"ansi\":\"\\u001b[31mERROR \\u001b[0m\"}"
+          }
+        ]
+      }
+    },
+    {
+      "type": "result",
+      "subtype": "success",
+      "is_error": false
+    }
+  ]
+}

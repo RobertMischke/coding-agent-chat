@@ -191,6 +191,22 @@ describe('ConversationViewComponent', () => {
     expect(agentRow.textContent).toContain('Flag added, wiring the projection next.');
   });
 
+  it('renders typed raw file payloads without passing them through Markdown', async () => {
+    const html = '<!doctype html><html><body><ul><li>literal source</li></ul></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', html, {
+        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const raw = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(raw?.tagName).toBe('PRE');
+    expect(raw?.textContent).toBe(html);
+    expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
+    expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',

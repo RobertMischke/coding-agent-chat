@@ -30,6 +30,7 @@ import {
   normalizeVisibleChatBody,
 } from './activity-log.parser';
 import { shortModelLabel } from './composer-controls';
+import { classifyMessageContent } from './message-content';
 import type {
   ConversationEvent,
   ConversationEventSeverity,
@@ -289,6 +290,7 @@ function projectGroup(
         rawRange: range,
         actor: 'You',
         body: visibleBody,
+        content: classifyMessageContent(visibleBody),
         diagnostics,
         target: extractUserTarget(firstLine.text)
       }
@@ -449,6 +451,7 @@ function projectGroup(
         severity: group.status === 'error' ? 'error' : 'info',
         actor: 'Supervisor',
         body: visibleBody,
+        content: classifyMessageContent(visibleBody),
         diagnostics
       }
     ];
@@ -474,7 +477,8 @@ function projectGroup(
         thinkingLevel,
         rawRange: range,
         actor: 'Agent',
-        body: sentinel.strippedBody
+        body: sentinel.strippedBody,
+        content: classifyMessageContent(sentinel.strippedBody)
       });
     }
     if (sentinel.kind === 'needs-input') {
@@ -584,6 +588,7 @@ function projectGroup(
       rawRange: range,
       actor: 'Agent',
       body: visibleBody,
+      content: classifyMessageContent(visibleBody),
       diagnostics
     }
   ];

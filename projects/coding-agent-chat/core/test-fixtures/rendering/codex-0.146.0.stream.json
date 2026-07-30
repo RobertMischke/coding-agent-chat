@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "cli": "codex",
+  "cliVersion": "0.146.0",
+  "transport": "jsonl",
+  "capturedAt": "2026-07-30T01:31:00.000Z",
+  "sanitized": true,
+  "frames": [
+    {
+      "type": "thread.started",
+      "thread_id": "<redacted>"
+    },
+    {
+      "type": "turn.started"
+    },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item_0",
+        "type": "agent_message",
+        "text": "{\"source\":\"public class Foo\\n{\\n    public int X { get; set; }\\n}\",\"diff\":\"diff --git a/a.txt b/a.txt\\n--- a/a.txt\\n+++ b/a.txt\\n@@ -1 +1 @@\\n-old\\n+new\",\"html\":\"<!doctype html><html><head><meta charset=\\\"utf-8\\\"><title>Fixture</title></head><body><ul><li>Item</li></ul></body></html>\",\"markdown\":\"# Items\\n- One\\n- Two\",\"image\":\"![Graph](results/graph.png)\",\"json\":\"{\\\"ok\\\":true}\",\"logs\":\"2026-07-30T10:00:00Z INFO Started\\n2026-07-30T10:00:01Z ERROR Failed\",\"longLine\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"mixed\":\"Before.\\n```typescript\\nconst x: number = 1;\\n```\\nAfter.\",\"table\":\"| Name | Value |\\n|---|---|\\n| Alpha | 1 |\",\"mermaid\":\"```mermaid\\nflowchart LR\\nA --> B\\n```\",\"ansi\":\"ESC[31mERROR ESC[0m\"}"
+      }
+    },
+    {
+      "type": "turn.completed"
+    }
+  ]
+}
