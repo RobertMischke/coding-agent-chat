@@ -159,6 +159,38 @@ describe('projectConversation', () => {
     expect(message?.content).toEqual([{ type: 'diff', text: diff, format: 'git' }]);
   });
 
+  it('projects a Codex JSONL hunk as a typed diff payload', () => {
+    const hunk = '@@ -1 +1 @@\n-oldValue\n+newValue';
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line(JSON.stringify({
+        type: 'item.completed',
+        item: { id: 'item_hunk', type: 'agent_message', text: hunk },
+      }))],
+    });
+
+    const message = events.find(isTaskAgentEvent);
+    expect(message?.body).toBe(hunk);
+    expect(message?.content).toEqual([{ type: 'diff', text: hunk, format: 'git' }]);
+  });
+
+  it('preserves the exact Codex JSONL body inside a typed raw-file payload', () => {
+    const html = '\n  <!doctype html>\n<html><body>literal</body></html>\n';
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line(JSON.stringify({
+        type: 'item.completed',
+        item: { id: 'item_html', type: 'agent_message', text: html },
+      }))],
+    });
+
+    const message = events.find(isTaskAgentEvent);
+    expect(message?.body).toBe(html);
+    expect(message?.content).toEqual([
+      { type: 'html-file', text: html, mediaType: 'text/html' },
+    ]);
+  });
+
   it('keeps captured INFO/ERROR log bodies as typed agent content', () => {
     const logs = '2026-07-30T10:00:00Z INFO Started\n2026-07-30T10:00:01Z ERROR Failed';
     const events = projectConversation({ source: SOURCE, lines: [line(logs)] });

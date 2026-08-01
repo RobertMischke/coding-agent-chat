@@ -60,9 +60,11 @@ const FENCE_RE =
 // Captured streams contain either the control byte or the diagnostic spelling
 // `ESC[` when the CLI intentionally sanitizes terminal control characters.
 const ANSI_RE = /(?:\u001b|ESC)\[[0-?]*[ -/]*[@-~]/;
-const GIT_DIFF_RE =
-  /^(?:diff --git\s+a\/.+\s+b\/.+|---\s+(?:a\/|\/dev\/null).+\r?\n\+\+\+\s+(?:b\/|\/dev\/null).+\r?\n@@\s)/m;
-const HTML_DOCUMENT_RE = /^\s*(?:<!doctype\s+html\b|<html\b)[\s\S]*<\/html>\s*$/i;
+const GIT_DIFF_HEADER_RE =
+  /^(?:diff --git\s+a\/.+\s+b\/.+|---\s+(?:a\/|\/dev\/null).+\r?\n\+\+\+\s+(?:b\/|\/dev\/null).+)/m;
+const GIT_DIFF_HUNK_RE = /^@@\s+-\d+(?:,\d+)?\s+\+\d+(?:,\d+)?\s+@@/m;
+const GIT_DIFF_CHANGE_RE = /^(?:\+(?!\+\+)|-(?!--)).+$/m;
+const HTML_DOCUMENT_RE = /^\s*(?:<!--[\s\S]*?-->\s*)*(?:<!doctype\s+html\b|<html\b)/i;
 const HTML_FRAGMENT_RE =
   /^\s*<(?:article|aside|body|button|div|footer|form|header|main|nav|section|table|template)\b[\s\S]*<\/(?:article|aside|body|button|div|footer|form|header|main|nav|section|table|template)>\s*$/i;
 const IMAGE_RE = /^\s*!\[([^\]]*)\]\(\s*(?:(<[^>]+>)|([^\s)]+))(?:\s+["']([^"']*)["'])?\s*\)\s*$/;
@@ -142,13 +144,13 @@ function classifyAtomicContent(text: string): MessageContentPayload {
     };
   }
 
-  if (GIT_DIFF_RE.test(trimmed)) {
+  if (looksLikeGitDiff(trimmed)) {
     return { type: 'diff', text, format: 'git' };
   }
   if (HTML_DOCUMENT_RE.test(trimmed) || HTML_FRAGMENT_RE.test(trimmed)) {
     return { type: 'html-file', text, mediaType: 'text/html' };
   }
-  if (isJson(trimmed)) {
+  if (isJson(trimmed) || isJsonLines(trimmed)) {
     return { type: 'json', text };
   }
   if (ANSI_RE.test(text) || looksLikeLog(text)) {
@@ -177,6 +179,19 @@ function isJson(text: string): boolean {
   }
 }
 
+function isJsonLines(text: string): boolean {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim());
+  return lines.length > 1 && lines.every((line) => isJson(line.trim()));
+}
+
+function looksLikeGitDiff(text: string): boolean {
+  const detectionText = text.replace(/(?:\u001b|ESC)\[[0-?]*[ -/]*[@-~]/g, '');
+  return (
+    GIT_DIFF_HEADER_RE.test(detectionText) ||
+    (GIT_DIFF_HUNK_RE.test(detectionText) && GIT_DIFF_CHANGE_RE.test(detectionText))
+  );
+}
+
 function looksLikeLog(text: string): boolean {
   const meaningfulLines = text.split(/\r?\n/).filter((line) => line.trim());
   if (meaningfulLines.length < 2) return false;
@@ -197,6 +212,9 @@ function inferSourceLanguage(text: string): string | null {
   ) {
     return 'csharp';
   }
+  if (looksLikeCSharpFragment(text)) {
+    return 'csharp';
+  }
   if (/^(?:import|export)\s.+\sfrom\s+['"][^'"]+['"];?$/m.test(text)) {
     return /(?:interface|type)\s+\w+|:\s*(?:string|number|boolean)\b/.test(text)
       ? 'typescript'
@@ -212,6 +230,31 @@ function inferSourceLanguage(text: string): string | null {
     return 'sql';
   }
   return null;
+}
+
+/**
+ * Detects statement-level C# excerpts which lack a declaration. These are
+ * common in agent replies and in git-hunk explanations, but are not covered by
+ * the stronger declaration patterns above. Requiring multiple independent
+ * syntax signals keeps ordinary Markdown prose on the Markdown path.
+ */
+function looksLikeCSharpFragment(text: string): boolean {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim());
+  const braceLines = lines.filter((line) => /^\s*[{}]\s*[,;]?\s*$/.test(line)).length;
+  const statementLines = lines.filter((line) => /;\s*(?:\/\/.*)?$/.test(line)).length;
+  const keywordLines = lines.filter((line) =>
+    /^\s*(?:if|else|for|foreach|while|switch|case|return|throw|try|catch|finally|await|yield|var|using|lock)\b/.test(
+      line,
+    ),
+  ).length;
+  const callLines = lines.filter((line) =>
+    /\b(?:[A-Za-z_]\w*\.)+[A-Za-z_]\w*(?:<[^>\r\n]+>)?\s*\(/.test(line),
+  ).length;
+
+  return (
+    (braceLines >= 2 && statementLines >= 1 && keywordLines >= 1) ||
+    (statementLines >= 2 && (keywordLines >= 1 || callLines >= 2))
+  );
 }
 
 function normalizeLanguage(language: string): string {

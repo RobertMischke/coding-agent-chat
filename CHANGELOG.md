@@ -17,8 +17,9 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ### Fixed
 
-- Codex JSONL agent messages now project renderer-safe typed content payloads,
-  and raw source, diff, HTML, JSON, and log bodies bypass Markdown parsing.
+- Codex JSONL agent messages now project renderer-safe typed content payloads
+  without changing the captured body. Raw source, full or hunk-only diffs,
+  HTML, JSON/JSONL, and log bodies bypass Markdown parsing.
 
 ## [0.3.2] - 2026-07-24
 

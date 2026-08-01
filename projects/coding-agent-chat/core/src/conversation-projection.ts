@@ -270,7 +270,9 @@ function projectGroup(
   const baseId = `${range.source}:${range.start}-${range.end}`;
   const runId = currentRun?.run?.index;
   const normalizedBody = normalizeVisibleChatBody(group.lines);
-  const visibleBody = normalizedBody.text;
+  const visibleBody = group.preserveBodyWhitespace
+    ? normalizedBody.lines.map((line) => line.text).join('\n')
+    : normalizedBody.text;
   const diagnostics = normalizedBody.strippedEnvelopes.length > 0
     ? {
         rawBody: group.lines.map((line) => line.text ?? '').join('\n'),
