@@ -90,7 +90,7 @@
     <h1>Migration status <code>coding-agent-chat</code></h1>
     <p>
       The chat UI of the Agent Studio frontend is being extracted into a standalone
-      Angular library (<code>C:\Projects\coding-agent-chat</code>) — the frontend
+      Angular library — the frontend
       counterpart to <code>CodingAgentRunner</code> (NuGet). This page tracks the
       state of the migration and the plan for what comes next.
     </p>
@@ -101,7 +101,7 @@
       <div class="milestone done"><div class="state">✔ Done</div><div class="label">History extraction</div><div class="detail">/history entry point, 7 total</div></div>
       <div class="milestone done"><div class="state">✔ Done</div><div class="label">Conversation Lab</div><div class="detail">demo app against dist/</div></div>
       <div class="milestone done"><div class="state">✔ Done</div><div class="label">Host adoption</div><div class="detail">−16,644 lines of duplicates</div></div>
-      <div class="milestone next"><div class="state">→ Final step</div><div class="label">npm publish 0.1.0</div><div class="detail">waiting for npm login (see below)</div></div>
+      <div class="milestone done"><div class="state">✔ Done</div><div class="label">npm publish</div><div class="detail">published on npm, latest 0.3.2</div></div>
     </div>
   </header>
 
@@ -185,18 +185,15 @@
     <div class="plan-step">
       <div class="plan-num">4</div>
       <div class="plan-body">
-        <h4>Conversation Lab + npm publish 0.1.0 <span class="chip blocker">waiting for npm login</span></h4>
+        <h4>Conversation Lab + npm publish <span class="chip done">done</span></h4>
         <p>
           The release workflow and <code>scripts/release.sh</code> are in place (commit <code>bea8636</code>),
-          the Conversation Lab demo app ships (<code>d995a7d</code>). <strong>One-time manual step left:</strong>
-          npm requires the package to exist before a Trusted Publisher can be configured — so log in once
-          (2FA or a granular token with 2FA bypass is mandatory) and run the first publish
-          (<code>npm run build &amp;&amp; cd dist/coding-agent-chat &amp;&amp; npm version 0.1.0 --no-git-tag-version &amp;&amp; npm publish --access public</code>),
-          then register the Trusted Publisher on npmjs.com (repo <code>coding-agent-chat</code>, workflow
-          <code>release.yml</code>) — mirroring the runner's NuGet setup. The unscoped <code>coding-agent-chat</code> name
-          must belong to you.
+          the Conversation Lab demo app ships (<code>d995a7d</code>). <strong>The publish is complete:</strong>
+          the unscoped <code>coding-agent-chat</code> name is claimed and the Trusted Publisher is registered
+          on npmjs.com for the <code>release.yml</code> workflow — mirroring the runner's NuGet setup.
+          Releases are cut by pushing a tag.
         </p>
-        <div class="plan-meta"><b>Result:</b> installable <code>coding-agent-chat@0.1.0</code></div>
+        <div class="plan-meta"><b>Result:</b> installable <code>coding-agent-chat</code> — latest <code>0.3.2</code></div>
       </div>
     </div>
 
@@ -220,11 +217,9 @@
     </div>
 
     <div class="note">
-      <strong>Remaining manual work (the only open item):</strong> the first npm publish — see step 4.
-      Afterwards replace the <code>file:</code> dependency in the app frontend with the registry version.
-      <strong>Until then:</strong> after every library rebuild (<code>npm run build</code>) run
-      <code>npm install</code> in the app frontend (the <code>file:</code> dependency is a physical copy;
-      documented in <code>frontend/AGENTS.md</code>).
+      <strong>No manual work left:</strong> the package is published on npm as
+      <code>coding-agent-chat</code> (latest <code>0.3.2</code>); releases are cut by pushing a tag,
+      which runs <code>release.yml</code> — see step 4.
     </div>
   </section>
 
@@ -256,7 +251,8 @@
       <strong>Maintenance:</strong> this page lives as <code>docs/migration-status.html</code> in the
       <code>coding-agent-chat</code> repo and is git-versioned (wiki history works). Update the status
       chips and key numbers with every completed step. Basis: repo analysis of 2026-07-02; steps
-      5a–5e implemented 2026-07-02/03. The only open item is the first npm publish (see plan step 4).
+      5a–5e implemented 2026-07-02/03. The npm publish is complete — <code>coding-agent-chat</code>
+      is on npm, latest <code>0.3.2</code> (see plan step 4).
     </p>
   </footer>
 
