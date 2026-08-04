@@ -2,9 +2,9 @@
   <div class="lab-header__titles">
     <h1>Conversation Lab</h1>
     <p class="lab-header__sub">
-      Szenario-Testbett für die coding-agent-chat library — gerendert gegen den gebauten
-      <code>dist/</code>-Output. Replay-Szenarien laufen durch dieselbe Projektion wie der
-      Live-Modus; Live-Szenarien treiben eine echte CLI über den Workbench-Host.
+      Scenario testbed for the coding-agent-chat library, rendered against the built
+      <code>dist/</code> output. Replay scenarios use the same projection as live mode; live
+      scenarios drive a real CLI through the workbench host.
     </p>
     <p class="lab-header__release" data-testid="lab-release">{{ releaseLabel }}</p>
   </div>
@@ -20,8 +20,8 @@
   </div>
 </header>
 
-<section class="lab-scenarios" aria-label="Szenario-Auswahl">
-  <div class="lab-scenarios__list" role="group" aria-label="Szenarien">
+<section class="lab-scenarios" aria-label="Scenario selection">
+  <div class="lab-scenarios__list" role="group" aria-label="Scenarios">
     @for (s of scenarios; track s.id) {
       <button
         type="button"
@@ -30,7 +30,9 @@
         [attr.data-testid]="'lab-scenario-' + s.id"
         (click)="selectScenario(s.id)"
       >
-        <span class="lab-scenario-chip__kind" [attr.data-kind]="s.kind">{{ kindLabel(s.kind) }}</span>
+        <span class="lab-scenario-chip__kind" [attr.data-kind]="s.kind">{{
+          kindLabel(s.kind)
+        }}</span>
         {{ s.title }}
       </button>
     }
@@ -40,14 +42,14 @@
     <p class="lab-scenarios__desc" data-testid="lab-scenario-desc">{{ scenario().description }}</p>
 
     @if (scenario().kind === 'replay') {
-      <div class="lab-scenarios__controls" role="group" aria-label="Replay-Steuerung">
+      <div class="lab-scenarios__controls" role="group" aria-label="Replay controls">
         <button
           type="button"
           class="lab-scenarios__button lab-scenarios__button--primary"
           data-testid="lab-replay-stream"
           (click)="player.replayStreamed()"
         >
-          {{ player.playing() ? '⏵ läuft …' : '⏵ Gestreamt abspielen' }}
+          {{ player.playing() ? '⏵ Playing…' : '⏵ Play streamed' }}
         </button>
         <button
           type="button"
@@ -55,7 +57,7 @@
           data-testid="lab-replay-all"
           (click)="player.showAll()"
         >
-          Sofort einspielen
+          Show all now
         </button>
         <button
           type="button"
@@ -63,10 +65,10 @@
           data-testid="lab-replay-clear"
           (click)="player.clear()"
         >
-          Leeren
+          Clear
         </button>
         <span class="lab-scenarios__progress" data-testid="lab-replay-progress">
-          {{ player.progress().shown }}/{{ player.progress().total }} Zeilen
+          {{ player.progress().shown }}/{{ player.progress().total }} lines
         </span>
       </div>
     }
@@ -76,7 +78,7 @@
 @if (scenario().kind === 'live') {
   <section class="lab-live-bar" aria-label="Workbench live controls">
     <label class="lab-live-bar__field">
-      <span>Workbench-URL</span>
+      <span>Workbench URL</span>
       <input
         type="url"
         data-testid="lab-live-url"
@@ -102,7 +104,7 @@
       data-testid="lab-live-start"
       (click)="startLiveScenario()"
     >
-      Szenario starten
+      Start scenario
     </button>
     @if (live.sessionId()) {
       <button
@@ -128,7 +130,7 @@
 
     @if (liveScenario(); as ls) {
       <div class="lab-live-bar__prompt">
-        <span class="lab-live-bar__prompt-label">Preset-Prompt</span>
+        <span class="lab-live-bar__prompt-label">Preset prompt</span>
         <code data-testid="lab-live-prompt">{{ ls.prompt }}</code>
         @if (ls.followUp; as followUp) {
           <button
@@ -138,7 +140,7 @@
             [disabled]="!live.sessionId()"
             (click)="sendFollowUp()"
           >
-            Follow-up senden: „{{ followUp }}“
+            Send follow-up: “{{ followUp }}”
           </button>
         }
       </div>
@@ -149,13 +151,19 @@
 <main class="lab-columns">
   <section class="lab-panel" aria-label="Conversation view and composer">
     <h2>
-      {{ scenario().kind === 'live' ? 'Live conversation — real CLI via workbench' : 'Conversation view + composer' }}
+      {{
+        scenario().kind === 'live'
+          ? 'Live conversation — real CLI via workbench'
+          : 'Conversation view + composer'
+      }}
     </h2>
     <div class="lab-panel__scroll">
-      <cac-conversation-view [events]="events()"
-                             [isRunning]="conversationRunning()"
-                             (openTrace)="openTrace($event)"
-                             (openVerboseDebug)="openTrace(null)" />
+      <cac-conversation-view
+        [events]="events()"
+        [isRunning]="conversationRunning()"
+        (openTrace)="openTrace($event)"
+        (openVerboseDebug)="openTrace(null)"
+      />
     </div>
     <cac-chat
       [messages]="messages()"
@@ -181,32 +189,46 @@
 @if (live.error(); as toast) {
   <div class="lab-toast" role="alert" data-testid="lab-live-toast">
     <span>{{ toast }}</span>
-    <button type="button" aria-label="Meldung schließen" (click)="live.dismissError()">×</button>
+    <button type="button" aria-label="Dismiss message" (click)="live.dismissError()">×</button>
   </div>
 }
 
 @if (lightbox.current(); as image) {
-  <div class="lab-lightbox"
-       role="dialog"
-       aria-modal="true"
-       aria-label="Bildvorschau"
-       tabindex="-1"
-       data-testid="lab-lightbox"
-       (click)="lightbox.close()"
-       (keydown)="onLightboxKey($event)">
-    <button type="button"
-            class="lab-lightbox__close"
-            aria-label="Vorschau schließen"
-            (click)="lightbox.close()">×</button>
+  <div
+    class="lab-lightbox"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Image preview"
+    tabindex="-1"
+    data-testid="lab-lightbox"
+    (click)="lightbox.close()"
+    (keydown)="onLightboxKey($event)"
+  >
+    <button
+      type="button"
+      class="lab-lightbox__close"
+      aria-label="Close preview"
+      (click)="lightbox.close()"
+    >
+      ×
+    </button>
     @if (lightbox.count() > 1) {
-      <button type="button"
-              class="lab-lightbox__nav lab-lightbox__nav--prev"
-              aria-label="Vorheriges Bild"
-              (click)="lightbox.prev(); $event.stopPropagation()">‹</button>
-      <button type="button"
-              class="lab-lightbox__nav lab-lightbox__nav--next"
-              aria-label="Nächstes Bild"
-              (click)="lightbox.next(); $event.stopPropagation()">›</button>
+      <button
+        type="button"
+        class="lab-lightbox__nav lab-lightbox__nav--prev"
+        aria-label="Previous image"
+        (click)="lightbox.prev(); $event.stopPropagation()"
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        class="lab-lightbox__nav lab-lightbox__nav--next"
+        aria-label="Next image"
+        (click)="lightbox.next(); $event.stopPropagation()"
+      >
+        ›
+      </button>
       <span class="lab-lightbox__pos">{{ lightbox.position() }}</span>
     }
     <figure class="lab-lightbox__figure" (click)="$event.stopPropagation()">
@@ -219,32 +241,43 @@
 }
 
 @if (traceOpen()) {
-  <aside class="lab-trace" role="dialog" aria-label="Trace — raw activity log" data-testid="lab-trace-panel">
+  <aside
+    class="lab-trace"
+    role="dialog"
+    aria-label="Trace — raw activity log"
+    data-testid="lab-trace-panel"
+  >
     <header class="lab-trace__head">
       <strong>Trace</strong>
-      <span class="lab-trace__sub">Rohzeilen der Projektion</span>
+      <span class="lab-trace__sub">Raw projection lines</span>
       @if (traceRange(); as range) {
         <code class="lab-trace__range" data-testid="lab-trace-range">
           {{ range.source }}:{{ range.start }}–{{ range.end }}
         </code>
       }
-      <button type="button"
-              class="lab-trace__close"
-              aria-label="Trace schließen"
-              data-testid="lab-trace-close"
-              (click)="closeTrace()">×</button>
+      <button
+        type="button"
+        class="lab-trace__close"
+        aria-label="Close Trace"
+        data-testid="lab-trace-close"
+        (click)="closeTrace()"
+      >
+        ×
+      </button>
     </header>
     @if (traceLines().length === 0) {
       <p class="lab-trace__empty" data-testid="lab-trace-empty">
-        Keine Rohzeilen: Das Fixture-Szenario speist fertige Events ein, es gibt kein Activity-Log.
-        Replay- und Live-Szenarien führen hier ihre CLI-Zeilen.
+        No raw lines: the fixture scenario supplies completed events, so there is no activity log.
+        Replay and live scenarios list their CLI lines here.
       </p>
     } @else {
       <ol class="lab-trace__lines" data-testid="lab-trace-lines">
         @for (line of traceLines(); track $index) {
-          <li class="lab-trace__line"
-              [class.lab-trace__line--hit]="isTraceLineHit($index)"
-              [attr.data-stream]="line.stream">
+          <li
+            class="lab-trace__line"
+            [class.lab-trace__line--hit]="isTraceLineHit($index)"
+            [attr.data-stream]="line.stream"
+          >
             <span class="lab-trace__num">{{ $index + 1 }}</span>
             <span class="lab-trace__stream">{{ line.stream }}</span>
             <code class="lab-trace__text">{{ line.text }}</code>
