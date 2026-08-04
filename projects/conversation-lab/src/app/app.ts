@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, HostListener, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostListener,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import type {
   ChatCliOption,
   ChatContextUsage,
@@ -12,10 +19,7 @@ import type {
   ConversationEvent,
   RawLineRange,
 } from 'coding-agent-chat/core';
-import {
-  CODING_AGENT_CHAT_RELEASE_INFO,
-  codingAgentChatReleaseLabel,
-} from 'coding-agent-chat';
+import { CODING_AGENT_CHAT_RELEASE_INFO, codingAgentChatReleaseLabel } from 'coding-agent-chat';
 import { shortModelLabel } from 'coding-agent-chat/core';
 import { ChatComponent } from 'coding-agent-chat/composer';
 import { ConversationViewComponent } from 'coding-agent-chat/conversation';
@@ -30,11 +34,7 @@ import {
 } from './lab-scenarios';
 import { LabLightboxService } from './lab-lightbox.service';
 import { ScenarioPlayer, type ReplayMode } from './scenario-player';
-import {
-  WORKBENCH_CLI_TYPES,
-  WorkbenchLiveSession,
-  type WorkbenchCliType,
-} from './workbench-live';
+import { WORKBENCH_CLI_TYPES, WorkbenchLiveSession, type WorkbenchCliType } from './workbench-live';
 
 /** Lab settings that survive a reload (F5): the last theme and scenario. */
 interface StoredLabSettings {
@@ -119,7 +119,7 @@ export class App {
     try {
       window.localStorage.setItem(
         SETTINGS_STORAGE_KEY,
-        JSON.stringify({ ...this.readStoredSettings(), ...patch })
+        JSON.stringify({ ...this.readStoredSettings(), ...patch }),
       );
     } catch {
       // Storage unavailable (e.g. blocked) — the lab still works, it just forgets.
@@ -135,7 +135,7 @@ export class App {
 
   /** Local state for the `events` showcase — composer submits append user turns. */
   protected readonly showcaseEvents = signal<readonly ConversationEvent[]>(
-    LAB_SCENARIOS[0].kind === 'events' ? LAB_SCENARIOS[0].events : []
+    LAB_SCENARIOS[0].kind === 'events' ? LAB_SCENARIOS[0].events : [],
   );
 
   /** What the conversation view renders, depending on the scenario kind. */
@@ -176,9 +176,9 @@ export class App {
   protected readonly composerPlaceholder = computed(() => {
     switch (this.scenario().kind) {
       case 'live':
-        return 'Prompt an die echte CLI — die erste Nachricht startet die Session';
+        return 'Prompt the real CLI; the first message starts the session';
       case 'replay':
-        return 'Eigener User-Turn — wird als user-Zeile durch die Projektion geschickt';
+        return 'Add a user turn; it is sent through the projection as a user line';
       default:
         return 'Steer the agent — Enter sends, Shift+Enter breaks the line';
     }
@@ -194,7 +194,7 @@ export class App {
     const scenario = this.scenario();
     switch (scenario.kind) {
       case 'live':
-        return `Workbench-Sandbox · ${scenario.title}`;
+        return `Workbench sandbox · ${scenario.title}`;
       case 'replay':
         return `conversation-lab · ${scenario.title}`;
       default:
@@ -341,15 +341,32 @@ export class App {
   ];
   private readonly catalogByCli: Record<string, readonly ChatModelOption[]> = {
     claude: [
-      { id: 'claude-sonnet-5', label: 'Claude Sonnet 5', isDefault: true, thinkingLevels: ['low', 'medium', 'high', 'xhigh', 'max'], defaultThinkingLevel: 'high' },
-      { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', thinkingLevels: ['low', 'medium', 'high', 'xhigh', 'max'], defaultThinkingLevel: 'high' },
+      {
+        id: 'claude-sonnet-5',
+        label: 'Claude Sonnet 5',
+        isDefault: true,
+        thinkingLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+        defaultThinkingLevel: 'high',
+      },
+      {
+        id: 'claude-opus-4-8',
+        label: 'Claude Opus 4.8',
+        thinkingLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+        defaultThinkingLevel: 'high',
+      },
       { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
     ],
     codex: [
       // gpt-5.6 is the Codex default and ships an extra-high (xhigh) reasoning
       // level. Nothing about this entry is special-cased in the library — the
       // selector renders the pill and its levels straight from this catalog.
-      { id: 'gpt-5.6', label: 'GPT-5.6', isDefault: true, thinkingLevels: ['low', 'medium', 'high', 'xhigh'], defaultThinkingLevel: 'xhigh' },
+      {
+        id: 'gpt-5.6',
+        label: 'GPT-5.6',
+        isDefault: true,
+        thinkingLevels: ['low', 'medium', 'high', 'xhigh'],
+        defaultThinkingLevel: 'xhigh',
+      },
       { id: 'gpt-5-codex', label: 'GPT-5 Codex' },
     ],
   };
@@ -370,10 +387,23 @@ export class App {
 
   protected readonly labPermission = signal<ChatPermissionControl>({
     options: [
-      { id: 'yolo', label: 'YOLO', tone: 'warn', description: 'Skip every permission / sandbox / trust prompt.' },
-      { id: 'workspace-write', label: 'Workspace write', description: 'Auto-approve edits inside the workspace.' },
+      {
+        id: 'yolo',
+        label: 'YOLO',
+        tone: 'warn',
+        description: 'Skip every permission / sandbox / trust prompt.',
+      },
+      {
+        id: 'workspace-write',
+        label: 'Workspace write',
+        description: 'Auto-approve edits inside the workspace.',
+      },
       { id: 'read-only', label: 'Read-only', description: 'Inspect without mutating.' },
-      { id: 'custom', label: 'Custom (global config)', description: "Defer to the CLI's own global config." },
+      {
+        id: 'custom',
+        label: 'Custom (global config)',
+        description: "Defer to the CLI's own global config.",
+      },
     ],
     value: 'yolo',
   });

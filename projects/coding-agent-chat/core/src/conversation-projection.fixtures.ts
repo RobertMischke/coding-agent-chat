@@ -15,7 +15,7 @@ import type {
   CliOutputLine,
   RunInfoLite,
   RunTimelineLite,
-  TokenSummaryLite
+  TokenSummaryLite,
 } from './projection-inputs';
 
 let TS_COUNTER = 0;
@@ -53,7 +53,7 @@ export function toolBurstFragment(): CliOutputLine[] {
     line('* Search "needsInput"'),
     line('  | needle'),
     line('* Edit feature-flags.service.ts'),
-    line('  | feature-flags.service.ts')
+    line('  | feature-flags.service.ts'),
   ];
 }
 
@@ -63,7 +63,7 @@ export function agentTextFragment(): CliOutputLine[] {
   return [
     line('I will add a Frontend:NextGenChat flag and the projection scaffold next.'),
     line(''),
-    line('After that the host inventory document follows.')
+    line('After that the host inventory document follows.'),
   ];
 }
 
@@ -76,7 +76,9 @@ export function envelopePrefixedReplyFragment(): CliOutputLine[] {
   resetFixtureClock();
   return [
     line('2026-07-01 09:00 Supervisor: Keep the clean prose and hide the transport frame.'),
-    line('2026-07-01 09:00 Orchestrator: The word Supervisor is part of the answer here, not a prefix.'),
+    line(
+      '2026-07-01 09:00 Orchestrator: The word Supervisor is part of the answer here, not a prefix.',
+    ),
     line('The word Supervisor is part of the answer here, not a prefix.'),
   ];
 }
@@ -127,8 +129,11 @@ export function codexTextModeStderrTranscriptFragment(): CliOutputLine[] {
     line('Reasoning: recover from the tool failure and finish the task.', 'stderr'),
     line('tokens used', 'stderr'),
     line('12,345', 'stderr'),
-    line('The stdout reply is still the visible answer, and it appears in the correct turn.', 'stdout'),
-    line('Its second line is preserved in that same turn.', 'stdout')
+    line(
+      'The stdout reply is still the visible answer, and it appears in the correct turn.',
+      'stdout',
+    ),
+    line('Its second line is preserved in that same turn.', 'stdout'),
   ];
 }
 
@@ -144,7 +149,7 @@ export function codexTextModeStderrFailureFragment(): CliOutputLine[] {
     line('/**', 'stderr'),
     line(' * Preserve the stdout reply while collapsing Codex stderr noise.', 'stderr'),
     line(' */', 'stderr'),
-    line('Run failed: process exited with code 1', 'stderr')
+    line('Run failed: process exited with code 1', 'stderr'),
   ];
 }
 
@@ -159,7 +164,7 @@ export function watchdogQuietResumeFragment(): CliOutputLine[] {
   resetFixtureClock();
   return [
     line('[watchdog] Agent has been quiet for 47s', 'orchestrator'),
-    line('[watchdog] Agent resumed streaming', 'orchestrator')
+    line('[watchdog] Agent resumed streaming', 'orchestrator'),
   ];
 }
 
@@ -173,7 +178,7 @@ export function watchdogKillFragment(): CliOutputLine[] {
 export function heuristicWarningFragment(): CliOutputLine[] {
   resetFixtureClock();
   return [
-    line("[heuristic] Could not classify the agent's reply; defaulting to noop", 'orchestrator')
+    line("[heuristic] Could not classify the agent's reply; defaulting to noop", 'orchestrator'),
   ];
 }
 
@@ -181,7 +186,10 @@ export function heuristicWarningFragment(): CliOutputLine[] {
 export function captureFailFragment(): CliOutputLine[] {
   resetFixtureClock();
   return [
-    line('[capture-fail] No claude session id from claude this run; next follow-up will rebuild from disk', 'orchestrator')
+    line(
+      '[capture-fail] No claude session id from claude this run; next follow-up will rebuild from disk',
+      'orchestrator',
+    ),
   ];
 }
 
@@ -189,17 +197,14 @@ export function captureFailFragment(): CliOutputLine[] {
 export function needsInputLoopFragment(): CliOutputLine[] {
   resetFixtureClock();
   return [
-    line('[[TASK_NEEDS_INPUT: which CLI should I target for the recovery test?]]', 'orchestrator')
+    line('[[TASK_NEEDS_INPUT: which CLI should I target for the recovery test?]]', 'orchestrator'),
   ];
 }
 
 /** Image artefact: agent attaches a screenshot path. */
 export function imageArtifactFragment(): CliOutputLine[] {
   resetFixtureClock();
-  return [
-    line('* Write results/01-empty-state.png'),
-    line('  | results/01-empty-state.png')
-  ];
+  return [line('* Write results/01-empty-state.png'), line('  | results/01-empty-state.png')];
 }
 
 /** Supervisor advisory row at high severity. */
@@ -219,7 +224,7 @@ export function waitLoopFragment(): CliOutputLine[] {
     line('[watchdog] Agent has been quiet for 30s', 'orchestrator'),
     line('[watchdog] Still silent at 60s', 'orchestrator'),
     line('[watchdog] Still silent at 120s', 'orchestrator'),
-    line('[watchdog] Agent resumed streaming', 'orchestrator')
+    line('[watchdog] Agent resumed streaming', 'orchestrator'),
   ];
 }
 
@@ -233,7 +238,7 @@ export function tokenSpikeFragment(): CliOutputLine[] {
   return [
     line('Continue with the long synthesis pass.', 'user'),
     line('Synthesizing the meta-cycle report...'),
-    line('  | walking 30k lines of evidence')
+    line('  | walking 30k lines of evidence'),
   ];
 }
 
@@ -241,7 +246,7 @@ export function tokenSpikeSummary(): TokenSummaryLite {
   return {
     inputTokens: 280_000,
     outputTokens: 14_500,
-    lastUpdate: '2026-05-05T12:05:00Z'
+    lastUpdate: '2026-05-05T12:05:00Z',
   };
 }
 
@@ -253,7 +258,10 @@ export function tokenSpikeSummary(): TokenSummaryLite {
 export function schemaDriftFragment(): CliOutputLine[] {
   resetFixtureClock();
   return [
-    line('[schema-drift] Failed to parse expected MetaCycleReport.json: missing recommendations[]', 'orchestrator')
+    line(
+      '[schema-drift] Failed to parse expected MetaCycleReport.json: missing recommendations[]',
+      'orchestrator',
+    ),
   ];
 }
 
@@ -272,7 +280,7 @@ export function testFailRetryFragment(): CliOutputLine[] {
     line('* Run npx playwright test perf-frontend.spec.ts (shell)'),
     line('  | rerunning after fix'),
     line('* Run npx playwright test perf-frontend.spec.ts (shell)'),
-    line('  | passed in 320ms')
+    line('  | passed in 320ms'),
   ];
 }
 
@@ -288,27 +296,27 @@ export function taskboardStartedFragment(model: string = 'claude-opus-4-7'): Cli
   return [
     line(
       `[taskboard] Started claude CLI (PID 4242), model=${model}, thinkingLevel=high, session=sess-abc`,
-      'system'
+      'system',
     ),
-    line('Implementing the model badge now.')
+    line('Implementing the model badge now.'),
   ];
 }
 
 /**
  * Two consecutive runs whose `[taskboard] Started` markers name *different*
- * models — the "Modelle wechseln innerhalb eines Tasks" case. Each run's
+ * models — the "switching models within a task" case. Each run's
  * agent output must carry its own run's model, never one global value.
  */
 export function modelSwitchFragment(
   first: string = 'gpt-5-codex',
-  second: string = 'claude-opus-4-7'
+  second: string = 'claude-opus-4-7',
 ): CliOutputLine[] {
   resetFixtureClock();
   return [
     line(`[taskboard] Started codex CLI (PID 11), model=${first}, thinkingLevel=high`, 'system'),
     line('First run reply on the initial model.'),
     line(`[taskboard] Started claude CLI (PID 22), model=${second}, thinkingLevel=high`, 'system'),
-    line('Recovery run reply on the switched model.')
+    line('Recovery run reply on the switched model.'),
   ];
 }
 
@@ -329,7 +337,7 @@ export function runTimelineForModelSwitch(): RunTimelineLite {
     durationSeconds: 60,
     capturedSessionId: 'sess-one',
     lineStart: 1,
-    lineEnd: 2
+    lineEnd: 2,
   };
   const run2: RunInfoLite = {
     ...run1,
@@ -339,11 +347,11 @@ export function runTimelineForModelSwitch(): RunTimelineLite {
     cli: 'claude',
     capturedSessionId: 'sess-two',
     lineStart: 3,
-    lineEnd: 4
+    lineEnd: 4,
   };
   return {
     runCount: 2,
-    runs: [run1, run2]
+    runs: [run1, run2],
   };
 }
 
@@ -358,7 +366,7 @@ export function compositeFragment(): CliOutputLine[] {
     line('  | feature-flags.service.ts'),
     line('[watchdog] Agent has been quiet for 30s', 'orchestrator'),
     line('Adding the projection module now.'),
-    line('')
+    line(''),
   ];
 }
 
@@ -377,10 +385,10 @@ export function runTimelineForComposite(): RunTimelineLite {
     durationSeconds: 120,
     capturedSessionId: 'sess-abc',
     lineStart: 1,
-    lineEnd: 7
+    lineEnd: 7,
   };
   return {
     runCount: 1,
-    runs: [run]
+    runs: [run],
   };
 }

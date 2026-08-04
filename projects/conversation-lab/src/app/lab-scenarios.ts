@@ -87,7 +87,9 @@ function script(entries: readonly ScriptEntry[], stepSeconds = 2): CliOutputLine
   }));
 }
 
-function run(partial: Partial<RunInfoLite> & Pick<RunInfoLite, 'index' | 'lineStart' | 'lineEnd'>): RunInfoLite {
+function run(
+  partial: Partial<RunInfoLite> & Pick<RunInfoLite, 'index' | 'lineStart' | 'lineEnd'>,
+): RunInfoLite {
   return {
     intent: 'start',
     startedAt: '2026-07-01T09:00:00.000Z',
@@ -103,54 +105,70 @@ function run(partial: Partial<RunInfoLite> & Pick<RunInfoLite, 'index' | 'lineSt
 // ── Replay scripts ────────────────────────────────────────────────────────────
 
 const happyPathLines = script([
-  ['Bitte ergänze einen Dark/Light-Umschalter auf der Settings-Seite und decke ihn mit einem Spec ab.', 'user'],
-  ['[taskboard] Started claude CLI (PID 4711), model=claude-sonnet-5, thinkingLevel=high, session=lab-sess-1', 'system'],
-  ['Ich schaue mir zuerst das Settings-Modul und den bestehenden Theme-Service an.'],
+  ['Please add a dark/light toggle to the settings page and cover it with a spec.', 'user'],
+  [
+    '[taskboard] Started claude CLI (PID 4711), model=claude-sonnet-5, thinkingLevel=high, session=lab-sess-1',
+    'system',
+  ],
+  ['I will first inspect the settings module and the existing theme service.'],
   ['* Read settings.component.ts'],
   ['  | src/app/settings/settings.component.ts'],
   ['* Read theme.service.ts'],
   ['  | src/app/theme/theme.service.ts'],
   ['* Search "data-studio-theme"'],
-  ['  | 6 Treffer in 3 Dateien'],
+  ['  | 6 matches in 3 files'],
   ['* Edit settings.component.ts'],
-  ['  | Umschalter + Persistenz ergänzt'],
+  ['  | Added toggle and persistence'],
   ['* Run npx vitest run settings (shell)'],
   ['  | ✓ settings.component.spec.ts (4 Tests) 312ms'],
-  ['Der Umschalter ist verdrahtet: er flippt `data-studio-theme` auf dem Dokument-Root und persistiert die Wahl.'],
+  [
+    'The toggle is wired up: it flips `data-studio-theme` on the document root and persists the selection.',
+  ],
   [''],
-  ['Alle vier Tests laufen grün.'],
+  ['All four tests pass.'],
 ]);
 
 const testFailRetryLines = script([
-  ['Führe die Playwright-Suite aus und fixe, was rot ist.', 'user'],
-  ['[taskboard] Started claude CLI (PID 4712), model=claude-sonnet-5, thinkingLevel=high', 'system'],
+  ['Run the Playwright suite and fix any failures.', 'user'],
+  [
+    '[taskboard] Started claude CLI (PID 4712), model=claude-sonnet-5, thinkingLevel=high',
+    'system',
+  ],
   ['* Run npx playwright test perf-frontend.spec.ts (shell)'],
   ['  | running playwright tests'],
   ['x Run npx playwright test perf-frontend.spec.ts (shell): exited with error 1'],
   ['  | grouped jobs poll took 11521 ms', 'stderr'],
-  ['Der Poll-Timeout ist zu knapp — ich erhöhe das Budget und versuche es erneut.'],
+  ['The polling timeout is too short. I will increase the budget and try again.'],
   ['* Edit perf-frontend.spec.ts'],
   ['  | Timeout 10s → 30s'],
   ['* Run npx playwright test perf-frontend.spec.ts (shell)'],
   ['  | passed in 320ms'],
-  ['Suite ist grün: der fehlgeschlagene Lauf war ein zu enges Poll-Budget, kein Produktfehler.'],
+  ['The suite passes: the failed run had an overly tight polling budget, not a product defect.'],
 ]);
 
 const watchdogWaitLines = script([
-  ['Analysiere das gesamte Log-Verzeichnis und fasse die Fehlerklassen zusammen.', 'user'],
-  ['[taskboard] Started claude CLI (PID 4713), model=claude-sonnet-5, thinkingLevel=high', 'system'],
+  ['Analyze the entire log directory and summarize the error categories.', 'user'],
+  [
+    '[taskboard] Started claude CLI (PID 4713), model=claude-sonnet-5, thinkingLevel=high',
+    'system',
+  ],
   ['* Read logs/2026-06-30.log'],
-  ['  | 48.000 Zeilen'],
+  ['  | 48,000 lines'],
   ['[watchdog] Agent has been quiet for 30s', 'orchestrator'],
   ['[watchdog] Still silent at 60s', 'orchestrator'],
   ['[watchdog] Still silent at 120s', 'orchestrator'],
   ['[watchdog] Agent resumed streaming', 'orchestrator'],
-  ['Die lange Stille war das Einlesen des 48k-Zeilen-Logs — hier die drei dominanten Fehlerklassen.'],
+  [
+    'The long pause came from reading the 48k-line log. Here are the three dominant error categories.',
+  ],
 ]);
 
 const watchdogKillLines = script([
-  ['Starte die Migration und warte auf das Ergebnis.', 'user'],
-  ['[taskboard] Started claude CLI (PID 4714), model=claude-sonnet-5, thinkingLevel=high', 'system'],
+  ['Start the migration and wait for the result.', 'user'],
+  [
+    '[taskboard] Started claude CLI (PID 4714), model=claude-sonnet-5, thinkingLevel=high',
+    'system',
+  ],
   ['* Run npm run migrate (shell)'],
   ['  | applying 14 migrations'],
   ['[watchdog] Agent has been quiet for 300s', 'orchestrator'],
@@ -159,8 +177,11 @@ const watchdogKillLines = script([
 ]);
 
 const needsInputLines = script([
-  ['Baue den Recovery-Test für den CLI-Wrapper.', 'user'],
-  ['[taskboard] Started claude CLI (PID 4715), model=claude-sonnet-5, thinkingLevel=high', 'system'],
+  ['Build the recovery test for the CLI wrapper.', 'user'],
+  [
+    '[taskboard] Started claude CLI (PID 4715), model=claude-sonnet-5, thinkingLevel=high',
+    'system',
+  ],
   ['* Read cli-wrapper.ts'],
   ['  | src/runner/cli-wrapper.ts'],
   ['[[TASK_NEEDS_INPUT: which CLI should I target for the recovery test?]]', 'orchestrator'],
@@ -176,8 +197,11 @@ const modelSwitchLines = script([
 ]);
 
 const stderrCrashLines = script([
-  ['Starte den Dev-Server und prüfe die Startseite.', 'user'],
-  ['[taskboard] Started claude CLI (PID 4716), model=claude-sonnet-5, thinkingLevel=high', 'system'],
+  ['Start the development server and check the home page.', 'user'],
+  [
+    '[taskboard] Started claude CLI (PID 4716), model=claude-sonnet-5, thinkingLevel=high',
+    'system',
+  ],
   ['* Run npm run dev (shell)'],
   ['  | starting dev server'],
   ["Error: Cannot find module 'esbuild'", 'stderr'],
@@ -187,28 +211,31 @@ const stderrCrashLines = script([
 
 const codexTextModeStderrLines = codexTextModeStderrTranscriptFragment();
 
-/** ~120 Zeilen: 10 Arbeitsblöcke für Scroll-/Fold-/Performance-Checks. */
+/** ~120 lines: 10 work blocks for scroll, fold, and performance checks. */
 function longRunLines(): CliOutputLine[] {
   const entries: ScriptEntry[] = [
-    ['Refaktoriere alle zehn Feature-Module auf standalone Components.', 'user'],
-    ['[taskboard] Started claude CLI (PID 4717), model=claude-sonnet-5, thinkingLevel=high', 'system'],
+    ['Refactor all ten feature modules into standalone components.', 'user'],
+    [
+      '[taskboard] Started claude CLI (PID 4717), model=claude-sonnet-5, thinkingLevel=high',
+      'system',
+    ],
   ];
   for (let block = 1; block <= 10; block += 1) {
     entries.push(
-      [`Modul ${block}/10: feature-${block} umstellen.`],
+      [`Module ${block}/10: migrate feature-${block}.`],
       [`* Read feature-${block}.module.ts`],
       [`  | src/app/feature-${block}/feature-${block}.module.ts`],
-      [`* Search "feature-${block}" Verwendungen`],
-      [`  | ${3 + (block % 4)} Treffer`],
+      [`* Search "feature-${block}" usages`],
+      [`  | ${3 + (block % 4)} matches`],
       [`* Edit feature-${block}.component.ts`],
-      ['  | standalone: true, imports gehoben'],
+      ['  | standalone: true, imports moved'],
       [`* Run npx vitest run feature-${block} (shell)`],
       [`  | ✓ feature-${block}.component.spec.ts (${2 + (block % 3)} Tests)`],
-      [`Modul feature-${block} fertig — Tests grün.`],
+      [`Module feature-${block} complete; tests pass.`],
       [''],
     );
   }
-  entries.push(['Alle zehn Module sind standalone; die Gesamtsuite läuft grün.']);
+  entries.push(['All ten modules are standalone; the full suite passes.']);
   return script(entries, 1);
 }
 
@@ -216,23 +243,36 @@ function longRunLines(): CliOutputLine[] {
  *  each step, so the checklist ticks items off in place. The `* Todo …` lines
  *  match the workbench's PlanUpdated mapping, so replay == live. */
 const todoPlanLines = script([
-  ['Baue ein kleines CLI-Tool: Argument-Parsing, Hilfe-Text, Tests und README.', 'user'],
-  ['[taskboard] Started claude CLI (PID 5001), model=claude-sonnet-5, thinkingLevel=high', 'system'],
-  ['Ich lege zuerst einen Plan an und arbeite ihn dann Punkt für Punkt ab.'],
-  ['* Todo [in_progress] Argument-Parsing implementieren; [pending] Hilfe-Text ergänzen; [pending] Tests schreiben; [pending] README verfassen'],
+  ['Build a small CLI tool with argument parsing, help text, tests, and a README.', 'user'],
+  [
+    '[taskboard] Started claude CLI (PID 5001), model=claude-sonnet-5, thinkingLevel=high',
+    'system',
+  ],
+  ['I will create a plan first and then work through it step by step.'],
+  [
+    '* Todo [in_progress] Implement argument parsing; [pending] Add help text; [pending] Write tests; [pending] Write README',
+  ],
   ['* Edit src/cli.ts'],
-  ['  | argv-Parsing mit Flags -h/--help ergänzt'],
-  ['* Todo [completed] Argument-Parsing implementieren; [in_progress] Hilfe-Text ergänzen; [pending] Tests schreiben; [pending] README verfassen'],
+  ['  | Added argv parsing with -h/--help flags'],
+  [
+    '* Todo [completed] Implement argument parsing; [in_progress] Add help text; [pending] Write tests; [pending] Write README',
+  ],
   ['* Edit src/help.ts'],
-  ['  | Hilfe-Text mit Beispielen'],
-  ['* Todo [completed] Argument-Parsing implementieren; [completed] Hilfe-Text ergänzen; [in_progress] Tests schreiben; [pending] README verfassen'],
+  ['  | Help text with examples'],
+  [
+    '* Todo [completed] Implement argument parsing; [completed] Add help text; [in_progress] Write tests; [pending] Write README',
+  ],
   ['* Run npx vitest run (shell)'],
-  ['  | ✓ 6 Tests grün'],
-  ['* Todo [completed] Argument-Parsing implementieren; [completed] Hilfe-Text ergänzen; [completed] Tests schreiben; [in_progress] README verfassen'],
+  ['  | ✓ 6 tests passed'],
+  [
+    '* Todo [completed] Implement argument parsing; [completed] Add help text; [completed] Write tests; [in_progress] Write README',
+  ],
   ['* Edit README.md'],
-  ['  | Nutzung + Beispiele dokumentiert'],
-  ['* Todo [completed] Argument-Parsing implementieren; [completed] Hilfe-Text ergänzen; [completed] Tests schreiben; [completed] README verfassen'],
-  ['Alle vier Punkte erledigt: Parsing, Hilfe, Tests grün, README steht.'],
+  ['  | Documented usage and examples'],
+  [
+    '* Todo [completed] Implement argument parsing; [completed] Add help text; [completed] Write tests; [completed] Write README',
+  ],
+  ['All four items are complete: parsing, help, passing tests, and the README.'],
 ]);
 
 // ── Catalog ───────────────────────────────────────────────────────────────────
@@ -243,44 +283,52 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
     kind: 'events',
     title: 'Showcase (Fixtures)',
     description:
-      'Handgebaute ConversationEvents: Message-Gruppen, Tool-Burst, Bild-Artefakte (durable + scratch), Orchestrator-Entscheidung mit Retry-Budget, Token-Metrik, Run-Marker.',
+      'Hand-built ConversationEvents: message groups, a tool burst, image artifacts (durable and scratch), an orchestrator decision with a retry budget, a token metric, and a run marker.',
     events: LAB_CONVERSATION_EVENTS,
   },
   {
     id: 'turn-metadata',
     kind: 'events',
-    title: 'Turn-Metadaten + vollständige Nachricht',
+    title: 'Turn metadata + complete message',
     description:
-      'Vollständige kurze/lange Chat-Turns mit unveränderlicher CLI-, Modell-, Token-, Zeit- und Run-Provenienz. „Details“ öffnet die leise Metadatenansicht mit Kopieraktionen.',
+      'Complete short and long chat turns with immutable CLI, model, token, time, and run provenance. Details opens the quiet metadata view with copy actions.',
     events: [],
     messages: LAB_TURN_METADATA_MESSAGES,
   },
   {
     id: 'images',
     kind: 'events',
-    title: 'Bilder (Screenshots + Lightbox)',
+    title: 'Images (screenshots + lightbox)',
     description:
-      'Gerenderte Bild-Artefakte und ein inline Markdown-Bild. Ein Klick öffnet die Lightbox (Pfeiltasten blättern, Escape schließt) — die Host-Seam CHAT_MEDIA_LIGHTBOX stellt das Overlay.',
+      'Rendered image artifacts and an inline Markdown image. Click to open the lightbox; arrow keys navigate and Escape closes it. The CHAT_MEDIA_LIGHTBOX host seam provides the overlay.',
     events: LAB_IMAGE_EVENTS,
   },
   {
     id: 'happy-path',
     kind: 'replay',
-    title: 'Feature-Auftrag (Happy Path)',
+    title: 'Feature task (happy path)',
     description:
-      'User-Auftrag → Tool-Burst (Read/Search/Edit) → grüner Testlauf → Agent-Zusammenfassung. Der [taskboard]-Marker setzt das Modell und verschwindet selbst aus dem Chat.',
+      'User task → tool burst (Read/Search/Edit) → passing test run → agent summary. The [taskboard] marker sets the model and does not appear in the chat.',
     lines: happyPathLines,
     runTimeline: {
       runCount: 1,
-      runs: [run({ index: 1, lineStart: 1, lineEnd: happyPathLines.length, capturedSessionId: 'lab-sess-1', durationSeconds: 210 })],
+      runs: [
+        run({
+          index: 1,
+          lineStart: 1,
+          lineEnd: happyPathLines.length,
+          capturedSessionId: 'lab-sess-1',
+          durationSeconds: 210,
+        }),
+      ],
     },
   },
   {
     id: 'test-fail-retry',
     kind: 'replay',
-    title: 'Test schlägt fehl + Retry',
+    title: 'Test failure + retry',
     description:
-      'Ein fehlgeschlagener Testlauf (x-Zeile + stderr) gefolgt von Fix und grünem Wiederholungslauf — stresst das tests-Aggregat im Tool-Burst und die Fehlerzeile.',
+      'A failed test run (x line and stderr) followed by a fix and passing rerun. Exercises the test aggregate in the tool burst and the error row.',
     lines: testFailRetryLines,
   },
   {
@@ -288,14 +336,15 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
     kind: 'replay',
     title: 'Watchdog: Wait-Loop',
     description:
-      'Agent wird still, der Watchdog meldet sich mehrfach, dann Wiederaufnahme — der kanonische "wait loop" aus den Edge-Cases.',
+      'The agent goes quiet, the watchdog reports several times, and then streaming resumes. This is the canonical wait loop from the edge cases.',
     lines: watchdogWaitLines,
   },
   {
     id: 'watchdog-kill',
     kind: 'replay',
-    title: 'Watchdog: Kill nach Stille',
-    description: 'Lauf wird nach 600s Stille gekillt; der Abbruch erscheint als Fehlerzeile.',
+    title: 'Watchdog: kill after silence',
+    description:
+      'The run is killed after 600s of silence; the termination appears as an error row.',
     lines: watchdogKillLines,
   },
   {
@@ -303,7 +352,7 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
     kind: 'replay',
     title: 'Needs Input + Reissue',
     description:
-      'Agent fordert per NEEDS_INPUT-Sentinel eine Rückfrage an; der Orchestrator reissued. Prüft die orchestrator-Zeilenklassifikation.',
+      'The agent requests clarification with a NEEDS_INPUT sentinel and the orchestrator reissues the task. Exercises orchestrator row classification.',
     lines: needsInputLines,
   },
   {
@@ -316,17 +365,32 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
     runTimeline: {
       runCount: 2,
       runs: [
-        run({ index: 1, lineStart: 1, lineEnd: 3, cli: 'codex', capturedSessionId: 'sess-one', durationSeconds: 60 }),
-        run({ index: 2, intent: 'recovery', startedAt: '2026-07-01T09:00:06.000Z', lineStart: 4, lineEnd: 5, capturedSessionId: 'sess-two', durationSeconds: 45 }),
+        run({
+          index: 1,
+          lineStart: 1,
+          lineEnd: 3,
+          cli: 'codex',
+          capturedSessionId: 'sess-one',
+          durationSeconds: 60,
+        }),
+        run({
+          index: 2,
+          intent: 'recovery',
+          startedAt: '2026-07-01T09:00:06.000Z',
+          lineStart: 4,
+          lineEnd: 5,
+          capturedSessionId: 'sess-two',
+          durationSeconds: 45,
+        }),
       ],
     },
   },
   {
     id: 'stderr-crash',
     kind: 'replay',
-    title: 'Crash mit stderr',
+    title: 'Crash with stderr',
     description:
-      'Prozess stirbt hart: Node-Stacktrace auf stderr plus "Run failed". Prüft Fehlerzeilen-Rendering ohne jeden Erfolgs-Kontext.',
+      'The process exits abruptly with a Node stack trace on stderr and "Run failed". Exercises error-row rendering without any successful context.',
     lines: stderrCrashLines,
   },
   {
@@ -340,52 +404,55 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
   {
     id: 'long-run',
     kind: 'replay',
-    title: 'Langer Lauf (10 Blöcke)',
+    title: 'Long run (10 blocks)',
     description:
-      '~120 Zeilen über zehn Arbeitsblöcke — für Scroll-Verhalten, den „Jump to latest“-Rücksprung, Tool-Burst-Faltung und Rendering-Performance. Gestreamt abgespielt simuliert das eine echte lange Session.',
+      '~120 lines across ten work blocks for scrolling, the Jump to latest return, tool-burst folding, and rendering performance. Streamed playback simulates a real long session.',
     lines: longRunLines(),
   },
   {
     id: 'todo-plan',
     kind: 'replay',
-    title: 'Todo-Plan (abgehakt)',
+    title: 'Todo plan (completed)',
     description:
-      'Claude-Stil TodoWrite: ein 4-Punkte-Plan wird angelegt und Schritt für Schritt abgehakt. Alle Snapshots bündeln sich zu EINER Checkliste, die sich in place aktualisiert — gestreamt abspielen, um das Abhaken live zu sehen.',
+      'Claude-style TodoWrite: a four-item plan is created and completed step by step. All snapshots coalesce into one checklist that updates in place; use streamed playback to watch it progress.',
     lines: todoPlanLines,
   },
   {
     id: 'live-smoke',
     kind: 'live',
-    title: 'Live: Smoke-Test',
+    title: 'Live: smoke test',
     description:
-      'Harmloser Prompt ohne Tool-Einsatz — prüft die Kette Workbench → CLI → SSE → Projektion. Erwartung: eine reine Agent-Textantwort.',
-    prompt: 'Antworte nur mit einer kurzen Begrüßung und nenne dein aktuelles Arbeitsverzeichnis. Benutze keine Tools.',
+      'A harmless prompt without tool use exercises the Workbench → CLI → SSE → projection chain. Expect a plain agent text response.',
+    prompt:
+      'Reply only with a short greeting and name your current working directory. Do not use tools.',
   },
   {
     id: 'live-write-file',
     kind: 'live',
-    title: 'Live: Datei anlegen',
+    title: 'Live: create file',
     description:
-      'Der Agent schreibt eine Datei in die Workbench-Sandbox. Erwartung: eine Write-Tool-Zeile im Burst plus kurze Bestätigung.',
-    prompt: "Lege im Arbeitsverzeichnis eine Datei hello.md mit genau einer Zeile 'Hallo aus der Workbench-Sandbox' an und bestätige kurz.",
-    followUp: 'Lies hello.md und hänge eine zweite Zeile mit dem heutigen Datum an.',
+      'The agent writes a file in the workbench sandbox. Expect a Write tool row in the burst and a short confirmation.',
+    prompt:
+      "Create a hello.md file in the working directory with exactly one line: 'Hello from the workbench sandbox'. Confirm briefly.",
+    followUp: "Read hello.md and append a second line with today's date.",
   },
   {
     id: 'live-fail-command',
     kind: 'live',
-    title: 'Live: Fehlschlagender Befehl',
+    title: 'Live: failing command',
     description:
-      'Der Agent führt bewusst einen fehlschlagenden Shell-Befehl aus. Erwartung: eine rote x-Zeile (Tool-Fehler) und eine Erklärung.',
-    prompt: "Führe im Arbeitsverzeichnis den Shell-Befehl `node -e \"process.exit(1)\"` aus, berichte den Exit-Code und erkläre in einem Satz, was passiert ist.",
+      'The agent deliberately runs a failing shell command. Expect a red x row for the tool failure and an explanation.',
+    prompt:
+      'Run the shell command `node -e "process.exit(1)"` in the working directory, report the exit code, and explain what happened in one sentence.',
   },
   {
     id: 'live-todo-plan',
     kind: 'live',
-    title: 'Live: Todo-Plan',
+    title: 'Live: todo plan',
     description:
-      'Zwingt Claude, sein TodoWrite-Werkzeug zu nutzen: der Plan (PlanUpdated) wird als Live-Checkliste gerendert, die sich abhakt, während die Punkte erledigt werden.',
+      'Forces Claude to use TodoWrite: the plan (PlanUpdated) renders as a live checklist that advances as items are completed.',
     prompt:
-      'Nutze unbedingt dein TodoWrite-Werkzeug: lege zu Beginn einen Plan mit vier Punkten an, um im Arbeitsverzeichnis eine kleine README.md (Titel, kurze Beschreibung, ein Nutzungsbeispiel, eine Lizenzzeile) zu erstellen. Aktualisiere die Todo-Liste nach jedem Punkt (in_progress → completed) und erledige dann alle Punkte.',
+      'You must use your TodoWrite tool. Start with a four-item plan to create a small README.md in the working directory with a title, short description, usage example, and license line. Update the todo list after each item (in_progress → completed), then complete every item.',
   },
 ];
 
