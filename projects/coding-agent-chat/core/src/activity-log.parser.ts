@@ -12,6 +12,8 @@ export interface ActivityLogGroup {
   status: 'ok' | 'error' | 'neutral';
   lines: CliOutputLine[];
   collapsedByDefault: boolean;
+  /** Keep semantic body edges when a typed transport frame already isolated them. */
+  preserveBodyWhitespace?: boolean;
 }
 
 const actionStartRegex = /^(?<marker>[^\w\s]+|x|X|\*)\s+(?<label>.+)$/i;
@@ -327,8 +329,8 @@ function parseCodexJsonlFrame(line: CliOutputLine, completedCommandIds: Set<stri
   const itemType = stringValue(item?.type);
   const itemId = stringValue(item?.id) ?? frameType;
   if ((frameType === 'item.started' || frameType === 'item.completed') && itemType === 'agent_message') {
-    const text = stringValue(item?.text)?.trim();
-    if (!text) return { visible: false };
+    const text = stringValue(item?.text);
+    if (!text?.trim()) return { visible: false };
     return {
       visible: true,
       group: {
@@ -338,7 +340,8 @@ function parseCodexJsonlFrame(line: CliOutputLine, completedCommandIds: Set<stri
         subtitle: '',
         status: 'neutral',
         lines: [withText(line, text)],
-        collapsedByDefault: false
+        collapsedByDefault: false,
+        preserveBodyWhitespace: true
       }
     };
   }

@@ -28,6 +28,7 @@ interface StreamCapture {
   cli: FixtureCli;
   cliVersion: string;
   transport: string;
+  capturedAt: string;
   sanitized: boolean;
   frames: unknown[];
 }
@@ -48,6 +49,11 @@ const EXPECTED_TYPES: Readonly<Record<ContentCase, readonly MessageContentPayloa
 };
 
 const RAW_FILE_CASES: readonly ContentCase[] = ['source', 'diff', 'html', 'json', 'logs', 'ansi'];
+const EXPECTED_FRAME_TYPES: Readonly<Record<FixtureCli, readonly string[]>> = {
+  claude: ['system', 'assistant', 'result'],
+  codex: ['thread.started', 'turn.started', 'item.completed', 'turn.completed'],
+  gemini: ['init', 'message', 'result'],
+};
 const CASES = Object.keys(EXPECTED_TYPES) as ContentCase[];
 const FIXTURE_DIRECTORY = resolve(
   process.cwd(),
@@ -66,7 +72,12 @@ describe('rendering stream fixtures [MachineBound]', () => {
       expect(capture.schemaVersion).toBe(1);
       expect(capture.cliVersion).toBeTruthy();
       expect(capture.transport).toBeTruthy();
+      expect(Date.parse(capture.capturedAt)).not.toBeNaN();
       expect(capture.sanitized).toBe(true);
+      expect(capture.frames.length).toBeGreaterThan(0);
+      expect(capture.frames.every(isRecord)).toBe(true);
+      expect(capture.frames.map((frame) => isRecord(frame) ? frame['type'] : undefined))
+        .toEqual(EXPECTED_FRAME_TYPES[capture.cli]);
     }
   });
 

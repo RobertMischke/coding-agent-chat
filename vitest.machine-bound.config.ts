@@ -10,7 +10,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'node',
     fileParallelism: false,
     maxWorkers: 1,
     include: ['projects/coding-agent-chat/core/test-fixtures/**/*.machine-bound.ts'],

@@ -162,7 +162,7 @@ export interface MessageEvent extends ConversationEventBase {
     | 'message.orchestrator'
     | 'message.supervisor'
     | 'message.supportingAgent';
-  /** Plain or markdown text. The renderer decides how to format. */
+  /** Backwards-compatible plain-text representation of the complete message. */
   body: string;
   /**
    * Renderer-safe semantic content derived from {@link body}. Only

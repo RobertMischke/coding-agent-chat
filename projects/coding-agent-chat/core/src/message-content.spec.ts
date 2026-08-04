@@ -83,6 +83,45 @@ describe('classifyMessageContent', () => {
     ]);
   });
 
+  it('recognizes an unfenced C# statement fragment without a declaration', () => {
+    const source = ['if (result is null)', '{', '    return Array.Empty<Item>();', '}'].join('\n');
+
+    expect(classifyMessageContent(source)).toEqual([
+      { type: 'code-block', text: source, language: 'csharp' },
+    ]);
+  });
+
+  it('recognizes a standalone git hunk without file headers', () => {
+    const hunk = [
+      '@@ -18,3 +18,4 @@ public void Execute()',
+      '     Keep();',
+      '-    Remove();',
+      '+    Replace();',
+      '+    Verify();',
+    ].join('\n');
+
+    expect(classifyMessageContent(hunk)).toEqual([{ type: 'diff', text: hunk, format: 'git' }]);
+  });
+
+  it('recognizes truncated HTML documents and leading capture comments', () => {
+    const html = [
+      '<!-- sanitized capture -->',
+      '<!doctype html>',
+      '<html lang="en">',
+      '<body><ul><li>literal source</li></ul></body>',
+    ].join('\n');
+
+    expect(classifyMessageContent(html)).toEqual([
+      { type: 'html-file', text: html, mediaType: 'text/html' },
+    ]);
+  });
+
+  it('classifies raw JSONL as JSON instead of Markdown', () => {
+    const jsonl = '{"type":"start","id":1}\n{"type":"done","id":1}';
+
+    expect(classifyMessageContent(jsonl)).toEqual([{ type: 'json', text: jsonl }]);
+  });
+
   it('preserves ANSI escapes and long lines in raw log payloads', () => {
     const longLine = `\u001b[31mERROR\u001b[0m ${'x'.repeat(8_192)}`;
     const payload = classifyMessageContent(longLine)[0];
