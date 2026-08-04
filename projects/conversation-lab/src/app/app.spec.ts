@@ -31,7 +31,7 @@ describe('App', () => {
     // The project-chat-history panel was retired — one view only.
     expect(compiled.querySelector('cac-project-chat-list')).toBeNull();
     expect(compiled.querySelector('[data-testid="lab-release"]')?.textContent).toContain(
-      'coding-agent-chat@0.2.2'
+      'coding-agent-chat@0.2.2',
     );
   });
 
@@ -48,14 +48,18 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
 
-    const chip = compiled.querySelector<HTMLButtonElement>('[data-testid="lab-scenario-happy-path"]');
+    const chip = compiled.querySelector<HTMLButtonElement>(
+      '[data-testid="lab-scenario-happy-path"]',
+    );
     expect(chip).toBeTruthy();
     chip!.click();
     await fixture.whenStable();
 
     // Replay controls appear; the transcript is loaded instantly.
     expect(compiled.querySelector('[data-testid="lab-replay-stream"]')).toBeTruthy();
-    expect(compiled.querySelector('[data-testid="lab-replay-progress"]')?.textContent).toContain('/');
+    expect(compiled.querySelector('[data-testid="lab-replay-progress"]')?.textContent).toContain(
+      '/',
+    );
     // Live bar must stay hidden for replay scenarios.
     expect(compiled.querySelector('[data-testid="lab-live-start"]')).toBeNull();
   });
@@ -69,7 +73,9 @@ describe('App', () => {
     await fixture.whenStable();
 
     expect(compiled.querySelector('[data-testid="lab-live-start"]')).toBeTruthy();
-    expect(compiled.querySelector('[data-testid="lab-live-prompt"]')?.textContent).toContain('Begrüßung');
+    expect(compiled.querySelector('[data-testid="lab-live-prompt"]')?.textContent).toContain(
+      'greeting',
+    );
   });
 
   it('opens the trace drawer with the raw replay lines from the conversation Trace button', async () => {
@@ -98,17 +104,25 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
 
-    compiled.querySelector<HTMLButtonElement>('[data-testid="lab-scenario-codex-stderr-transcript"]')!.click();
+    compiled
+      .querySelector<HTMLButtonElement>('[data-testid="lab-scenario-codex-stderr-transcript"]')!
+      .click();
     await fixture.whenStable();
 
     const conversation = compiled.querySelector('cac-conversation-view');
     expect(conversation).toBeTruthy();
-    expect(conversation?.querySelectorAll('[data-testid="conversation-system-status"]')).toHaveLength(1);
-    expect(conversation?.querySelector('[data-testid="conversation-system-status"]')?.textContent).not.toContain('/**');
+    expect(
+      conversation?.querySelectorAll('[data-testid="conversation-system-status"]'),
+    ).toHaveLength(1);
+    expect(
+      conversation?.querySelector('[data-testid="conversation-system-status"]')?.textContent,
+    ).not.toContain('/**');
 
     const agentRows = conversation?.querySelectorAll('[data-actor="message.taskAgent"]');
     expect(agentRows).toHaveLength(1);
-    expect(agentRows?.[0].textContent).toContain('The stdout reply is still the visible answer, and it appears in the correct turn.');
+    expect(agentRows?.[0].textContent).toContain(
+      'The stdout reply is still the visible answer, and it appears in the correct turn.',
+    );
     expect(agentRows?.[0].textContent).toContain('Its second line is preserved in that same turn.');
     expect(agentRows?.[0].textContent).not.toContain('/**');
     expect(conversation?.querySelectorAll('cac-markdown li')).toHaveLength(0);
@@ -122,12 +136,18 @@ describe('App', () => {
       'lab-scenario:codex-stderr-transcript:1–19',
     );
     expect(compiled.querySelectorAll('.lab-trace__line--hit')).toHaveLength(19);
-    const traceLines = compiled.querySelectorAll('[data-testid="lab-trace-lines"] .lab-trace__line');
-    const traceText = Array.from(traceLines).map((line) => line.textContent ?? '').join('\n');
+    const traceLines = compiled.querySelectorAll(
+      '[data-testid="lab-trace-lines"] .lab-trace__line',
+    );
+    const traceText = Array.from(traceLines)
+      .map((line) => line.textContent ?? '')
+      .join('\n');
     expect(traceText).toContain('export function projectConversation(): string {');
     expect(traceText).toContain('* 10,975 contiguous stderr lines');
     expect(compiled.querySelector('[data-testid="lab-trace-lines"] cac-markdown')).toBeNull();
-    expect(compiled.querySelectorAll('[data-testid="lab-trace-lines"] code.lab-trace__text')).toHaveLength(21);
+    expect(
+      compiled.querySelectorAll('[data-testid="lab-trace-lines"] code.lab-trace__text'),
+    ).toHaveLength(21);
   });
 
   it('explains the missing activity log when tracing a fixture scenario', async () => {
@@ -152,7 +172,8 @@ describe('App', () => {
 
       expect(compiled.querySelector('[data-testid="lab-replay-stream"]')).toBeTruthy();
       // Instant load: every scripted line is already shown (N/N, N > 0).
-      const progress = compiled.querySelector('[data-testid="lab-replay-progress"]')?.textContent ?? '';
+      const progress =
+        compiled.querySelector('[data-testid="lab-replay-progress"]')?.textContent ?? '';
       const match = progress.match(/(\d+)\/(\d+)/);
       expect(match).toBeTruthy();
       expect(match![1]).toBe(match![2]);
@@ -178,9 +199,9 @@ describe('App', () => {
     await reloaded.whenStable();
     const recompiled = reloaded.nativeElement as HTMLElement;
 
-    expect(
-      recompiled.querySelector('.lab-scenario-chip--active')?.textContent
-    ).toContain('Happy Path');
+    expect(recompiled.querySelector('.lab-scenario-chip--active')?.textContent).toContain(
+      'happy path',
+    );
     expect(recompiled.querySelector('[data-testid="lab-replay-stream"]')).toBeTruthy();
     expect(document.documentElement.getAttribute('data-studio-theme')).toBe('light');
   });

@@ -22,7 +22,7 @@ import { TooltipDirective, type StructuredTooltip } from 'coding-agent-chat/shar
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [TooltipDirective],
   templateUrl: './tool-burst-chip.component.html',
-  styleUrl: './tool-burst-chip.component.scss'
+  styleUrl: './tool-burst-chip.component.scss',
 })
 export class ToolBurstChipComponent {
   readonly event = input.required<ToolBurstEvent>();
@@ -64,8 +64,8 @@ export class ToolBurstChipComponent {
     return iconFor(top.family);
   });
 
-  // Written-out meaning of the current row's glyph, e.g. "Read - Dateien
-  // gelesen". Used in the expanded detail head so the emoji glyph is
+  // Written-out meaning of the current row's glyph, e.g. "Read - Files
+  // read". Used in the expanded detail head so the emoji glyph is
   // recognizable by name once the row is open, not only on hover.
   readonly leadingGlyphLabel = computed(() => {
     const entry = glyphEntry(this.leadingIcon());
@@ -83,8 +83,8 @@ export class ToolBurstChipComponent {
     }).join('');
     const entry = glyphEntry(active);
     return {
-      title: entry ? `${entry.name} - ${entry.meaning}` : 'Tool-Glyphen',
-      body: `<ul>${items}</ul>`
+      title: entry ? `${entry.name} - ${entry.meaning}` : 'Tool glyphs',
+      body: `<ul>${items}</ul>`,
     };
   });
 
@@ -98,7 +98,15 @@ export class ToolBurstChipComponent {
     const samples = event.samples ?? {};
     const failures = event.failures ?? 0;
     const rows: DetailRow[] = [];
-    const familyOrder: ToolFamily[] = ['read', 'search', 'command', 'edit', 'task', 'todo', 'other'];
+    const familyOrder: ToolFamily[] = [
+      'read',
+      'search',
+      'command',
+      'edit',
+      'task',
+      'todo',
+      'other',
+    ];
     let failuresLeft = failures;
     for (const family of familyOrder) {
       const count = families[family] ?? 0;
@@ -113,7 +121,7 @@ export class ToolBurstChipComponent {
         target: sample,
         status,
         statusLabel: status === 'fail' ? `${familyFailures} fail` : 'ok',
-        meta: count > 1 ? `×${count}` : ''
+        meta: count > 1 ? `×${count}` : '',
       });
     }
     return rows;
@@ -121,13 +129,20 @@ export class ToolBurstChipComponent {
 
   familyLabel(family: ToolFamily): string {
     switch (family) {
-      case 'read': return 'read';
-      case 'search': return 'search';
-      case 'command': return 'shell';
-      case 'edit': return 'edit';
-      case 'task': return 'task';
-      case 'todo': return 'todo';
-      default: return 'tool';
+      case 'read':
+        return 'read';
+      case 'search':
+        return 'search';
+      case 'command':
+        return 'shell';
+      case 'edit':
+        return 'edit';
+      case 'task':
+        return 'task';
+      case 'todo':
+        return 'todo';
+      default:
+        return 'tool';
     }
   }
 
@@ -166,7 +181,11 @@ export class ToolBurstChipComponent {
   hasCommandOverflow(commandIndex: number): boolean {
     const command = this.commands()[commandIndex];
     if (!command) return false;
-    return this.commandHiddenLines(commandIndex) > 0 || command.outputTruncated || this.isCommandOutputExpanded(commandIndex);
+    return (
+      this.commandHiddenLines(commandIndex) > 0 ||
+      command.outputTruncated ||
+      this.isCommandOutputExpanded(commandIndex)
+    );
   }
 
   commandToggleLabel(commandIndex: number): string {
@@ -204,13 +223,20 @@ const COMMAND_OUTPUT_PREVIEW_LINES = 24;
 
 function iconFor(family: ToolFamily): string {
   switch (family) {
-    case 'read': return '📖';
-    case 'search': return '🔍';
-    case 'command': return '💻';
-    case 'edit': return '📝';
-    case 'task': return '🤖';
-    case 'todo': return '📋';
-    default: return '🔧';
+    case 'read':
+      return '📖';
+    case 'search':
+      return '🔍';
+    case 'command':
+      return '💻';
+    case 'edit':
+      return '📝';
+    case 'task':
+      return '🤖';
+    case 'todo':
+      return '📋';
+    default:
+      return '🔧';
   }
 }
 
@@ -223,14 +249,14 @@ interface GlyphLegendEntry {
 // Complete key for the per-family emoji rendered in `.burst__icon`. Order
 // mirrors the family order used elsewhere, with the failure marker last.
 const GLYPH_LEGEND: readonly GlyphLegendEntry[] = [
-  { glyph: '📖', name: 'Read', meaning: 'Dateien gelesen' },
-  { glyph: '🔍', name: 'Search', meaning: 'Suche / grep' },
-  { glyph: '💻', name: 'Shell', meaning: 'Kommando ausgeführt' },
-  { glyph: '📝', name: 'Edit', meaning: 'Dateien geändert' },
-  { glyph: '🤖', name: 'Task', meaning: 'Unteraufgabe / Agent' },
-  { glyph: '📋', name: 'Todo', meaning: 'Aufgabenliste' },
-  { glyph: '🔧', name: 'Tool', meaning: 'Sonstiges Werkzeug' },
-  { glyph: '❌', name: 'Fehler', meaning: 'Tool-Aufruf fehlgeschlagen' }
+  { glyph: '📖', name: 'Read', meaning: 'Files read' },
+  { glyph: '🔍', name: 'Search', meaning: 'Search / grep' },
+  { glyph: '💻', name: 'Shell', meaning: 'Command run' },
+  { glyph: '📝', name: 'Edit', meaning: 'Files changed' },
+  { glyph: '🤖', name: 'Task', meaning: 'Subtask / agent' },
+  { glyph: '📋', name: 'Todo', meaning: 'Task list' },
+  { glyph: '🔧', name: 'Tool', meaning: 'Other tool' },
+  { glyph: '❌', name: 'Error', meaning: 'Tool call failed' },
 ];
 
 function glyphEntry(glyph: string): GlyphLegendEntry | undefined {

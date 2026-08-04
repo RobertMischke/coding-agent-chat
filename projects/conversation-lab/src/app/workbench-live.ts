@@ -123,7 +123,9 @@ export class WorkbenchLiveSession {
       this.connection.set('connected');
     } catch (error) {
       this.connection.set('error');
-      this.toast(`Workbench nicht erreichbar unter ${this.normalizedBaseUrl()} — läuft \`dotnet run --project workbench\`? (${describeError(error)})`);
+      this.toast(
+        `Workbench is not reachable at ${this.normalizedBaseUrl()} — is \`dotnet run --project workbench\` running? (${describeError(error)})`,
+      );
     }
   }
 
@@ -133,7 +135,7 @@ export class WorkbenchLiveSession {
    */
   async submit(text: string, permissionMode?: string | null): Promise<void> {
     if (this.sending()) {
-      this.toast('Der Agent arbeitet noch an der vorherigen Nachricht.');
+      this.toast('The agent is still working on the previous message.');
       return;
     }
     this.sending.set(true);
@@ -180,24 +182,28 @@ export class WorkbenchLiveSession {
       body: JSON.stringify({ cliType: this.cliType(), prompt, permissionMode }),
     });
     if (!response.ok) {
-      throw new Error(await errorBody(response, 'Session konnte nicht gestartet werden'));
+      throw new Error(await errorBody(response, 'Could not start the session'));
     }
     const body = (await response.json()) as { sessionId: string };
     this.sessionId.set(body.sessionId);
     this.openStream(body.sessionId);
   }
 
-  private async postMessage(id: string, text: string, permissionMode?: string | null): Promise<void> {
+  private async postMessage(
+    id: string,
+    text: string,
+    permissionMode?: string | null,
+  ): Promise<void> {
     const response = await fetch(`${this.normalizedBaseUrl()}/api/sessions/${id}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, permissionMode }),
     });
     if (response.status === 409) {
-      throw new Error('Der Agent arbeitet noch — bitte warten, bis der aktuelle Lauf endet.');
+      throw new Error('The agent is still working — wait for the current run to finish.');
     }
     if (!response.ok) {
-      throw new Error(await errorBody(response, 'Nachricht konnte nicht gesendet werden'));
+      throw new Error(await errorBody(response, 'Could not send the message'));
     }
   }
 
@@ -217,7 +223,7 @@ export class WorkbenchLiveSession {
       // session is still supposed to be live.
       if (this.eventSource === source && this.sessionId() !== null) {
         this.connection.set('error');
-        this.toast('Verbindung zum Workbench-Stream verloren.');
+        this.toast('Connection to the workbench stream was lost.');
       }
     };
   }
@@ -250,7 +256,11 @@ export class WorkbenchLiveSession {
 function parseCliOutputLine(data: string): CliOutputLine | null {
   try {
     const raw = JSON.parse(data) as Partial<CliOutputLine>;
-    if (typeof raw.timestamp !== 'string' || typeof raw.stream !== 'string' || typeof raw.text !== 'string') {
+    if (
+      typeof raw.timestamp !== 'string' ||
+      typeof raw.stream !== 'string' ||
+      typeof raw.text !== 'string'
+    ) {
       return null;
     }
     return { timestamp: raw.timestamp, stream: raw.stream, text: raw.text };

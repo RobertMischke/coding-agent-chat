@@ -206,8 +206,7 @@ const agt2149UserTurn: MessageEvent = {
   kind: 'message.user',
   timestamp: at(14, 10),
   actor: 'You',
-  body:
-    'Replay AGT-2149 with structured warnings, turn metrics, and the mixed-height scroll fix check.',
+  body: 'Replay AGT-2149 with structured warnings, turn metrics, and the mixed-height scroll fix check.',
   rawRange: nextRange(1),
 };
 
@@ -234,8 +233,7 @@ const agt2149StreamingUpdate2: MessageEvent = {
   kind: 'message.taskAgent',
   timestamp: at(14, 40),
   actor: 'Agent',
-  body:
-    'Streaming update 2/3: PATH warning, repeated plugin warnings, and the timeout detail should stay readable.',
+  body: 'Streaming update 2/3: PATH warning, repeated plugin warnings, and the timeout detail should stay readable.',
   rawRange: nextRange(1),
 };
 
@@ -301,7 +299,8 @@ const agt2149PathWarning: SystemStatusEvent = {
   timestamp: at(14, 22),
   category: 'environment-blocker',
   label: 'PATH warning',
-  explanation: '/opt/homebrew/bin was missing from PATH, so the shell fell back to a portable lookup.',
+  explanation:
+    '/opt/homebrew/bin was missing from PATH, so the shell fell back to a portable lookup.',
   severity: 'warn',
   rawRange: nextRange(1),
 };
@@ -428,7 +427,7 @@ export const LAB_IMAGE_EVENTS: readonly ConversationEvent[] = [
     kind: 'message.user',
     timestamp: at(10),
     actor: 'You',
-    body: 'Zeig mir das Dashboard und den Sonnenuntergangs-Verlauf als Screenshots.',
+    body: 'Show me the dashboard and the sunset gradient as screenshots.',
     rawRange: nextRange(),
   } as MessageEvent,
   {
@@ -436,14 +435,14 @@ export const LAB_IMAGE_EVENTS: readonly ConversationEvent[] = [
     kind: 'message.taskAgent',
     timestamp: at(10, 12),
     actor: 'Agent',
-    body: 'Klar — hier sind beide Screenshots. Klick auf ein Bild, um es zu vergrößern (Pfeiltasten blättern, Escape schließt).',
+    body: 'Sure — here are both screenshots. Click an image to enlarge it (arrow keys navigate, Escape closes).',
     rawRange: nextRange(),
   } as MessageEvent,
   {
     id: 'imgsc-1',
     kind: 'artifact.image',
     timestamp: at(10, 20),
-    caption: 'Dashboard — Kennzahlen als Balkendiagramm',
+    caption: 'Dashboard — metrics as a bar chart',
     url: LAB_IMAGE_CHART,
     sourcePath: '/tmp/playwright/dashboard.png',
     durablePath: 'results/dashboard.png',
@@ -454,7 +453,7 @@ export const LAB_IMAGE_EVENTS: readonly ConversationEvent[] = [
     id: 'imgsc-2',
     kind: 'artifact.image',
     timestamp: at(10, 28),
-    caption: 'Sonnenuntergangs-Verlauf',
+    caption: 'Sunset gradient',
     url: LAB_IMAGE_SUNSET,
     sourcePath: '/tmp/playwright/sunset.png',
     durablePath: null,
@@ -466,7 +465,7 @@ export const LAB_IMAGE_EVENTS: readonly ConversationEvent[] = [
     kind: 'message.taskAgent',
     timestamp: at(10, 40),
     actor: 'Agent',
-    body: `Und dasselbe Diagramm inline im Markdown-Text:\n\n![Dashboard-Diagramm](${LAB_IMAGE_CHART})\n\nAuch dieses Bild ist anklickbar.`,
+    body: `And the same chart inline in the Markdown text:\n\n![Dashboard chart](${LAB_IMAGE_CHART})\n\nThis image is clickable too.`,
     rawRange: nextRange(),
   } as MessageEvent,
 ];
@@ -485,7 +484,7 @@ export const LAB_TURN_METADATA_MESSAGES: readonly ChatMessage[] = [
     text:
       'The conversation body remains fully rendered. It is never replaced by a preview or an Expand action.\n\n' +
       Array.from({ length: 12 }, (_, index) => `Complete verification line ${index + 1}.`).join(
-        '\n\n'
+        '\n\n',
       ) +
       '\n\n```ts\nconst visible = true;\nconst collapsible = false;\n```',
     timestamp: at(19, 38),

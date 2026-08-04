@@ -54,35 +54,31 @@ describe('ToolBurstChipComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
 
     expect(el.querySelector('[data-testid="tool-burst-icon"]')?.textContent?.trim()).toBe('💻');
-    expect(
-      el.querySelector('[data-testid="tool-burst-duration"]')?.textContent?.trim(),
-    ).toBe('1m 5s');
+    expect(el.querySelector('[data-testid="tool-burst-duration"]')?.textContent?.trim()).toBe(
+      '1m 5s',
+    );
   });
 
   it('overrides the glyph with the failure marker and shows the failed count', async () => {
-    const fixture = await render(
-      burstEvent({ count: 5, families: { command: 5 }, failures: 2 }),
-    );
+    const fixture = await render(burstEvent({ count: 5, families: { command: 5 }, failures: 2 }));
     const el: HTMLElement = fixture.nativeElement;
 
     expect(el.querySelector('[data-testid="tool-burst-icon"]')?.textContent?.trim()).toBe('❌');
-    expect(
-      el.querySelector('[data-testid="tool-burst-failures"]')?.textContent,
-    ).toContain('2 failed');
-    expect(
-      el
-        .querySelector('[data-testid="tool-burst-chip"]')
-        ?.getAttribute('data-failed'),
-    ).toBe('true');
+    expect(el.querySelector('[data-testid="tool-burst-failures"]')?.textContent).toContain(
+      '2 failed',
+    );
+    expect(el.querySelector('[data-testid="tool-burst-chip"]')?.getAttribute('data-failed')).toBe(
+      'true',
+    );
   });
 
   it('reflects the compact density input on the chip root', async () => {
     const fixture = await render(burstEvent(), { density: 'compact' });
     const el: HTMLElement = fixture.nativeElement;
 
-    expect(
-      el.querySelector('[data-testid="tool-burst-chip"]')?.getAttribute('data-density'),
-    ).toBe('compact');
+    expect(el.querySelector('[data-testid="tool-burst-chip"]')?.getAttribute('data-density')).toBe(
+      'compact',
+    );
   });
 
   it('starts collapsed by default and expands into the details section on click', async () => {
@@ -96,25 +92,22 @@ describe('ToolBurstChipComponent', () => {
 
     const details = el.querySelector('[data-testid="tool-burst-details"]');
     expect(details).toBeTruthy();
+    expect(details?.textContent).toContain('Read — Files read');
     // The expanded head names the raw range so Trace stays one click away.
-    expect(
-      details?.querySelector('[data-testid="tool-burst-range"]')?.textContent,
-    ).toContain('cli-output.log:10-42');
+    expect(details?.querySelector('[data-testid="tool-burst-range"]')?.textContent).toContain(
+      'cli-output.log:10-42',
+    );
   });
 
   it('opens automatically for initialOpen or events flagged collapsedByDefault=false', async () => {
     const viaInput = await render(burstEvent(), { initialOpen: true });
     expect(
-      (viaInput.nativeElement as HTMLElement).querySelector(
-        '[data-testid="tool-burst-details"]',
-      ),
+      (viaInput.nativeElement as HTMLElement).querySelector('[data-testid="tool-burst-details"]'),
     ).toBeTruthy();
 
     const viaEvent = await render(burstEvent({ collapsedByDefault: false }));
     expect(
-      (viaEvent.nativeElement as HTMLElement).querySelector(
-        '[data-testid="tool-burst-details"]',
-      ),
+      (viaEvent.nativeElement as HTMLElement).querySelector('[data-testid="tool-burst-details"]'),
     ).toBeTruthy();
   });
 });
