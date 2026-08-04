@@ -2,9 +2,9 @@ name: deploy-website
 
 # Builds the website for agent-orchestrator.dev/chat/ and publishes the
 # prerendered output as a single-commit "deploy" branch. The web host pulls
-# that branch and serves it under /chat/ (hosting side lives in the private
-# agent-orchestrator-website repo). Runs alongside pages.yml until the
-# GitHub Pages site is replaced by a redirect.
+# that branch and serves it under /chat/ (the hosting side is maintained
+# separately). Runs alongside pages.yml until the GitHub Pages site is
+# replaced by a redirect.
 #
 # Like pages.yml: the website consumes the BUILT library from dist/, so the
 # library build must run first.
