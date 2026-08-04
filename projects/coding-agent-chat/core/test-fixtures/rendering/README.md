@@ -13,6 +13,11 @@ while assistant payload text and transport field names stay unchanged.
   credentials, so the checked-in archival capture is used rather than
   refreshing it.
 
+GitHub Copilot CLI is not a supported stream transport in coding-agent-runner
+or the Conversation Lab, so it has no capture in this suite. The composer's
+author normalization accepts `copilot` as a display label only; that does not
+constitute CLI stream support.
+
 Every capture contains the same matrix: C# source, git diff, a complete HTML
 file, conversational Markdown, an image reference, nested JSON, raw logs, a
 long line, and a mixed prose/source turn. Tables, Mermaid, and ANSI are included
