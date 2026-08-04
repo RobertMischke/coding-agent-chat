@@ -105,7 +105,7 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 Internal bootstrap — never published to npm; 0.2.0 was the first release.
 
 - Initial bootstrap of the publishable Angular library carved out of the
-  agent-taskboard frontend: `<cac-conversation-view>`, `<cac-chat>`,
+  Agent Studio frontend: `<cac-conversation-view>`, `<cac-chat>`,
   `<cac-markdown>`, `<cac-project-chat-list>`, the `core` wire contract, the
   studio theme, and the `provideCodingAgentChat()` host-wiring helper.
 
