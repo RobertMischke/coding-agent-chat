@@ -249,6 +249,48 @@
       <div class="chat__attachment-error">{{ attachmentError() }}</div>
     }
 
+    @if (contextAttachments().length > 0) {
+      <div
+        class="chat__context-attachments"
+        data-testid="chat-context-attachments"
+        aria-label="Context attachments"
+      >
+        <span class="chat__context-attachments-prefix">Context</span>
+        <ul class="chat__context-attachments-list">
+          @for (attachment of contextAttachments(); track attachment.id) {
+            <li
+              class="chat__context-attachment"
+              [cacTooltip]="attachment.hint ?? attachment.label"
+              [attr.data-testid]="'chat-context-attachment-' + attachment.id"
+            >
+              <span class="chat__context-attachment-label">{{ attachment.label }}</span>
+              <button
+                type="button"
+                class="chat__context-attachment-remove"
+                [attr.aria-label]="'Remove ' + attachment.label + ' from context'"
+                [attr.data-testid]="'chat-context-attachment-remove-' + attachment.id"
+                [disabled]="disabled()"
+                (click)="contextAttachmentRemoved.emit(attachment.id)"
+              >
+                ×
+              </button>
+            </li>
+          }
+        </ul>
+        <button
+          type="button"
+          class="chat__context-attachment-add"
+          cacTooltip="Add context"
+          aria-label="Add context"
+          data-testid="chat-context-attachment-add"
+          [disabled]="disabled()"
+          (click)="contextAttachmentAddRequested.emit()"
+        >
+          +
+        </button>
+      </div>
+    }
+
     @if (toolbarVisible()) {
       <div class="chat__toolbar" data-testid="chat-toolbar">
         <div class="chat__toolbar-start">
@@ -309,8 +351,26 @@
         (paste)="onPaste($event)"
         (keydown)="onInputKeydown($event)"
       ></textarea>
+    </div>
 
-      <div class="chat__composer-actions">
+    <!-- Composer footer. The action row is always present: host-projected and
+             built-in controls remain optional, while attachment/context actions
+             sit on the left and Send is always the final right-side action. -->
+    <div class="chat__composer-foot" data-testid="chat-composer-foot">
+      <div class="chat__composer-foot-start">
+        @if (contextAttachments().length === 0) {
+          <button
+            type="button"
+            class="chat__context-add-btn"
+            cacTooltip="Add context"
+            data-testid="chat-context-attachment-add"
+            [disabled]="disabled()"
+            (click)="contextAttachmentAddRequested.emit()"
+          >
+            <span aria-hidden="true">+</span>
+            Context
+          </button>
+        }
         @if (allowAttachments()) {
           <button
             type="button"
@@ -331,25 +391,6 @@
             (change)="onFileInputChange($event)"
           />
         }
-        <button
-          type="submit"
-          class="chat__send-btn"
-          data-testid="chat-send"
-          [disabled]="disabled() || !canSend()"
-        >
-          {{ pending() ? '…' : submitLabel() }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Composer footer. Built-in controls (permission select, model
-             selector, context ring) render as soon as the host supplies each
-             one's data — the show-by-default policy — and each can be turned
-             off via its show* input. The [chat-foot-start]/[chat-foot-end]
-             projection slots remain for extra host-specific affordances. The
-             row collapses entirely when nothing is present. -->
-    <div class="chat__composer-foot" data-testid="chat-composer-foot">
-      <div class="chat__composer-foot-start">
         @if (composerContext(); as context) {
           <div class="chat__composer-context" data-testid="chat-composer-context">
             <span data-testid="chat-composer-context-project">{{ context.project }}</span>
@@ -395,6 +436,14 @@
             (refreshRequested)="contextRefreshRequested.emit()"
           />
         }
+        <button
+          type="submit"
+          class="chat__send-btn"
+          data-testid="chat-send"
+          [disabled]="disabled() || !canSend()"
+        >
+          {{ pending() ? '…' : submitLabel() }}
+        </button>
       </div>
     </div>
   </form>

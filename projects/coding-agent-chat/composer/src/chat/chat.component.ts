@@ -23,6 +23,7 @@ import {
   mergeByTimestamp,
   ChatAttachmentRef,
   ChatComposerContext,
+  ChatContextAttachment,
   ChatContextUsage,
   ChatDraftAttachment,
   ChatEvent,
@@ -150,6 +151,8 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
   readonly variant = input<'framed' | 'embedded'>('framed');
   readonly allowAttachments = input<boolean>(true);
   readonly maxAttachmentBytes = input<number>(10 * 1024 * 1024);
+  /** Host-owned context items rendered as removable chips above the textarea. */
+  readonly contextAttachments = input<readonly ChatContextAttachment[]>([]);
 
   /**
    * Buttons rendered on the left of the composer's toolbar row above
@@ -186,6 +189,10 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
 
   /** Emitted when the user clicks a toolbar button by id. */
   readonly toolbarAction = output<{ id: string }>();
+  /** Emitted with the chip id when the user requests that a context item be removed. */
+  readonly contextAttachmentRemoved = output<string>();
+  /** Emitted when the user asks the host to add a context item. */
+  readonly contextAttachmentAddRequested = output<void>();
 
   /**
    * When true, only the rows inside (or near) the scroll viewport are
@@ -216,7 +223,7 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
   // Policy: show-by-default. Each control renders in the composer footer as
   // soon as the host supplies its data (the model catalog comes from the
   // backend), and can be turned off per control via the matching `show*`
-  // flag. Hosts that supply nothing (e.g. a plain chat) see no footer.
+  // flag. The footer itself remains visible for the standard composer actions.
 
   /** Model / CLI / thinking selector config. Non-null shows the selector. */
   readonly modelControl = input<ChatModelControl | null>(null);

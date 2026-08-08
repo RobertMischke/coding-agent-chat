@@ -744,6 +744,92 @@
   padding: 6px 8px;
 }
 
+/* Host-owned context attachments sit above the textarea as compact,
+   removable chips. The host remains responsible for adding/removing data. */
+.chat__context-attachments {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--studio-spacing-2, 8px);
+  min-width: 0;
+}
+.chat__context-attachments-prefix {
+  flex: 0 0 auto;
+  color: var(--studio-fg-muted, #64748b);
+  font-size: 11.5px;
+  line-height: calc(var(--studio-spacing-3, 12px) * 2);
+}
+.chat__context-attachments-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: calc(var(--studio-spacing-2, 8px) / 2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chat__context-attachment {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: calc(var(--studio-spacing-3, 12px) * 2);
+  max-width: min(28ch, 100%);
+  padding-left: var(--studio-spacing-2, 8px);
+  border: 1px solid var(--studio-border, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  background: var(--studio-bg-hover, rgba(255, 255, 255, 0.04));
+  color: var(--studio-fg-dim, #cbd5e1);
+  font-size: 11.5px;
+}
+.chat__context-attachment-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat__context-attachment-remove,
+.chat__context-attachment-add {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--studio-spacing-3, 12px) * 2);
+  height: calc(var(--studio-spacing-3, 12px) * 2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--studio-fg-muted, #64748b);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.chat__context-attachment-remove {
+  border-radius: 0 999px 999px 0;
+  font-size: 14px;
+}
+.chat__context-attachment-add {
+  border: 1px dashed var(--studio-border-strong, rgba(255, 255, 255, 0.16));
+  border-radius: 999px;
+  font-size: 16px;
+}
+.chat__context-attachment-remove:hover:not(:disabled),
+.chat__context-attachment-add:hover:not(:disabled) {
+  background: var(--studio-bg-elevated, rgba(99, 102, 241, 0.18));
+  color: var(--studio-fg, #e2e8f0);
+}
+.chat__context-attachment-remove:focus-visible,
+.chat__context-attachment-add:focus-visible,
+.chat__context-add-btn:focus-visible {
+  outline: 2px solid var(--studio-accent, #d97757);
+  outline-offset: 1px;
+}
+.chat__context-attachment-remove:disabled,
+.chat__context-attachment-add:disabled,
+.chat__context-add-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Toolbar row above the composer textarea. */
 .chat__toolbar {
   display: flex;
@@ -820,19 +906,13 @@
   gap: 8px;
 }
 
-/* Composer footer: host-projected controls (model selector, permission
-   select, context ring). Collapses entirely when nothing is projected so
-   existing hosts see no layout change. */
+/* Composer footer: left-side attachment/context actions, host-projected and
+   built-in controls, followed by the right-aligned Send action. */
 .chat__composer-foot {
   display: flex;
   align-items: center;
   gap: 8px;
   padding-top: 6px;
-}
-.chat__composer-foot:not(:has(.chat__composer-foot-start > *)):not(
-    :has(.chat__composer-foot-end > *)
-  ) {
-  display: none;
 }
 .chat__composer-foot-start,
 .chat__composer-foot-end {
@@ -906,12 +986,11 @@
   cursor: not-allowed;
 }
 
-.chat__composer-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+.chat__context-add-btn,
 .chat__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--studio-bg-hover, rgba(255, 255, 255, 0.06));
   border: 1px solid var(--studio-border, rgba(255, 255, 255, 0.12));
   color: var(--studio-fg-dim, #cbd5e1);
@@ -922,6 +1001,14 @@
   font-size: 16px;
   line-height: 1;
 }
+.chat__context-add-btn {
+  gap: calc(var(--studio-spacing-2, 8px) / 2);
+  width: auto;
+  padding: 0 var(--studio-spacing-2, 8px);
+  font-family: inherit;
+  font-size: 12px;
+}
+.chat__context-add-btn:hover:not(:disabled),
 .chat__icon-btn:hover:not(:disabled) {
   background: var(--studio-bg-elevated, rgba(99, 102, 241, 0.18));
   color: var(--studio-fg, #ddd6fe);

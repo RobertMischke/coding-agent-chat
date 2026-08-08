@@ -6,8 +6,9 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
-  ChatContextUsage,
   ChatComposerContext,
+  ChatContextAttachment,
+  ChatContextUsage,
   ChatMessage,
   ChatModelControl,
   ChatModelSelection,
@@ -393,6 +394,86 @@ describe('ChatComponent', () => {
     expect(query(fixture, '[data-testid="chat-drafts"]')).toBeNull();
   });
 
+  it('renders host-owned context attachments as removable chips above the textarea', async () => {
+    const contextAttachments: readonly ChatContextAttachment[] = [
+      { id: 'api', label: 'api.md', hint: 'REST contract' },
+      { id: 'schema', label: 'schema.sql' },
+    ];
+    const fixture = await createChat({ contextAttachments });
+
+    const row = query(fixture, '[data-testid="chat-context-attachments"]')!;
+    const composerRow = query(fixture, '.chat__composer-row')!;
+    expect(row.querySelector('.chat__context-attachments-prefix')?.textContent?.trim()).toBe(
+      'Context',
+    );
+    expect(row.querySelector('[data-testid="chat-context-attachment-api"]')?.textContent).toContain(
+      'api.md',
+    );
+    expect(
+      row.querySelector('[data-testid="chat-context-attachment-schema"]')?.textContent,
+    ).toContain('schema.sql');
+    expect(
+      row.compareDocumentPosition(composerRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('emits the context attachment id from a chip remove request', async () => {
+    const fixture = await createChat({
+      contextAttachments: [{ id: 'api', label: 'api.md' } satisfies ChatContextAttachment],
+    });
+    const removed: string[] = [];
+    fixture.componentInstance.contextAttachmentRemoved.subscribe((id) => removed.push(id));
+
+    query<HTMLButtonElement>(
+      fixture,
+      '[data-testid="chat-context-attachment-remove-api"]',
+    )!.click();
+    await fixture.whenStable();
+
+    expect(removed).toEqual(['api']);
+  });
+
+  it('emits contextAttachmentAddRequested from the chip-row add affordance', async () => {
+    const fixture = await createChat({
+      contextAttachments: [{ id: 'api', label: 'api.md' } satisfies ChatContextAttachment],
+    });
+    let addRequests = 0;
+    fixture.componentInstance.contextAttachmentAddRequested.subscribe(() => (addRequests += 1));
+
+    query<HTMLButtonElement>(fixture, '[data-testid="chat-context-attachment-add"]')!.click();
+    await fixture.whenStable();
+
+    expect(addRequests).toBe(1);
+  });
+
+  it('shows the context add affordance in the footer when there are no context chips', async () => {
+    const fixture = await createChat();
+    let addRequests = 0;
+    fixture.componentInstance.contextAttachmentAddRequested.subscribe(() => (addRequests += 1));
+
+    const foot = query(fixture, '[data-testid="chat-composer-foot"]')!;
+    const add = query<HTMLButtonElement>(fixture, '[data-testid="chat-context-attachment-add"]')!;
+    expect(foot.contains(add)).toBe(true);
+
+    add.click();
+    await fixture.whenStable();
+    expect(addRequests).toBe(1);
+  });
+
+  it('keeps the composer footer visible and places Send last in its right-side actions', async () => {
+    const fixture = await createChat();
+
+    const foot = query<HTMLElement>(fixture, '[data-testid="chat-composer-foot"]')!;
+    const footEnd = foot.querySelector<HTMLElement>('.chat__composer-foot-end')!;
+    const send = query<HTMLButtonElement>(fixture, '[data-testid="chat-send"]')!;
+    const attach = query<HTMLButtonElement>(fixture, '[data-testid="chat-attach"]')!;
+    expect(getComputedStyle(foot).display).toBe('flex');
+    expect(footEnd.lastElementChild).toBe(send);
+    expect(foot.querySelector('.chat__composer-foot-start')?.contains(attach)).toBe(true);
+    expect(query(fixture, '.chat__composer-row [data-testid="chat-send"]')).toBeNull();
+    expect(query(fixture, '.chat__composer-actions')).toBeNull();
+  });
+
   it('renders toolbar items plus context and routing labels, and emits toolbarAction on click', async () => {
     const start: ChatToolbarItem[] = [{ id: 'ref', glyph: '#', label: 'Reference a task' }];
     const end: ChatToolbarItem[] = [
@@ -512,7 +593,7 @@ describe('ChatComponent', () => {
     expect(query(fixture, 'cac-model-selector')).toBeNull();
     expect(query(fixture, 'cac-context-ring')).toBeNull();
     expect(query(fixture, 'cac-permission-select')).toBeNull();
-    // With no controls and no projected footer content, the footer row collapses.
+    // Controls can all be hidden independently; the action footer remains.
     expect(query(fixture, '[data-testid="chat-composer-foot"] cac-model-selector')).toBeNull();
   });
 

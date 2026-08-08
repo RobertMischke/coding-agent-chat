@@ -124,6 +124,19 @@ export interface ChatDraftAttachment {
   previewUrl: string;
 }
 
+/**
+ * Host-owned context item shown above the chat composer.
+ *
+ * The library treats the id, label, and optional hint as presentation data;
+ * resolving files, references, or any other backing content remains the
+ * host's responsibility.
+ */
+export interface ChatContextAttachment {
+  id: string;
+  label: string;
+  hint?: string;
+}
+
 export interface ChatSubmitEvent {
   text: string;
   attachments: ChatDraftAttachment[];

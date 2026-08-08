@@ -9,11 +9,21 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-08
+
 ### Added
 
+- `<cac-chat>` now accepts host-owned `contextAttachments` and emits add/remove
+  requests for its context chip row without interpreting paths or content.
+- The public website demonstrates functional context attachment add/remove state.
 - Capture-backed, opt-in `MachineBound` rendering fixtures now cover Claude,
   Codex, and Gemini across source, git diff, HTML files, Markdown, image
   references, JSON, logs, long lines, mixed turns, tables, Mermaid, and ANSI.
+
+### Changed
+
+- Composer Send and image attachment actions now live in the always-visible
+  footer, with Send as the final right-aligned action.
 
 ### Fixed
 
@@ -109,7 +119,8 @@ Internal bootstrap — never published to npm; 0.2.0 was the first release.
   `<cac-markdown>`, `<cac-project-chat-list>`, the `core` wire contract, the
   studio theme, and the `provideCodingAgentChat()` host-wiring helper.
 
-[unreleased]: https://github.com/agent-orc/chat/compare/v0.3.2...HEAD
+[unreleased]: https://github.com/agent-orc/chat/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/agent-orc/chat/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/agent-orc/chat/releases/tag/v0.3.2
 [0.3.1]: https://github.com/agent-orc/chat/releases/tag/v0.3.1
 [0.3.0]: https://github.com/agent-orc/chat/releases/tag/v0.3.0

@@ -68,6 +68,36 @@ The `core` entry point keeps the `ConversationEvent` wire contract importable wi
 zero Angular weight, so backends, SSR and tests can consume the types without the
 renderer.
 
+## Composer context attachments
+
+`<cac-chat>` can present host-owned context as removable chips above the textarea.
+Each `ChatContextAttachment` contains only an `id`, display `label`, and optional
+`hint`; the library does not resolve paths or inspect content. The host handles add
+and remove requests and updates its signal:
+
+```ts
+import type { ChatContextAttachment } from 'coding-agent-chat/core';
+
+readonly contextAttachments = signal<readonly ChatContextAttachment[]>([
+  { id: 'api', label: 'api.md', hint: 'REST contract' },
+]);
+
+removeContextAttachment(id: string): void {
+  this.contextAttachments.update((items) => items.filter((item) => item.id !== id));
+}
+```
+
+```html
+<cac-chat
+  [contextAttachments]="contextAttachments()"
+  (contextAttachmentRemoved)="removeContextAttachment($event)"
+  (contextAttachmentAddRequested)="openContextPicker()"
+/>
+```
+
+The add output deliberately does not open a library picker, and context attachments
+are not copied into `ChatSubmitEvent`; the host already owns their state.
+
 ## Durable attachment contract
 
 Pasted/dropped images leave the composer as `ChatDraftAttachment` objects. Before

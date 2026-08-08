@@ -12,12 +12,12 @@ import {
   viewChild,
 } from '@angular/core';
 import type {
+  ChatContextAttachment,
   ChatContextUsage,
   ChatModelControl,
   ChatModelSelection,
   ChatPermissionControl,
   ChatSubmitEvent,
-  ChatToolbarItem,
   ConversationEvent,
 } from 'coding-agent-chat/core';
 import { ChatComponent } from 'coding-agent-chat/composer';
@@ -291,35 +291,35 @@ export class App {
     ],
   });
 
-  /** The four attached documents as hoverable toolbar pills — each tooltip
-   * says what the doc is and what it costs in tokens. Clicks land in
-   * (toolbarAction); this demo leaves them inert. */
-  protected readonly demoDocs: readonly ChatToolbarItem[] = [
+  /** Documents the demo host can attach to the composer's context. */
+  private readonly demoContextAttachmentCatalog: readonly ChatContextAttachment[] = [
     {
       id: 'doc-api',
-      glyph: 'api.md',
-      variant: 'pill',
-      label: 'api.md: REST contract · 6.2k tokens',
+      label: 'api.md',
+      hint: 'REST contract · 6.2k tokens',
     },
     {
       id: 'doc-schema',
-      glyph: 'schema.sql',
-      variant: 'pill',
-      label: 'schema.sql: current tables and indexes · 8.1k tokens',
+      label: 'schema.sql',
+      hint: 'Current tables and indexes · 8.1k tokens',
     },
     {
       id: 'doc-roadmap',
-      glyph: 'roadmap.md',
-      variant: 'pill',
-      label: 'roadmap.md: Q3 scope · 3.4k tokens',
+      label: 'roadmap.md',
+      hint: 'Q3 scope · 3.4k tokens',
     },
     {
       id: 'doc-adr',
-      glyph: 'adr-012.md',
-      variant: 'pill',
-      label: 'adr-012.md: cache invalidation decision · 4.9k tokens',
+      label: 'adr-012.md',
+      hint: 'Cache invalidation decision · 4.9k tokens',
     },
+    { id: 'doc-guide', label: 'agent-guide.md', hint: 'Agent workflow guide · 2.1k tokens' },
+    { id: 'doc-tests', label: 'test-plan.md', hint: 'Release test plan · 1.8k tokens' },
   ];
+  /** Host-owned state: the library only emits add/remove requests. */
+  protected readonly demoContextAttachments = signal<readonly ChatContextAttachment[]>(
+    this.demoContextAttachmentCatalog.slice(0, 4),
+  );
 
   /** Context snapshot: what fills the window, incl. four attached documents. */
   protected readonly demoContext: ChatContextUsage = {
@@ -346,6 +346,20 @@ export class App {
 
   protected onDemoPermissionChange(id: string): void {
     this.demoPermission.update((control) => ({ ...control, value: id }));
+  }
+
+  protected onDemoContextAttachmentRemoved(id: string): void {
+    this.demoContextAttachments.update((attachments) =>
+      attachments.filter((attachment) => attachment.id !== id),
+    );
+  }
+
+  protected onDemoContextAttachmentAddRequested(): void {
+    this.demoContextAttachments.update((attachments) => {
+      const ids = new Set(attachments.map((attachment) => attachment.id));
+      const next = this.demoContextAttachmentCatalog.find((attachment) => !ids.has(attachment.id));
+      return next ? [...attachments, next] : attachments;
+    });
   }
 
   // --- Rendering showcase: static transcript + image lightbox ----------------
