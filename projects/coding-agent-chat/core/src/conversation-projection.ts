@@ -320,6 +320,7 @@ function projectGroup(
             severity: wait.state === 'killed' ? 'error' : wait.state === 'quiet' ? 'warn' : 'info',
             state: wait.state,
             quietSeconds: wait.quietSeconds,
+            budgetSeconds: wait.budgetSeconds,
             reason: wait.reason
           }
         ];
@@ -1086,23 +1087,39 @@ function computeDurationMs(lines: readonly CliOutputLine[]): number {
 interface WatchdogParse {
   state: 'quiet' | 'resumed' | 'killed';
   quietSeconds: number;
+  budgetSeconds?: number;
   reason?: string;
 }
 
 function parseWatchdogText(text: string): WatchdogParse | null {
   if (!/\[watchdog[^\]]*\]/i.test(text)) return null;
+  const isTaggedTimeout = /\[watchdog-timeout\]/i.test(text);
+  const explicitBudget = /(?:budget|timeout|limit)(?:\s+(?:is|of))?\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text)
+    ?? /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)\s*(?:budget|timeout|limit)/i.exec(text);
+  const budgetSeconds = explicitBudget ? Number(explicitBudget[1]) : undefined;
   if (/killed after|auto-cancelled after/i.test(text)) {
     const sec = /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text);
-    return { state: 'killed', quietSeconds: sec ? Number(sec[1]) : 0, reason: text.trim() };
+    const quietSeconds = sec ? Number(sec[1]) : 0;
+    return {
+      state: 'killed',
+      quietSeconds,
+      budgetSeconds: budgetSeconds ?? (quietSeconds > 0 ? quietSeconds : undefined),
+      reason: text.trim()
+    };
   }
   if (/resumed|streaming output again/i.test(text)) {
-    return { state: 'resumed', quietSeconds: 0, reason: text.trim() };
+    return { state: 'resumed', quietSeconds: 0, budgetSeconds, reason: text.trim() };
   }
   if (/quiet|silent|no output for/i.test(text)) {
     const sec = /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text);
-    return { state: 'quiet', quietSeconds: sec ? Number(sec[1]) : 0, reason: text.trim() };
+    return {
+      state: 'quiet',
+      quietSeconds: sec ? Number(sec[1]) : 0,
+      budgetSeconds: budgetSeconds ?? (isTaggedTimeout && sec ? Number(sec[1]) : undefined),
+      reason: text.trim()
+    };
   }
-  return { state: 'quiet', quietSeconds: 0, reason: text.trim() };
+  return { state: 'quiet', quietSeconds: 0, budgetSeconds, reason: text.trim() };
 }
 
 function extractNeedsInputQuestion(text: string): string | null {

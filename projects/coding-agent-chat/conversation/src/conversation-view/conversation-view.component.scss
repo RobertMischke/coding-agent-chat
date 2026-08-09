@@ -447,11 +447,12 @@
  * Decisions, supervisor waits, questions and system notices are accents in
  * the flow, not boxes: a 2px color rail plus a soft tint, inset from the
  * edges, no full border. */
-.conv__row--decision, .conv__row--supervisor, .conv__row--needs-input, .conv__row--system, .conv__row--system-status, .conv__row--metric, .conv__row--trace-link {
+.conv__row--decision, .conv__row--supervisor-group, .conv__row--supervisor-terminal, .conv__row--needs-input, .conv__row--system, .conv__row--system-status, .conv__row--metric, .conv__row--trace-link {
   align-items: center;
 }
 .conv__row--decision,
-.conv__row--supervisor,
+.conv__row--supervisor-group,
+.conv__row--supervisor-terminal,
 .conv__row--needs-input,
 .conv__row--system,
 .conv__row--system-status,
@@ -462,7 +463,7 @@
   margin: 3px 10px;
   padding: 4px 10px;
 }
-.conv__row--supervisor > *, .conv__row--needs-input > *, .conv__row--system > * { display: inline-flex; gap: 4px; align-items: center; }
+.conv__row--needs-input > *, .conv__row--system > * { display: inline-flex; gap: 4px; align-items: center; }
 
 /* Orchestrator decisions are the highest-signal rows in the feed — auto-review,
  * reissue, accept, escalate, worktree-containment. They keep the strongest
@@ -545,20 +546,162 @@
 .conv__row--decision[data-decision-type='escalate'] { --decision-accent: var(--studio-accent-6, #ef4444); }
 .conv__row--decision[data-decision-type='accept'] { --decision-accent: var(--studio-accent-success, #22c55e); }
 
-.conv__row--supervisor {
-  gap: 6px;
+.conv__row--supervisor-group {
+  width: auto;
+  padding: 0;
+}
+.supervisor-group {
+  width: 100%;
   border-left: 2px solid color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 65%, transparent);
   border-radius: 0 6px 6px 0;
   background: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 7%, transparent);
   font-size: 12px;
 }
-.conv__row--supervisor[data-state='killed'] {
-  border-left-color: color-mix(in srgb, var(--studio-accent-6, #ef4444) 70%, transparent);
-  background: color-mix(in srgb, var(--studio-accent-6, #ef4444) 8%, transparent);
+.supervisor-group__summary {
+  display: grid;
+  grid-template-columns: 12px 16px max-content max-content minmax(96px, 1fr) max-content;
+  align-items: center;
+  gap: var(--studio-spacing-2, 8px);
+  width: 100%;
+  min-height: 32px;
+  padding: 4px var(--studio-spacing-2, 8px);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
-.supervisor__actor {
-  font-weight: 600;
-  color: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 70%, currentColor);
+.supervisor-group__summary:hover { background: color-mix(in srgb, currentColor 4%, transparent); }
+.supervisor-group__summary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 70%, currentColor);
+  outline-offset: 2px;
+}
+.supervisor-group__chevron {
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  font-size: 10px;
+  line-height: 1;
+  transition: transform 0.12s ease;
+}
+.conv__row--supervisor-group[data-expanded='true'] .supervisor-group__chevron { transform: rotate(90deg); }
+.supervisor-group__shield, .supervisor-terminal__shield {
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 74%, currentColor);
+}
+.supervisor-group__count { font-weight: 650; white-space: nowrap; }
+.supervisor-group__states {
+  color: color-mix(in srgb, currentColor 66%, transparent);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.supervisor-group__states strong {
+  color: color-mix(in srgb, var(--studio-accent-success, #22c55e) 80%, currentColor);
+  font-weight: 650;
+}
+.supervisor-group__budget {
+  display: grid;
+  grid-template-columns: minmax(48px, 120px) max-content;
+  align-items: center;
+  justify-content: end;
+  gap: 6px;
+  min-width: 0;
+}
+.supervisor-group__budget-track {
+  height: var(--studio-row-gap, 3px);
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, currentColor 13%, transparent);
+}
+.supervisor-group__budget-fill {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 82%, currentColor);
+}
+.supervisor-group__budget-value,
+.supervisor-group__time,
+.supervisor-group__event time {
+  color: color-mix(in srgb, currentColor 64%, transparent);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.supervisor-group__budget-value { font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace); }
+.supervisor-group__events {
+  margin: 0 0 0 36px;
+  padding: 2px var(--studio-spacing-2, 8px) 6px var(--studio-spacing-3, 12px);
+  border-top: 1px solid var(--studio-border, color-mix(in srgb, currentColor 12%, transparent));
+  list-style: none;
+}
+.supervisor-group__event {
+  display: grid;
+  grid-template-columns: 7px 48px 42px minmax(0, 1fr) max-content;
+  align-items: baseline;
+  gap: var(--studio-spacing-2, 8px);
+  min-height: 24px;
+  padding: 3px 0;
+}
+.supervisor-group__event + .supervisor-group__event { border-top: 1px solid color-mix(in srgb, currentColor 7%, transparent); }
+.supervisor-group__event-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 72%, currentColor);
+}
+.supervisor-group__event[data-state='resumed'] .supervisor-group__event-dot { background: var(--studio-accent-success, #22c55e); }
+.supervisor-group__event-state { font-size: 11px; font-weight: 650; }
+.supervisor-group__event-quiet {
+  color: color-mix(in srgb, currentColor 64%, transparent);
+  font: 10.5px var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+}
+.supervisor-group__event-reason {
+  overflow: hidden;
+  color: color-mix(in srgb, currentColor 66%, transparent);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Terminal watchdog outcomes never join a wait group. They retain a stronger
+ * red treatment and an alert role so timeout/killed is never lost in density. */
+.conv__row--supervisor-terminal {
+  display: flex;
+  gap: var(--studio-spacing-2, 8px);
+  border-left-color: color-mix(in srgb, var(--studio-accent-6, #ef4444) 70%, transparent);
+  border-left-style: solid;
+  border-left-width: 2px;
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--studio-accent-6, #ef4444) 8%, transparent);
+  font-size: 12px;
+}
+.conv__row--supervisor-terminal .supervisor-terminal__shield {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--studio-accent-6, #ef4444) 80%, currentColor);
+}
+.supervisor-terminal__actor, .supervisor-terminal__state {
+  color: color-mix(in srgb, var(--studio-accent-6, #ef4444) 76%, currentColor);
+  font-weight: 700;
+}
+.supervisor-terminal__detail {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.supervisor-terminal__reason {
+  overflow: hidden;
+  color: color-mix(in srgb, currentColor 82%, transparent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.supervisor-terminal__time {
+  margin-left: auto;
+  color: color-mix(in srgb, currentColor 68%, transparent);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .conv__row--needs-input {
@@ -572,7 +715,7 @@
   font-weight: 600;
   color: color-mix(in srgb, var(--severity-info, #06b6d4) 70%, currentColor);
 }
-.needs__loop, .supervisor__detail {
+.needs__loop {
   padding: 1px 6px;
   border-radius: 4px;
   background: color-mix(in srgb, currentColor 10%, transparent);

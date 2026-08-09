@@ -241,16 +241,87 @@
           </li>
         }
 
+        @case ('supervisorWaitGroup') {
+          <li class="conv__row conv__row--supervisor-group"
+              data-testid="conversation-supervisor-wait-group"
+              [attr.data-item-count]="row.items.length"
+              [attr.data-expanded]="isWaitGroupExpanded(row.id) ? 'true' : 'false'">
+            <div class="supervisor-group">
+              <button type="button"
+                      class="supervisor-group__summary"
+                      data-testid="conversation-supervisor-wait-toggle"
+                      [attr.aria-expanded]="isWaitGroupExpanded(row.id)"
+                      [attr.aria-controls]="waitGroupPanelId(row)"
+                      (click)="toggleWaitGroup(row.id)">
+                <span class="supervisor-group__chevron" aria-hidden="true">▶</span>
+                <svg class="supervisor-group__shield" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M8 1.5 13 3v3.7c0 3.3-1.9 6.1-5 7.8-3.1-1.7-5-4.5-5-7.8V3l5-1.5Z"
+                        stroke="currentColor" stroke-width="1.4" />
+                </svg>
+                <span class="supervisor-group__count">
+                  {{ row.items.length }} {{ row.items.length === 1 ? 'wait' : 'waits' }}
+                </span>
+                <span class="supervisor-group__states">
+                  {{ row.quietCount }} quiet · <strong>{{ row.resumedCount }} resumed</strong>
+                </span>
+                <span class="supervisor-group__budget"
+                      [attr.aria-label]="waitBudgetLabel(row)">
+                  <span class="supervisor-group__budget-track" aria-hidden="true">
+                    <span class="supervisor-group__budget-fill"
+                          [style.width.%]="waitBudgetPercent(row)"></span>
+                  </span>
+                  <span class="supervisor-group__budget-value">
+                    @if (row.budgetSeconds) {
+                      max {{ row.longestQuietSeconds }} / {{ row.budgetSeconds }}s
+                    } @else {
+                      max {{ row.longestQuietSeconds }}s
+                    }
+                  </span>
+                </span>
+                <time class="supervisor-group__time"
+                      [cacTooltip]="waitGroupTimeTooltip(row)">{{ formatWaitGroupTime(row) }}</time>
+              </button>
+              @if (isWaitGroupExpanded(row.id)) {
+                <ol class="supervisor-group__events"
+                    data-testid="conversation-supervisor-wait-events"
+                    [id]="waitGroupPanelId(row)">
+                  @for (event of row.items; track event.id) {
+                    <li class="supervisor-group__event"
+                        data-testid="conversation-supervisor-wait-event"
+                        [attr.data-state]="event.state">
+                      <span class="supervisor-group__event-dot" aria-hidden="true"></span>
+                      <span class="supervisor-group__event-state">{{ event.state }}</span>
+                      <span class="supervisor-group__event-quiet">
+                        {{ event.quietSeconds > 0 ? event.quietSeconds + 's' : '—' }}
+                      </span>
+                      <span class="supervisor-group__event-reason">{{ formatSupervisorReason(event.reason) }}</span>
+                      <time [cacTooltip]="formatDateTime(event.timestamp)">{{ formatTime(event.timestamp) }}</time>
+                    </li>
+                  }
+                </ol>
+              }
+            </div>
+          </li>
+        }
+
         @case ('supervisorWait') {
-          <li class="conv__row conv__row--supervisor"
+          <li class="conv__row conv__row--supervisor-terminal"
+              role="alert"
               data-testid="conversation-supervisor-wait"
-              [attr.data-state]="row.event.state">
-            <span class="supervisor__actor"><span aria-hidden="true">🛡</span> Supervisor</span>
-            <span class="supervisor__state">{{ row.event.state }}</span>
-            <span class="supervisor__detail">quiet {{ row.event.quietSeconds }}s</span>
+              [attr.data-state]="supervisorTerminalState(row.event) ?? row.event.state">
+            <svg class="supervisor-terminal__shield" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1.5 13 3v3.7c0 3.3-1.9 6.1-5 7.8-3.1-1.7-5-4.5-5-7.8V3l5-1.5Z"
+                    stroke="currentColor" stroke-width="1.4" />
+              <path d="M8 5v3.5M8 11v.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+            <span class="supervisor-terminal__actor">Supervisor</span>
+            <strong class="supervisor-terminal__state">{{ supervisorTerminalState(row.event) ?? row.event.state }}</strong>
+            <span class="supervisor-terminal__detail">after {{ row.event.quietSeconds }}s quiet</span>
             @if (row.event.reason) {
-              <span class="supervisor__reason">— {{ row.event.reason }}</span>
+              <span class="supervisor-terminal__reason">{{ formatSupervisorReason(row.event.reason) }}</span>
             }
+            <time class="supervisor-terminal__time"
+                  [cacTooltip]="formatDateTime(row.event.timestamp)">{{ formatTime(row.event.timestamp) }}</time>
           </li>
         }
 

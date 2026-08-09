@@ -9,6 +9,13 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ## [Unreleased]
 
+### Added
+
+- Consecutive non-terminal `supervisor.wait` events now render as one compact,
+  default-collapsed group with quiet/resumed counts, longest-silence budget
+  context, a time range, and full per-event disclosure. Watchdog kills and
+  timeouts remain separate high-signal alert rows.
+
 ### Fixed
 
 - Focused conversation viewports now contain vertical navigation keys so they
