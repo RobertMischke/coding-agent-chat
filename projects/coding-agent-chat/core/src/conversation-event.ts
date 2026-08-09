@@ -235,6 +235,8 @@ export interface SupervisorWaitEvent extends ConversationEventBase {
   /** `quiet` for ongoing silence, `resumed` after the agent talked again, `killed` on watchdog kill. */
   state: 'quiet' | 'resumed' | 'killed';
   quietSeconds: number;
+  /** Configured silence budget when the source names it; absent for legacy watchdog lines. */
+  budgetSeconds?: number;
   /** Last raw output line range before the wait window started. */
   lastOutputRange?: RawLineRange;
   /** Reason the watchdog gave when emitting the line. */

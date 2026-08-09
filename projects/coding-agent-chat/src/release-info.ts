@@ -15,7 +15,7 @@ export interface CodingAgentChatReleaseInfo {
  */
 export const CODING_AGENT_CHAT_RELEASE_INFO: CodingAgentChatReleaseInfo = {
   name: 'coding-agent-chat',
-  version: '0.2.2',
+  version: '0.4.0',
   tag: null,
   commit: null,
   buildTimestamp: null,
