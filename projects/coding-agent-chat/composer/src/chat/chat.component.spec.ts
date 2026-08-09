@@ -308,6 +308,31 @@ describe('ChatComponent', () => {
     expect(sendBtn.disabled).toBe(true);
   });
 
+  it('keeps composer arrow keys native and contains them inside the chat', async () => {
+    const fixture = await createChat();
+    const textarea = await typeDraft(fixture, 'first line\nsecond line');
+    const embeddingKeydown = vi.fn();
+    (fixture.nativeElement as HTMLElement).addEventListener('keydown', embeddingKeydown);
+    textarea.setSelectionRange(2, 2);
+
+    for (const key of ['ArrowUp', 'ArrowDown']) {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      textarea.dispatchEvent(event);
+
+      // jsdom does not perform the browser's default caret move. Leaving the
+      // event uncancelled (and the range unmodified by the component) is the
+      // testable contract that lets the browser or host history handler do it.
+      expect(event.defaultPrevented).toBe(false);
+      expect(textarea.selectionStart).toBe(2);
+      expect(textarea.selectionEnd).toBe(2);
+    }
+    expect(embeddingKeydown).not.toHaveBeenCalled();
+  });
+
   it('sends on Enter but not on Shift+Enter', async () => {
     const fixture = await createChat();
     const emissions: ChatSubmitEvent[] = [];

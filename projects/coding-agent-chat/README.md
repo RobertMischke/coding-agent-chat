@@ -168,6 +168,23 @@ The `history` entry point adds two more optional seams, provided directly:
 `CHAT_HISTORY_CONFIRM` (guard prompt before loading an entire deep history —
 defaults to auto-confirm).
 
+## Keyboard containment for embedded hosts
+
+`<cac-conversation-view>` and the conversation viewport inside `<cac-chat>`
+own vertical keyboard navigation while they are focused. `ArrowUp` and
+`ArrowDown` scroll by one fixed step; `PageUp` and `PageDown` scroll by one
+viewport; `Home` and `End` move to the conversation boundaries. These handled
+events are default-prevented and propagation stops at the conversation
+viewport, including when it is already at a scroll boundary.
+
+The `<cac-chat>` composer keeps native `ArrowUp`/`ArrowDown` editing semantics
+(caret movement and any input-local history behavior) but still stops
+those events from leaving the chat. Keyboard events whose target is outside a
+chat surface are untouched. Embedding applications such as Agent Studio can
+therefore keep board, tab, and list keyboard navigation on their ancestors
+without a chat-specific workaround. This contract does not install wheel or
+touch handlers and does not change pointer scrolling.
+
 ## History windowing
 
 `<cac-project-chat-list>` owns long-history policy in the library. When stats

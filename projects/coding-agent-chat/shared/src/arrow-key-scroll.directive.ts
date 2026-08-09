@@ -39,18 +39,8 @@ export class ArrowKeyScrollDirective implements AfterViewInit, OnDestroy {
     this.registry.unregister(this.surfaceId);
   }
 
-  @HostListener('focusin')
-  onFocusIn(): void {
-    this.registry.markActive(this.surfaceId);
-  }
-
-  @HostListener('pointerdown')
-  onPointerDown(): void {
-    this.registry.markActive(this.surfaceId);
-  }
-
-  @HostListener('document:keydown', ['$event'])
-  onDocumentKeydown(event: KeyboardEvent): void {
+  @HostListener('keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
     if (!this.container) return;
     this.registry.handleKeydown(event, this.surfaceId);
   }

@@ -19,6 +19,9 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 - Codex JSONL agent messages now project renderer-safe typed content payloads,
   and raw source, diff, HTML, JSON, and log bodies bypass Markdown parsing.
+- Focused conversation viewports now contain vertical navigation keys so they
+  scroll only the chat, while composer arrows retain native editing behavior;
+  embedding hosts no longer receive those handled key events.
 
 ## [0.3.2] - 2026-07-24
 
