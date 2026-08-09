@@ -141,12 +141,14 @@ const watchdogWaitLines = script([
   ['[taskboard] Started claude CLI (PID 4713), model=claude-sonnet-5, thinkingLevel=high', 'system'],
   ['* Read logs/2026-06-30.log'],
   ['  | 48.000 Zeilen'],
-  ['[watchdog] Agent has been quiet for 30s', 'orchestrator'],
+  ['[watchdog] Agent has been quiet for 30s (budget 600s)', 'orchestrator'],
   ['[watchdog] Still silent at 60s', 'orchestrator'],
+  ['[watchdog] Still silent at 90s', 'orchestrator'],
   ['[watchdog] Still silent at 120s', 'orchestrator'],
+  ['[watchdog] Still silent at 150s', 'orchestrator'],
   ['[watchdog] Agent resumed streaming', 'orchestrator'],
   ['Die lange Stille war das Einlesen des 48k-Zeilen-Logs — hier die drei dominanten Fehlerklassen.'],
-]);
+], 30);
 
 const watchdogKillLines = script([
   ['Starte die Migration und warte auf das Ergebnis.', 'user'],
@@ -288,7 +290,7 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
     kind: 'replay',
     title: 'Watchdog: Wait-Loop',
     description:
-      'Agent wird still, der Watchdog meldet sich mehrfach, dann Wiederaufnahme — der kanonische "wait loop" aus den Edge-Cases.',
+      'Fünf Quiet-Meldungen plus Wiederaufnahme werden als eine standardmäßig geschlossene Wait-Gruppe verdichtet; Aufklappen zeigt alle sechs Ereignisse.',
     lines: watchdogWaitLines,
   },
   {

@@ -17,6 +17,7 @@ import type {
   PlanUpdateEvent,
   RawLineRange,
   RunMarkerEvent,
+  SupervisorWaitEvent,
   ToolBurstEvent,
 } from '../../../core/src/public-api';
 import { codexTextModeStderrTranscriptFragment, projectConversation } from '../../../core/src/public-api';
@@ -66,6 +67,23 @@ function burst(overrides: Partial<Omit<ToolBurstEvent, 'kind'>> = {}): ToolBurst
 function planUpdate(items: PlanItem[]): PlanUpdateEvent {
   seq += 1;
   return { id: `plan-${seq}`, kind: 'plan.update', timestamp: nextTs(), items, rawRange: RANGE };
+}
+
+function supervisorWait(
+  state: SupervisorWaitEvent['state'],
+  quietSeconds: number,
+  overrides: Partial<Omit<SupervisorWaitEvent, 'kind' | 'state' | 'quietSeconds'>> = {},
+): SupervisorWaitEvent {
+  seq += 1;
+  return {
+    id: `wait-${seq}`,
+    kind: 'supervisor.wait',
+    timestamp: nextTs(),
+    state,
+    quietSeconds,
+    rawRange: RANGE,
+    ...overrides,
+  };
 }
 
 async function render(
@@ -401,6 +419,123 @@ describe('ConversationViewComponent', () => {
       )
     )?.click();
     expect(emitted).toEqual([{ source: 'cli-output.log', start: 40, end: 44 }]);
+  });
+
+  it('groups only contiguous non-terminal supervisor waits', async () => {
+    const fixture = await render([
+      supervisorWait('quiet', 30),
+      supervisorWait('quiet', 60),
+      msg('message.taskAgent', 'Output resumed between watchdog sequences.'),
+      supervisorWait('resumed', 0),
+      supervisorWait('quiet', 45),
+    ]);
+    const el = fixture.nativeElement as HTMLElement;
+    const groups = el.querySelectorAll<HTMLElement>(
+      '[data-testid="conversation-supervisor-wait-group"]',
+    );
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].getAttribute('data-item-count')).toBe('2');
+    expect(groups[0].textContent).toContain('2 quiet · 0 resumed');
+    expect(groups[1].getAttribute('data-item-count')).toBe('2');
+    expect(groups[1].textContent).toContain('1 quiet · 1 resumed');
+    expect(fixture.componentInstance.rows().map((row) => row.kind)).toEqual([
+      'supervisorWaitGroup',
+      'messageGroup',
+      'supervisorWaitGroup',
+    ]);
+  });
+
+  it('keeps killed watchdog events out of adjacent wait groups', async () => {
+    const fixture = await render([
+      supervisorWait('quiet', 120),
+      supervisorWait('killed', 600, {
+        severity: 'error',
+        budgetSeconds: 600,
+        reason: '[watchdog] Killed after 600s of silence',
+      }),
+      supervisorWait('quiet', 30),
+    ]);
+    const el = fixture.nativeElement as HTMLElement;
+    const groups = el.querySelectorAll<HTMLElement>(
+      '[data-testid="conversation-supervisor-wait-group"]',
+    );
+    const killed = el.querySelector<HTMLElement>('[data-testid="conversation-supervisor-wait"]');
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].getAttribute('data-item-count')).toBe('1');
+    expect(groups[0].textContent).toContain('max 120 / 600s');
+    expect(groups[1].getAttribute('data-item-count')).toBe('1');
+    expect(killed?.getAttribute('data-state')).toBe('killed');
+    expect(killed?.getAttribute('role')).toBe('alert');
+    expect(killed?.textContent).toContain('Killed after 600s of silence');
+    expect(fixture.componentInstance.rows().map((row) => row.kind)).toEqual([
+      'supervisorWaitGroup',
+      'supervisorWait',
+      'supervisorWaitGroup',
+    ]);
+  });
+
+  it('keeps explicitly tagged watchdog timeouts out of wait groups', async () => {
+    const fixture = await render([
+      supervisorWait('quiet', 120),
+      supervisorWait('quiet', 600, {
+        budgetSeconds: 600,
+        reason: '[watchdog-timeout] No output for 600s',
+      }),
+      supervisorWait('resumed', 0),
+    ]);
+    const el = fixture.nativeElement as HTMLElement;
+    const groups = el.querySelectorAll<HTMLElement>(
+      '[data-testid="conversation-supervisor-wait-group"]',
+    );
+    const timeout = el.querySelector<HTMLElement>('[data-testid="conversation-supervisor-wait"]');
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].getAttribute('data-item-count')).toBe('1');
+    expect(groups[1].getAttribute('data-item-count')).toBe('1');
+    expect(timeout?.getAttribute('data-state')).toBe('timeout');
+    expect(timeout?.getAttribute('role')).toBe('alert');
+    expect(timeout?.textContent).toContain('No output for 600s');
+  });
+
+  it('starts wait groups collapsed and reveals every event when toggled', async () => {
+    const fixture = await render([
+      supervisorWait('quiet', 30, { budgetSeconds: 600, reason: '[watchdog] Quiet for 30s' }),
+      supervisorWait('quiet', 60, { budgetSeconds: 600, reason: '[watchdog] Still silent at 60s' }),
+      supervisorWait('quiet', 90, { budgetSeconds: 600, reason: '[watchdog] Still silent at 90s' }),
+      supervisorWait('quiet', 120, { budgetSeconds: 600, reason: '[watchdog] Still silent at 120s' }),
+      supervisorWait('quiet', 120, { budgetSeconds: 600, reason: '[watchdog] Waiting within budget' }),
+      supervisorWait('resumed', 0, { budgetSeconds: 600, reason: '[watchdog] Agent resumed streaming' }),
+    ]);
+    const el = fixture.nativeElement as HTMLElement;
+    const group = el.querySelector<HTMLElement>('[data-testid="conversation-supervisor-wait-group"]');
+    const toggle = group?.querySelector<HTMLButtonElement>(
+      '[data-testid="conversation-supervisor-wait-toggle"]',
+    );
+
+    expect(group?.getAttribute('data-item-count')).toBe('6');
+    expect(group?.getAttribute('data-expanded')).toBe('false');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(el.querySelector('[data-testid="conversation-supervisor-wait-events"]')).toBeNull();
+
+    toggle?.click();
+    fixture.detectChanges();
+
+    expect(group?.getAttribute('data-expanded')).toBe('true');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    const events = el.querySelectorAll<HTMLElement>(
+      '[data-testid="conversation-supervisor-wait-event"]',
+    );
+    expect(events).toHaveLength(6);
+    expect(events[0].textContent).toContain('Quiet for 30s');
+    expect(events[5].getAttribute('data-state')).toBe('resumed');
+    expect(events[5].textContent).toContain('Agent resumed streaming');
+
+    toggle?.click();
+    fixture.detectChanges();
+    expect(group?.getAttribute('data-expanded')).toBe('false');
+    expect(el.querySelector('[data-testid="conversation-supervisor-wait-events"]')).toBeNull();
   });
 
   it('renders image events with caption, preferring the durable path over the source path', async () => {

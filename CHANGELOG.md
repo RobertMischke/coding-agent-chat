@@ -11,6 +11,10 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ### Added
 
+- Consecutive non-terminal `supervisor.wait` events now render as one compact,
+  default-collapsed group with quiet/resumed counts, longest-silence budget
+  context, a time range, and full per-event disclosure. Watchdog kills and
+  timeouts remain separate high-signal alert rows.
 - Capture-backed, opt-in `MachineBound` rendering fixtures now cover Claude,
   Codex, and Gemini across source, git diff, HTML files, Markdown, image
   references, JSON, logs, long lines, mixed turns, tables, Mermaid, and ANSI.

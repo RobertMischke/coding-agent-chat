@@ -84,6 +84,7 @@ interface EventProbe {
   headline?: string;
   inputTokens?: number;
   link: { range: RawLineRange };
+  budgetSeconds?: number;
   quietSeconds?: number;
   question?: string;
   rawLink?: { range: RawLineRange };
@@ -555,7 +556,19 @@ describe('projectConversation', () => {
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('supervisor.wait');
     expect(probe(events[0]).state).toBe('killed');
+    expect(probe(events[0]).budgetSeconds).toBe(600);
     expect(events[0].severity).toBe('error');
+  });
+
+  it('preserves the silence budget on explicitly tagged watchdog timeouts', () => {
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line('[watchdog-timeout] No output for 600s', 'orchestrator')]
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0].kind).toBe('supervisor.wait');
+    expect(probe(events[0]).quietSeconds).toBe(600);
+    expect(probe(events[0]).budgetSeconds).toBe(600);
   });
 
   it('emits a system.parserWarning for heuristic outcome lines and dedupes by key', () => {
