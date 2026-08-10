@@ -12,7 +12,7 @@ interface ScrollState {
 
 function mockScrollMetrics(
   el: HTMLElement,
-  init: { scrollHeight: number; clientHeight: number }
+  init: { scrollHeight: number; clientHeight: number },
 ): ScrollState {
   const state: ScrollState = { ...init, scrollTop: 0 };
   Object.defineProperty(el, 'scrollHeight', {
@@ -33,21 +33,11 @@ function mockScrollMetrics(
   return state;
 }
 
-function mockRect(
-  el: HTMLElement,
-  rect: { left: number; top: number; right: number; bottom: number }
-): void {
-  Object.defineProperty(el, 'getBoundingClientRect', {
-    configurable: true,
-    value: () => rect,
-  });
-}
-
 @Component({
   standalone: true,
   imports: [ArrowKeyScrollDirective],
   template: `
-    <div class="surface" cacArrowKeyScroll>
+    <div class="surface" cacArrowKeyScroll tabindex="0">
       <div class="content">
         <button type="button">Action</button>
         <textarea rows="2"></textarea>
@@ -60,6 +50,7 @@ function mockRect(
         <div class="listbox" role="listbox" tabindex="0">Listbox</div>
       </div>
     </div>
+    <button class="outside" type="button">Outside chat</button>
   `,
 })
 class SurfaceHostComponent {}
@@ -68,10 +59,10 @@ class SurfaceHostComponent {}
   standalone: true,
   imports: [ArrowKeyScrollDirective],
   template: `
-    <div class="surface surface--one" cacArrowKeyScroll>
+    <div class="surface surface--one" cacArrowKeyScroll tabindex="0">
       <button type="button">One</button>
     </div>
-    <div class="surface surface--two" cacArrowKeyScroll>
+    <div class="surface surface--two" cacArrowKeyScroll tabindex="0">
       <button type="button">Two</button>
     </div>
   `,
@@ -87,7 +78,10 @@ describe('ArrowKeyScrollDirective', () => {
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
 
     const realGetComputedStyle = window.getComputedStyle.bind(window);
-    vi.spyOn(window, 'getComputedStyle').mockImplementation(((el: Element, pseudo?: string | null) => {
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(((
+      el: Element,
+      pseudo?: string | null,
+    ) => {
       if (el instanceof HTMLElement && el.classList.contains('surface')) {
         return { overflowY: 'auto' } as CSSStyleDeclaration;
       }
@@ -108,7 +102,6 @@ describe('ArrowKeyScrollDirective', () => {
     const root = fixture.nativeElement as HTMLElement;
     const surface = root.querySelector<HTMLElement>('.surface')!;
     const state = mockScrollMetrics(surface, { scrollHeight: 1200, clientHeight: 300 });
-    mockRect(surface, { left: 0, top: 0, right: 800, bottom: 600 });
     fixture.detectChanges();
     return { root, state };
   }
@@ -126,30 +119,36 @@ describe('ArrowKeyScrollDirective', () => {
     const surfaceTwo = root.querySelector<HTMLElement>('.surface--two')!;
     const stateOne = mockScrollMetrics(surfaceOne, { scrollHeight: 1600, clientHeight: 400 });
     const stateTwo = mockScrollMetrics(surfaceTwo, { scrollHeight: 1600, clientHeight: 400 });
-    mockRect(surfaceOne, { left: 0, top: 0, right: 700, bottom: 320 });
-    mockRect(surfaceTwo, { left: 0, top: 360, right: 700, bottom: 700 });
     fixture.detectChanges();
     return { root, surfaceOne, surfaceTwo, stateOne, stateTwo };
   }
 
-  it('scrolls up and down by a predictable step and prevents the default only when it moves', () => {
+  it('scrolls focused viewport arrows and does not propagate them to the embedding host', () => {
     const { root, state } = setupSurfaceHost();
     const surface = root.querySelector<HTMLElement>('.surface')!;
+    const embeddingKeydown = vi.fn();
+    root.addEventListener('keydown', embeddingKeydown);
 
     state.scrollTop = 300;
-    surface.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    surface.focus();
 
-    const down = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
-    document.dispatchEvent(down);
+    const down = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
+    surface.dispatchEvent(down);
 
     expect(state.scrollTop).toBe(348);
     expect(down.defaultPrevented).toBe(true);
+    expect(embeddingKeydown).not.toHaveBeenCalled();
 
     const up = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true });
-    document.dispatchEvent(up);
+    surface.dispatchEvent(up);
 
     expect(state.scrollTop).toBe(300);
     expect(up.defaultPrevented).toBe(true);
+    expect(embeddingKeydown).not.toHaveBeenCalled();
   });
 
   it('supports normal keyboard repeat while the key is held', () => {
@@ -157,31 +156,84 @@ describe('ArrowKeyScrollDirective', () => {
     const surface = root.querySelector<HTMLElement>('.surface')!;
 
     state.scrollTop = 300;
-    surface.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    surface.focus();
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true, repeat: true }));
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true, repeat: true }));
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true, repeat: true }));
+    surface.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        bubbles: true,
+        cancelable: true,
+        repeat: true,
+      }),
+    );
+    surface.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        bubbles: true,
+        cancelable: true,
+        repeat: true,
+      }),
+    );
+    surface.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        bubbles: true,
+        cancelable: true,
+        repeat: true,
+      }),
+    );
 
     expect(state.scrollTop).toBe(444);
   });
 
-  it('prefers the active visible scroller over a different visible surface', () => {
+  it('scrolls only the viewport that owns the key event', () => {
     const { surfaceOne, stateOne, stateTwo } = setupDualHost();
 
     stateOne.scrollTop = 500;
     stateTwo.scrollTop = 900;
-    surfaceOne.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    surfaceOne.focus();
 
     const key = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true });
-    document.dispatchEvent(key);
+    surfaceOne.dispatchEvent(key);
 
     expect(stateOne.scrollTop).toBe(452);
     expect(stateTwo.scrollTop).toBe(900);
     expect(key.defaultPrevented).toBe(true);
   });
 
-  it('does not intercept arrow keys while focus is in input-like or menu-like controls', () => {
+  it('supports page and boundary keys while the viewport is focused', () => {
+    const { root, state } = setupSurfaceHost();
+    const surface = root.querySelector<HTMLElement>('.surface')!;
+    const embeddingKeydown = vi.fn();
+    root.addEventListener('keydown', embeddingKeydown);
+
+    state.scrollTop = 300;
+    surface.focus();
+
+    for (const [key, expectedScrollTop] of [
+      ['PageDown', 600],
+      ['PageUp', 300],
+      ['End', 900],
+      ['Home', 0],
+    ] as const) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      surface.dispatchEvent(event);
+      expect(state.scrollTop).toBe(expectedScrollTop);
+      expect(event.defaultPrevented).toBe(true);
+    }
+
+    const boundary = new KeyboardEvent('keydown', {
+      key: 'ArrowUp',
+      bubbles: true,
+      cancelable: true,
+    });
+    surface.dispatchEvent(boundary);
+    expect(state.scrollTop).toBe(0);
+    expect(boundary.defaultPrevented).toBe(true);
+    expect(embeddingKeydown).not.toHaveBeenCalled();
+  });
+
+  it('preserves control-owned arrow behavior without propagating to the embedding host', () => {
     const { root, state } = setupSurfaceHost();
     const surface = root.querySelector<HTMLElement>('.surface')!;
     const textarea = surface.querySelector('textarea')!;
@@ -190,15 +242,45 @@ describe('ArrowKeyScrollDirective', () => {
     const editable = surface.querySelector<HTMLElement>('.editable')!;
     const menu = surface.querySelector<HTMLElement>('.menu')!;
     const listbox = surface.querySelector<HTMLElement>('.listbox')!;
+    const embeddingKeydown = vi.fn();
+    root.addEventListener('keydown', embeddingKeydown);
 
     state.scrollTop = 300;
-    surface.dispatchEvent(new Event('pointerdown', { bubbles: true }));
 
     for (const target of [textarea, input, select, editable, menu, listbox]) {
-      const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        bubbles: true,
+        cancelable: true,
+      });
       target.dispatchEvent(event);
       expect(state.scrollTop).toBe(300);
       expect(event.defaultPrevented).toBe(false);
     }
+
+    expect(embeddingKeydown).not.toHaveBeenCalled();
+  });
+
+  it('leaves vertical navigation outside the chat surface untouched', () => {
+    const { root, state } = setupSurfaceHost();
+    const surface = root.querySelector<HTMLElement>('.surface')!;
+    const outside = root.querySelector<HTMLButtonElement>('.outside')!;
+    const embeddingKeydown = vi.fn();
+    root.addEventListener('keydown', embeddingKeydown);
+
+    state.scrollTop = 300;
+    surface.focus();
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+    const event = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
+    outside.dispatchEvent(event);
+
+    expect(state.scrollTop).toBe(300);
+    expect(event.defaultPrevented).toBe(false);
+    expect(embeddingKeydown).toHaveBeenCalledOnce();
   });
 });
