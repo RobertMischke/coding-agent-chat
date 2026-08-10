@@ -971,7 +971,11 @@ export class ConversationViewComponent {
 
   supervisorTerminalState(event: SupervisorWaitEvent): 'killed' | 'timeout' | null {
     if (event.state === 'killed') return 'killed';
-    if (/\[watchdog-timeout\]|\b(?:silence|watchdog)\s+timeout\b/i.test(event.reason ?? '')) {
+    if (
+      /\[watchdog-timeout\]|\b(?:silence|watchdog)\s+timeout\b|\btimeout\s+(?:after|at)\b/i.test(
+        event.reason ?? ''
+      )
+    ) {
       return 'timeout';
     }
     return null;

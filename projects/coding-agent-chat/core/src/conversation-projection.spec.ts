@@ -569,6 +569,20 @@ describe('projectConversation', () => {
     expect(events[0].kind).toBe('supervisor.wait');
     expect(probe(events[0]).quietSeconds).toBe(600);
     expect(probe(events[0]).budgetSeconds).toBe(600);
+    expect(events[0].severity).toBe('error');
+  });
+
+  it('classifies a generic watchdog timeout as a terminal-budget wait event', () => {
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line('[watchdog] Silence timeout after 600s', 'orchestrator')]
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0].kind).toBe('supervisor.wait');
+    expect(probe(events[0]).state).toBe('quiet');
+    expect(probe(events[0]).quietSeconds).toBe(600);
+    expect(probe(events[0]).budgetSeconds).toBe(600);
+    expect(events[0].severity).toBe('error');
   });
 
   it('emits a system.parserWarning for heuristic outcome lines and dedupes by key', () => {

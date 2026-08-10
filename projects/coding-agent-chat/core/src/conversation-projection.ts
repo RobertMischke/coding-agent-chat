@@ -310,6 +310,7 @@ function projectGroup(
     if (/\[watchdog[^\]]*\]/i.test(orchestratorText)) {
       const wait = parseWatchdogText(orchestratorText);
       if (wait) {
+        const timedOut = /\[watchdog-timeout\]|\btimeout\b/i.test(orchestratorText);
         return [
           {
             id: `${baseId}:wait`,
@@ -317,7 +318,7 @@ function projectGroup(
             timestamp: ts,
             runId,
             rawRange: range,
-            severity: wait.state === 'killed' ? 'error' : wait.state === 'quiet' ? 'warn' : 'info',
+            severity: wait.state === 'killed' || timedOut ? 'error' : wait.state === 'quiet' ? 'warn' : 'info',
             state: wait.state,
             quietSeconds: wait.quietSeconds,
             budgetSeconds: wait.budgetSeconds,
@@ -1109,6 +1110,17 @@ function parseWatchdogText(text: string): WatchdogParse | null {
   }
   if (/resumed|streaming output again/i.test(text)) {
     return { state: 'resumed', quietSeconds: 0, budgetSeconds, reason: text.trim() };
+  }
+  if (/\btimeout\b/i.test(text)) {
+    const sec = /(?:after|at|for)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text)
+      ?? /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text);
+    const quietSeconds = sec ? Number(sec[1]) : 0;
+    return {
+      state: 'quiet',
+      quietSeconds,
+      budgetSeconds: budgetSeconds ?? (quietSeconds > 0 ? quietSeconds : undefined),
+      reason: text.trim()
+    };
   }
   if (/quiet|silent|no output for/i.test(text)) {
     const sec = /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text);
