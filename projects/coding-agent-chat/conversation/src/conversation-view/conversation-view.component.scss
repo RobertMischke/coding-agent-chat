@@ -564,7 +564,7 @@
   gap: var(--studio-spacing-2, 8px);
   width: 100%;
   min-height: 32px;
-  padding: 4px var(--studio-spacing-2, 8px);
+  padding: var(--studio-spacing-1, 4px) var(--studio-spacing-2, 8px);
   border: 0;
   background: transparent;
   color: inherit;
@@ -605,7 +605,7 @@
   grid-template-columns: minmax(48px, 120px) max-content;
   align-items: center;
   justify-content: end;
-  gap: 6px;
+  gap: var(--studio-spacing-2, 8px);
   min-width: 0;
 }
 .supervisor-group__budget-track {
@@ -640,7 +640,7 @@
   align-items: baseline;
   gap: var(--studio-spacing-2, 8px);
   min-height: 24px;
-  padding: 3px 0;
+  padding: var(--studio-row-gap, 3px) 0;
 }
 .supervisor-group__event + .supervisor-group__event { border-top: 1px solid color-mix(in srgb, currentColor 7%, transparent); }
 .supervisor-group__event-dot {
@@ -684,7 +684,7 @@
   font-weight: 700;
 }
 .supervisor-terminal__detail {
-  padding: 1px 6px;
+  padding: 0 var(--studio-spacing-2, 8px);
   border-radius: 4px;
   background: color-mix(in srgb, currentColor 10%, transparent);
   font-size: 11px;

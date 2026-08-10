@@ -446,6 +446,31 @@ describe('ConversationViewComponent', () => {
     ]);
   });
 
+  it('ends a wait group at a non-rendered non-supervisor event', async () => {
+    const fixture = await render([
+      supervisorWait('quiet', 30),
+      {
+        id: `summary-${seq}`,
+        kind: 'workbench.summary',
+        timestamp: nextTs(),
+        rawRange: RANGE,
+        headline: 'Host-side summary row',
+      },
+      supervisorWait('quiet', 60),
+    ]);
+    const groups = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+      '[data-testid="conversation-supervisor-wait-group"]',
+    );
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].getAttribute('data-item-count')).toBe('1');
+    expect(groups[1].getAttribute('data-item-count')).toBe('1');
+    expect(fixture.componentInstance.rows().map((row) => row.kind)).toEqual([
+      'supervisorWaitGroup',
+      'supervisorWaitGroup',
+    ]);
+  });
+
   it('keeps killed watchdog events out of adjacent wait groups', async () => {
     const fixture = await render([
       supervisorWait('quiet', 120),
@@ -476,12 +501,12 @@ describe('ConversationViewComponent', () => {
     ]);
   });
 
-  it('keeps explicitly tagged watchdog timeouts out of wait groups', async () => {
+  it('keeps watchdog timeouts out of wait groups', async () => {
     const fixture = await render([
       supervisorWait('quiet', 120),
       supervisorWait('quiet', 600, {
         budgetSeconds: 600,
-        reason: '[watchdog-timeout] No output for 600s',
+        reason: '[watchdog] Silence timeout after 600s',
       }),
       supervisorWait('resumed', 0),
     ]);
@@ -496,7 +521,7 @@ describe('ConversationViewComponent', () => {
     expect(groups[1].getAttribute('data-item-count')).toBe('1');
     expect(timeout?.getAttribute('data-state')).toBe('timeout');
     expect(timeout?.getAttribute('role')).toBe('alert');
-    expect(timeout?.textContent).toContain('No output for 600s');
+    expect(timeout?.textContent).toContain('Silence timeout after 600s');
   });
 
   it('starts wait groups collapsed and reveals every event when toggled', async () => {
