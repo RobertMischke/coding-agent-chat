@@ -5,9 +5,22 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/). Releases are cut by
 pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 `release` workflow builds and publishes to npm. The latest published version is
-[0.3.2](https://www.npmjs.com/package/coding-agent-chat).
+[0.4.1](https://www.npmjs.com/package/coding-agent-chat).
 
 ## [Unreleased]
+
+## [0.4.1] - 2026-08-10
+
+### Changed
+
+- The local release preflight now builds the library before running the same
+  all-project Angular spec suite as the release workflow, preventing stale
+  `dist/` entry points from reaching a tag.
+
+### Fixed
+
+- Tooltip directive specs now perform initial change detection explicitly and
+  start with clean singleton DOM, avoiding a suite-load scheduling failure.
 
 ## [0.4.0] - 2026-08-08
 
@@ -119,7 +132,8 @@ Internal bootstrap — never published to npm; 0.2.0 was the first release.
   `<cac-markdown>`, `<cac-project-chat-list>`, the `core` wire contract, the
   studio theme, and the `provideCodingAgentChat()` host-wiring helper.
 
-[unreleased]: https://github.com/agent-orc/chat/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/agent-orc/chat/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/agent-orc/chat/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/agent-orc/chat/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/agent-orc/chat/releases/tag/v0.3.2
 [0.3.1]: https://github.com/agent-orc/chat/releases/tag/v0.3.1
