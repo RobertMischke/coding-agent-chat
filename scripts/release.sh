@@ -48,7 +48,10 @@ if git rev-parse "$tag" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Running tests…"
+echo "==> Building library…"
+npm run build
+
+echo "==> Running CI test suite…"
 npx ng test
 
 echo "==> Tagging $tag and pushing…"

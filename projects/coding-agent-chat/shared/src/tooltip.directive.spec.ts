@@ -13,9 +13,7 @@ import { TooltipInput, TooltipSeverity } from './tooltip.types';
   standalone: true,
   imports: [TooltipDirective],
   template: `
-    <button type="button" [cacTooltip]="tip()" [tooltipSeverity]="severity()">
-      anchor
-    </button>
+    <button type="button" [cacTooltip]="tip()" [tooltipSeverity]="severity()">anchor</button>
   `,
 })
 class TooltipHostComponent {
@@ -28,19 +26,23 @@ function tooltipEl(): HTMLElement | null {
 }
 
 describe('TooltipDirective', () => {
-  afterEach(() => {
+  function resetTooltipDom(): void {
     vi.useRealTimers();
     document.querySelectorAll('.cac-tooltip').forEach((el) => el.remove());
     document.getElementById('cac-tooltip-styles')?.remove();
-  });
+  }
+
+  beforeEach(resetTooltipDom);
+  afterEach(resetTooltipDom);
 
   async function setup(
     tip?: TooltipInput,
-    severity?: TooltipSeverity
+    severity?: TooltipSeverity,
   ): Promise<{ anchor: HTMLButtonElement }> {
     const fixture = TestBed.createComponent(TooltipHostComponent);
     if (tip !== undefined) fixture.componentInstance.tip.set(tip);
     if (severity !== undefined) fixture.componentInstance.severity.set(severity);
+    fixture.detectChanges();
     await fixture.whenStable();
     const anchor = (fixture.nativeElement as HTMLElement).querySelector('button')!;
     return { anchor };
@@ -53,9 +55,7 @@ describe('TooltipDirective', () => {
     const tip = tooltipEl();
     expect(tip).not.toBeNull();
     expect(tip!.style.visibility).toBe('visible');
-    expect(tip!.querySelector('.cac-tooltip__body')!.textContent).toContain(
-      'Plain tooltip text'
-    );
+    expect(tip!.querySelector('.cac-tooltip__body')!.textContent).toContain('Plain tooltip text');
 
     anchor.dispatchEvent(new MouseEvent('mouseleave'));
     expect(tip!.style.visibility).toBe('hidden');
