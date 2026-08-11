@@ -9,6 +9,12 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ## [Unreleased]
 
+### Fixed
+
+- Focused conversation viewports now contain vertical navigation keys so they
+  scroll only the chat, while composer arrows retain native editing behavior;
+  embedding hosts no longer receive those handled key events.
+
 ## [0.4.1] - 2026-08-10
 
 ### Changed

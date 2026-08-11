@@ -516,6 +516,14 @@ export class ChatComponent implements AfterViewInit, OnDestroy {
   }
 
   onInputKeydown(event: KeyboardEvent): void {
+    // Keep vertical-arrow editing/history behaviour native to the composer,
+    // while preventing an embedding host from also treating the key as
+    // board, tab, or list navigation.
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      event.stopPropagation();
+      return;
+    }
+
     // Enter to send, Shift+Enter for newline. Ctrl/Cmd+Enter also sends so the
     // user can submit even from inside a multi-line draft without losing the
     // newline shortcut.

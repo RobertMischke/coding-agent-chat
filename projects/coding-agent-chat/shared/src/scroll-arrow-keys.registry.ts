@@ -1,11 +1,14 @@
 import { Injectable } from '@angular/core';
 
 interface RegisteredSurface {
-  id: number;
-  element: HTMLElement;
+  host: HTMLElement;
+  container: HTMLElement;
 }
 
 const ARROW_KEY_STEP_PX = 48;
+
+const VIEWPORT_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End']);
+const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown']);
 
 const KEY_OWNERS = [
   'textarea',
@@ -29,91 +32,95 @@ const KEY_OWNERS = [
 @Injectable({ providedIn: 'root' })
 export class ScrollArrowKeysRegistry {
   private nextId = 1;
-  private activeSurfaceId: number | null = null;
   private readonly surfaces = new Map<number, RegisteredSurface>();
 
   register(element: HTMLElement): number {
     const id = this.nextId++;
-    this.surfaces.set(id, { id, element });
+    this.surfaces.set(id, { host: element, container: element });
     return id;
   }
 
   updateSurface(id: number, element: HTMLElement): void {
     const surface = this.surfaces.get(id);
     if (surface) {
-      surface.element = element;
+      surface.container = element;
     }
   }
 
   unregister(id: number): void {
     this.surfaces.delete(id);
-    if (this.activeSurfaceId === id) {
-      this.activeSurfaceId = null;
-    }
   }
 
-  markActive(id: number): void {
-    if (this.surfaces.has(id)) {
-      this.activeSurfaceId = id;
-    }
+  /**
+   * @deprecated Key routing is now local to each focused surface. Retained as
+   * a source-compatible no-op for hosts that imported the registry directly.
+   */
+  markActive(_id: number): void {
+    // Intentionally empty: there is no global active-surface state anymore.
   }
 
   handleKeydown(event: KeyboardEvent, surfaceId: number): boolean {
-    if (event.defaultPrevented) return false;
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return false;
-    if (this.isOwnedByFocusableControl(event.target)) return false;
-
-    const targetId = this.resolveTargetId(event);
-    if (targetId !== surfaceId) return false;
-
     const surface = this.surfaces.get(surfaceId);
-    const container = surface?.element;
-    if (!container) return false;
+    if (!surface || !VIEWPORT_KEYS.has(event.key)) return false;
 
-    const delta = event.key === 'ArrowUp' ? -ARROW_KEY_STEP_PX : ARROW_KEY_STEP_PX;
+    const target = event.target;
+    if (!(target instanceof Node) || !surface.host.contains(target)) return false;
+
+    // Editable/menu controls retain their own ArrowUp/ArrowDown semantics, but
+    // the embedding host must not interpret the same event as board/list
+    // navigation after it leaves the chat surface.
+    if (this.isOwnedByFocusableControl(target, surface.host)) {
+      if (!ARROW_KEYS.has(event.key)) return false;
+      event.stopPropagation();
+      return true;
+    }
+
+    // PageUp/PageDown and Home/End are viewport commands only. Descendant
+    // controls may assign their own meaning to them, so handle these keys only
+    // when the conversation surface (or resolved scroll owner) has focus.
+    if (!ARROW_KEYS.has(event.key) && target !== surface.host && target !== surface.container) {
+      return false;
+    }
+
+    // A descendant may already have handled the key. Still contain it at the
+    // chat boundary, but do not add a second scroll action.
+    if (event.defaultPrevented) {
+      event.stopPropagation();
+      return true;
+    }
+
+    const container = surface.container;
     const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
-    const nextScrollTop = Math.max(0, Math.min(maxScrollTop, container.scrollTop + delta));
-    if (nextScrollTop === container.scrollTop) return false;
+    const nextScrollTop = this.nextScrollTop(event.key, container, maxScrollTop);
 
     container.scrollTop = nextScrollTop;
     event.preventDefault();
+    event.stopPropagation();
     return true;
   }
 
-  private resolveTargetId(event: KeyboardEvent): number | null {
-    const target = event.target;
-    if (target instanceof Node) {
-      for (const [id, surface] of this.surfaces) {
-        if (surface.element.contains(target)) {
-          return id;
-        }
-      }
+  private nextScrollTop(key: string, container: HTMLElement, maxScrollTop: number): number {
+    switch (key) {
+      case 'ArrowUp':
+        return Math.max(0, container.scrollTop - ARROW_KEY_STEP_PX);
+      case 'ArrowDown':
+        return Math.min(maxScrollTop, container.scrollTop + ARROW_KEY_STEP_PX);
+      case 'PageUp':
+        return Math.max(0, container.scrollTop - container.clientHeight);
+      case 'PageDown':
+        return Math.min(maxScrollTop, container.scrollTop + container.clientHeight);
+      case 'Home':
+        return 0;
+      case 'End':
+        return maxScrollTop;
+      default:
+        return container.scrollTop;
     }
-
-    if (this.activeSurfaceId !== null && this.surfaces.has(this.activeSurfaceId)) {
-      return this.activeSurfaceId;
-    }
-
-    return this.bestVisibleSurfaceId();
   }
 
-  private bestVisibleSurfaceId(): number | null {
-    let best: { id: number; area: number } | null = null;
-    for (const [id, surface] of this.surfaces) {
-      const rect = surface.element.getBoundingClientRect();
-      const width = Math.max(0, Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0));
-      const height = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0));
-      const area = width * height;
-      if (area <= 0) continue;
-      if (!best || area > best.area) {
-        best = { id, area };
-      }
-    }
-    return best?.id ?? null;
-  }
-
-  private isOwnedByFocusableControl(target: EventTarget | null): boolean {
+  private isOwnedByFocusableControl(target: Node, host: HTMLElement): boolean {
     if (!(target instanceof HTMLElement)) return false;
-    return !!target.closest(KEY_OWNERS);
+    const owner = target.closest(KEY_OWNERS);
+    return owner !== null && host.contains(owner);
   }
 }
