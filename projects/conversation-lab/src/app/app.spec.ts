@@ -151,6 +151,45 @@ describe('App', () => {
     ).toHaveLength(21);
   });
 
+  it('shows the Codex frame-flood before/after as one phase and one checklist with raw Trace lines', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    compiled
+      .querySelector<HTMLButtonElement>('[data-testid="lab-scenario-codex-work-phase"]')!
+      .click();
+    await fixture.whenStable();
+
+    const conversation = compiled.querySelector('cac-conversation-view');
+    expect(conversation?.querySelectorAll('[data-testid="conversation-work-phase"]')).toHaveLength(
+      1,
+    );
+    expect(conversation?.querySelectorAll('[data-testid="conversation-plan-update"]')).toHaveLength(
+      1,
+    );
+    expect(
+      conversation?.querySelectorAll('[data-testid="conversation-system-status"]'),
+    ).toHaveLength(0);
+    expect(
+      conversation?.querySelector('[data-testid="conversation-work-phase"]')?.textContent,
+    ).toContain('3 tool calls');
+
+    conversation
+      ?.querySelector<HTMLButtonElement>('[data-testid="conversation-open-trace"]')
+      ?.click();
+    await fixture.whenStable();
+
+    const raw = Array.from(
+      compiled.querySelectorAll('[data-testid="lab-trace-lines"] .lab-trace__line'),
+    )
+      .map((line) => line.textContent ?? '')
+      .join('\n');
+    expect(raw).toContain('"type":"file_change"');
+    expect(raw).toContain('"type":"todo_list"');
+    expect(raw).toContain('"type":"item.updated"');
+  });
+
   it('explains the missing activity log when tracing a fixture scenario', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();

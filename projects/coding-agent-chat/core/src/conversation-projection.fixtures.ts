@@ -57,6 +57,126 @@ export function toolBurstFragment(): CliOutputLine[] {
   ];
 }
 
+/**
+ * Codex JSONL burst shaped like the operator evidence for CAC-25: command
+ * clusters are separated by file-change lifecycle and todo-list snapshots.
+ * The projection must produce one work phase plus one living checklist.
+ */
+export function codexStructuredWorkPhaseFragment(): CliOutputLine[] {
+  resetFixtureClock();
+  const frame = (value: unknown): CliOutputLine => line(JSON.stringify(value));
+  return [
+    frame({ type: 'turn.started' }),
+    frame({
+      type: 'item.started',
+      item: {
+        id: 'cmd_1',
+        type: 'command_execution',
+        command: 'rg -n "toolBurst" projects',
+        aggregated_output: '',
+        exit_code: null,
+        status: 'in_progress',
+      },
+    }),
+    frame({
+      type: 'item.completed',
+      item: {
+        id: 'cmd_1',
+        type: 'command_execution',
+        command: 'rg -n "toolBurst" projects',
+        aggregated_output: 'projects/chat.ts:42:toolBurst',
+        exit_code: 0,
+        status: 'completed',
+      },
+    }),
+    frame({
+      type: 'item.started',
+      item: {
+        id: 'files_1',
+        type: 'file_change',
+        changes: [{ path: 'projects/chat.ts', kind: 'update' }],
+        status: 'in_progress',
+      },
+    }),
+    frame({
+      type: 'item.completed',
+      item: {
+        id: 'files_1',
+        type: 'file_change',
+        changes: [
+          { path: 'projects/chat.ts', kind: 'update' },
+          { path: 'projects/chat.spec.ts', kind: 'update' },
+        ],
+        status: 'completed',
+      },
+    }),
+    frame({
+      type: 'item.completed',
+      item: {
+        id: 'cmd_2',
+        type: 'command_execution',
+        command: 'npm test',
+        aggregated_output: 'FAIL work phase',
+        exit_code: 1,
+        status: 'failed',
+      },
+    }),
+    frame({
+      type: 'item.started',
+      item: {
+        id: 'todo_1',
+        type: 'todo_list',
+        items: [
+          { text: 'Fold file changes', completed: false },
+          { text: 'Verify rendering', completed: false },
+        ],
+      },
+    }),
+    frame({
+      type: 'item.updated',
+      item: {
+        id: 'todo_1',
+        type: 'todo_list',
+        items: [
+          { text: 'Fold file changes', completed: true },
+          { text: 'Verify rendering', completed: false },
+        ],
+      },
+    }),
+    frame({
+      type: 'item.completed',
+      item: {
+        id: 'cmd_3',
+        type: 'command_execution',
+        command: 'npm test -- --runInBand',
+        aggregated_output: 'PASS work phase',
+        exit_code: 0,
+        status: 'completed',
+      },
+    }),
+    frame({
+      type: 'item.completed',
+      item: {
+        id: 'todo_1',
+        type: 'todo_list',
+        items: [
+          { text: 'Fold file changes', completed: true },
+          { text: 'Verify rendering', completed: true },
+        ],
+      },
+    }),
+    frame({
+      type: 'item.completed',
+      item: {
+        id: 'reply_1',
+        type: 'agent_message',
+        text: 'The work phase is compact and the checklist is complete.',
+      },
+    }),
+    frame({ type: 'turn.completed' }),
+  ];
+}
+
 /** A standalone agent prose turn (no tool noise). */
 export function agentTextFragment(): CliOutputLine[] {
   resetFixtureClock();

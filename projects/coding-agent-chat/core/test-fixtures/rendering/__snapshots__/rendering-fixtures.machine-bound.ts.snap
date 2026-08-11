@@ -1,5 +1,4 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-// MachineBound: updated only through `npm run test:render-fixtures -- --update`.
 
 exports[`rendering stream fixtures [MachineBound] > claude classifies every captured content type 1`] = `
 {
@@ -219,6 +218,47 @@ exports[`rendering stream fixtures [MachineBound] > codex classifies every captu
   "cli": "codex",
   "cliVersion": "0.146.0",
 }
+`;
+
+exports[`rendering stream fixtures [MachineBound] > folds the versioned Codex item-update capture into a work phase and checklist 1`] = `
+[
+  {
+    "count": 3,
+    "failures": 1,
+    "files": [
+      "projects/chat.ts",
+      "projects/chat.spec.ts",
+    ],
+    "kind": "workPhase",
+    "rawRange": {
+      "end": 10,
+      "source": "codex-0.146.0-work-phase",
+      "start": 1,
+    },
+    "runtimeFrameCount": 9,
+    "segmentCount": 3,
+  },
+  {
+    "id": "codex-0.146.0-work-phase:plan:default",
+    "items": [
+      {
+        "id": "fold-file-changes",
+        "status": "completed",
+        "title": "Fold file changes",
+      },
+      {
+        "id": "verify-rendering",
+        "status": "completed",
+        "title": "Verify rendering",
+      },
+    ],
+    "kind": "plan.update",
+  },
+  {
+    "body": "The work phase is compact and the checklist is complete.",
+    "kind": "message.taskAgent",
+  },
+]
 `;
 
 exports[`rendering stream fixtures [MachineBound] > gemini classifies every captured content type 1`] = `

@@ -1,16 +1,18 @@
-<section class="conv"
-         cacStickToBottom
-         cacArrowKeyScroll
-         tabindex="0"
-         #stick="stickToBottom"
-         #scrollRoot
-         [class.conv--virtualised]="virtualised()"
-         [style.max-height]="virtualised() ? bodyMaxHeight() : null"
-         [attr.data-variant]="variant()"
-         [attr.data-running]="isRunning() ? 'true' : 'false'"
-         [attr.data-stuck]="stick.stuck() ? 'true' : 'false'"
-         data-testid="conversation-view"
-         (scroll)="onScroll()">
+<section
+  class="conv"
+  cacStickToBottom
+  cacArrowKeyScroll
+  tabindex="0"
+  #stick="stickToBottom"
+  #scrollRoot
+  [class.conv--virtualised]="virtualised()"
+  [style.max-height]="virtualised() ? bodyMaxHeight() : null"
+  [attr.data-variant]="variant()"
+  [attr.data-running]="isRunning() ? 'true' : 'false'"
+  [attr.data-stuck]="stick.stuck() ? 'true' : 'false'"
+  data-testid="conversation-view"
+  (scroll)="onScroll()"
+>
   @if (showHeader()) {
     <header class="conv__head">
       <div class="conv__head-titles">
@@ -18,27 +20,33 @@
         <span class="conv__subtitle">Next-gen chat preview</span>
       </div>
       <div class="conv__head-actions">
-        <button type="button"
-                class="conv__head-btn conv__head-btn--toggle"
-                data-testid="conversation-show-tools"
-                [class.conv__head-btn--on]="showTools()"
-                [attr.aria-pressed]="showTools() ? 'true' : 'false'"
-                [cacTooltip]="showTools() ? 'Hide tool activity rows' : 'Show tool activity rows'"
-                (click)="toggleTools()">
+        <button
+          type="button"
+          class="conv__head-btn conv__head-btn--toggle"
+          data-testid="conversation-show-tools"
+          [class.conv__head-btn--on]="showTools()"
+          [attr.aria-pressed]="showTools() ? 'true' : 'false'"
+          [cacTooltip]="showTools() ? 'Hide tool activity rows' : 'Show tool activity rows'"
+          (click)="toggleTools()"
+        >
           <span aria-hidden="true">Tools</span>
         </button>
-        <button type="button"
-                class="conv__head-btn"
-                data-testid="conversation-open-trace"
-                [cacTooltip]="'Open the raw activity log in Trace mode'"
-                (click)="emitOpenTrace(null)">
+        <button
+          type="button"
+          class="conv__head-btn"
+          data-testid="conversation-open-trace"
+          [cacTooltip]="'Open the raw activity log in Trace mode'"
+          (click)="emitOpenTrace(null)"
+        >
           <span>Trace</span>
         </button>
-        <button type="button"
-                class="conv__head-btn"
-                data-testid="conversation-open-verbose-debug"
-                [cacTooltip]="'Open the read-only Verbose Debug view'"
-                (click)="emitOpenVerboseDebug()">
+        <button
+          type="button"
+          class="conv__head-btn"
+          data-testid="conversation-open-verbose-debug"
+          [cacTooltip]="'Open the read-only Verbose Debug view'"
+          (click)="emitOpenVerboseDebug()"
+        >
           <span>Debug</span>
         </button>
       </div>
@@ -56,432 +64,630 @@
   } @else {
     <ol class="conv__feed" data-testid="conversation-feed">
       @if (virtualised() && topSpacerPx() > 0) {
-        <li class="conv__spacer" aria-hidden="true"
-            data-testid="conversation-spacer-top"
-            [style.height.px]="topSpacerPx()"></li>
+        <li
+          class="conv__spacer"
+          aria-hidden="true"
+          data-testid="conversation-spacer-top"
+          [style.height.px]="topSpacerPx()"
+        ></li>
       }
       @for (row of windowedRows(); track trackByEvent($index, row)) {
         @switch (row.kind) {
-
-        @case ('messageGroup') {
-          <li class="conv__row conv__row--message"
+          @case ('messageGroup') {
+            <li
+              class="conv__row conv__row--message"
               [class.conv__row--continued]="!row.showHeader"
               [attr.data-actor]="row.actor"
               [attr.data-item-count]="row.items.length"
               [attr.data-show-header]="row.showHeader ? 'true' : 'false'"
               [attr.data-session-id]="row.meta.sessionIdFull ?? null"
               [attr.data-has-rate-limit]="row.meta.rateLimitText ? 'true' : 'false'"
-              [attr.data-testid]="'conversation-message-' + row.actor">
-            <div class="msg" [class.msg--continued]="!row.showHeader">
-              @if (row.showHeader) {
-                <header class="msg__head"
-                        [cacTooltip]="metaTooltip(row)"
-                        [attr.data-testid]="'conversation-message-head'">
-                  <span class="msg__avatar" aria-hidden="true">{{ actorGlyph(row.actor) }}</span>
-                  <span class="msg__actor">{{ actorLabel(row.actor) }}</span>
-                  @if (row.items.length > 1) {
-                    <span class="msg__count"
-                          data-testid="conversation-message-count">{{ row.items.length }} events</span>
-                  }
-                  <span class="msg__head-meta">
-                    @if (row.model) {
-                      <cac-model-level-indicator [model]="row.model" [thinking]="row.thinking" data-testid="conversation-message-model" />
+              [attr.data-testid]="'conversation-message-' + row.actor"
+            >
+              <div class="msg" [class.msg--continued]="!row.showHeader">
+                @if (row.showHeader) {
+                  <header
+                    class="msg__head"
+                    [cacTooltip]="metaTooltip(row)"
+                    [attr.data-testid]="'conversation-message-head'"
+                  >
+                    <span class="msg__avatar" aria-hidden="true">{{ actorGlyph(row.actor) }}</span>
+                    <span class="msg__actor">{{ actorLabel(row.actor) }}</span>
+                    @if (row.items.length > 1) {
+                      <span class="msg__count" data-testid="conversation-message-count"
+                        >{{ row.items.length }} events</span
+                      >
                     }
-                    @if (row.meta.sessionIdFull) {
-                      <span class="msg__session"
-                            data-testid="conversation-message-session">session {{ formatSessionIdShort(row.meta.sessionIdFull) }}</span>
-                    }
-                    @if (row.meta.rateLimitText) {
-                      <span class="msg__rate-dot"
-                            data-testid="conversation-message-rate-limit"
-                            aria-hidden="true">·</span>
-                    }
-                    <time class="msg__time"
-                          data-testid="conversation-message-time"
-                          [cacTooltip]="groupTimeTooltip(row)">{{ formatGroupTime(row) }}</time>
-                  </span>
-                </header>
-              }
-              <ol class="msg__items" data-testid="conversation-message-items">
-                @for (item of row.items; track item.id) {
-                  <li class="msg__item"
+                    <span class="msg__head-meta">
+                      @if (row.model) {
+                        <cac-model-level-indicator
+                          [model]="row.model"
+                          [thinking]="row.thinking"
+                          data-testid="conversation-message-model"
+                        />
+                      }
+                      @if (row.meta.sessionIdFull) {
+                        <span class="msg__session" data-testid="conversation-message-session"
+                          >session {{ formatSessionIdShort(row.meta.sessionIdFull) }}</span
+                        >
+                      }
+                      @if (row.meta.rateLimitText) {
+                        <span
+                          class="msg__rate-dot"
+                          data-testid="conversation-message-rate-limit"
+                          aria-hidden="true"
+                          >·</span
+                        >
+                      }
+                      <time
+                        class="msg__time"
+                        data-testid="conversation-message-time"
+                        [cacTooltip]="groupTimeTooltip(row)"
+                        >{{ formatGroupTime(row) }}</time
+                      >
+                    </span>
+                  </header>
+                }
+                <ol class="msg__items" data-testid="conversation-message-items">
+                  @for (item of row.items; track item.id) {
+                    <li
+                      class="msg__item"
                       [class.msg__item--collapsible]="item.collapsible"
                       [class.msg__item--expanded]="isItemExpanded(item.id)"
                       [attr.data-testid]="'conversation-message-item'"
                       [attr.data-item-id]="item.id"
-                      [attr.data-collapsed]="item.collapsible && !isItemExpanded(item.id) ? 'true' : 'false'">
-                    @if (item.target) {
-                      <span class="msg__target">→ {{ item.target }}</span>
-                    }
-                    <div class="msg__body" cacMarkdownLightbox>
-                      @for (payload of item.content; track $index) {
-                        @switch (payload.type) {
-                          @case ('markdown') {
-                            <cac-markdown class="msg__payload msg__payload--markdown"
-                                          data-payload-type="markdown"
-                                          [source]="payload.text" />
-                          }
-                          @case ('image-reference') {
-                            <figure class="msg__payload msg__payload--image"
-                                    data-payload-type="image-reference">
-                              <img class="msg__payload-image"
-                                   loading="lazy"
-                                   [src]="payload.uri"
-                                   [alt]="payload.alt"
-                                   [title]="payload.title ?? null" />
-                              @if (payload.alt) {
-                                <figcaption>{{ payload.alt }}</figcaption>
-                              }
-                            </figure>
-                          }
-                          @default {
-                            <pre class="msg__payload msg__payload--raw"
-                                 [attr.data-payload-type]="payload.type"
-                                 [attr.data-language]="payload.type === 'code-block' ? (payload.language ?? null) : null"><code>{{ payload.text }}</code></pre>
-                          }
-                        }
+                      [attr.data-collapsed]="
+                        item.collapsible && !isItemExpanded(item.id) ? 'true' : 'false'
+                      "
+                    >
+                      @if (item.target) {
+                        <span class="msg__target">→ {{ item.target }}</span>
                       }
-                    </div>
-                    @if (item.attachments?.length) {
-                      <ul class="msg__attachments" aria-label="Attachments">
-                        @for (a of item.attachments; track a) {
-                          <li><code>{{ a }}</code></li>
+                      <div class="msg__body" cacMarkdownLightbox>
+                        @for (payload of item.content; track $index) {
+                          @switch (payload.type) {
+                            @case ('markdown') {
+                              <cac-markdown
+                                class="msg__payload msg__payload--markdown"
+                                data-payload-type="markdown"
+                                [source]="payload.text"
+                              />
+                            }
+                            @case ('image-reference') {
+                              <figure
+                                class="msg__payload msg__payload--image"
+                                data-payload-type="image-reference"
+                              >
+                                <img
+                                  class="msg__payload-image"
+                                  loading="lazy"
+                                  [src]="payload.uri"
+                                  [alt]="payload.alt"
+                                  [title]="payload.title ?? null"
+                                />
+                                @if (payload.alt) {
+                                  <figcaption>{{ payload.alt }}</figcaption>
+                                }
+                              </figure>
+                            }
+                            @default {
+                              <pre
+                                class="msg__payload msg__payload--raw"
+                                [attr.data-payload-type]="payload.type"
+                                [attr.data-language]="
+                                  payload.type === 'code-block' ? (payload.language ?? null) : null
+                                "
+                              ><code>{{ payload.text }}</code></pre>
+                            }
+                          }
                         }
-                      </ul>
-                    }
-                    @if (item.collapsible) {
-                      <button type="button"
-                              class="msg__item-toggle"
-                              data-testid="conversation-message-item-expand"
-                              [attr.aria-expanded]="isItemExpanded(item.id)"
-                              [cacTooltip]="isItemExpanded(item.id) ? 'Collapse this message' : 'Show full message'"
-                              (click)="toggleItem(item.id)">{{ isItemExpanded(item.id) ? 'collapse' : 'expand' }}</button>
-                    }
-                  </li>
-                }
-              </ol>
-            </div>
-          </li>
-        }
-
-        @case ('sessionMeta') {
-          <li class="conv__row conv__row--session-meta"
-              data-testid="conversation-session-meta">
-            <cac-conversation-session-card [data]="row.data" />
-          </li>
-        }
-
-        @case ('toolBurst') {
-          @if (showTools()) {
-            <li class="conv__row conv__row--burst" data-testid="conversation-tool-burst">
-              <cac-tool-burst-chip [event]="row.event"
-                                   (openSourceLocation)="emitOpenSourceLocation($event, row.event.rawRange)" />
-            </li>
-          }
-        }
-
-        @case ('planUpdate') {
-          <li class="conv__row conv__row--plan" data-testid="conversation-plan-update">
-            <cac-plan-checklist [items]="row.event.items" />
-          </li>
-        }
-
-        @case ('runMarker') {
-          <li class="conv__row conv__row--marker conv__row--run"
-              data-testid="conversation-run-marker"
-              [attr.data-marker]="row.event.marker">
-            <span class="marker__dot" aria-hidden="true">●</span>
-            <span class="marker__label">Run {{ row.event.runId ?? '?' }} · {{ row.event.marker }}</span>
-            @if (row.event.cli) { <span class="marker__meta">{{ row.event.cli }}</span> }
-            @if (row.event.model) { <cac-model-level-indicator [model]="row.event.model" [thinking]="row.event.thinkingLevel ?? null" data-testid="conversation-run-model" /> }
-            <time class="marker__time"
-                  [cacTooltip]="formatDateTime(row.event.timestamp)">{{ formatTime(row.event.timestamp) }}</time>
-          </li>
-        }
-
-        @case ('taskMarker') {
-          <li class="conv__row conv__row--marker conv__row--task"
-              data-testid="conversation-task-marker"
-              [attr.data-marker]="row.event.marker">
-            <span class="marker__dot" aria-hidden="true">◆</span>
-            <span class="marker__label">{{ row.event.title }}</span>
-            <span class="marker__meta">{{ row.event.marker }}@if (row.event.lane) {<span> · {{ row.event.lane }}</span>}</span>
-            <time class="marker__time"
-                  [cacTooltip]="formatDateTime(row.event.timestamp)">{{ formatTime(row.event.timestamp) }}</time>
-          </li>
-        }
-
-        @case ('decision') {
-          <li class="conv__row conv__row--decision"
-              data-testid="conversation-decision-orchestrator"
-              [attr.data-decision-type]="row.event.decisionType"
-              [attr.data-severity]="row.event.severity ?? 'info'">
-            <div class="decision">
-              <span class="decision__rail" aria-hidden="true"></span>
-              <div class="decision__body">
-                <div class="decision__head">
-                  <span class="decision__actor"><span aria-hidden="true">🛰</span> Orchestrator</span>
-                  <span class="decision__type"
-                        data-testid="conversation-decision-type">{{ decisionTypeLabel(row.event.decisionType) }}</span>
-                  @if (row.event.retryBudget) {
-                    <span class="decision__budget">retry {{ row.event.retryBudget.used }}/{{ row.event.retryBudget.max }}</span>
-                  }
-                  <button type="button"
-                          class="decision__trace"
-                          data-testid="conversation-decision-open-trace"
-                          [cacTooltip]="'Open the source range in Trace mode'"
-                          (click)="emitOpenTrace(row.event.rawRange)">trace</button>
-                </div>
-                <span class="decision__reason">{{ row.event.reason }}</span>
-                @if (row.event.action) {
-                  <span class="decision__action">→ {{ row.event.action }}</span>
-                }
-              </div>
-            </div>
-          </li>
-        }
-
-        @case ('supervisorWaitGroup') {
-          <li class="conv__row conv__row--supervisor-group"
-              data-testid="conversation-supervisor-wait-group"
-              [attr.data-item-count]="row.items.length"
-              [attr.data-expanded]="isWaitGroupExpanded(row.id) ? 'true' : 'false'">
-            <div class="supervisor-group">
-              <button type="button"
-                      class="supervisor-group__summary"
-                      data-testid="conversation-supervisor-wait-toggle"
-                      [attr.aria-expanded]="isWaitGroupExpanded(row.id)"
-                      [attr.aria-controls]="waitGroupPanelId(row)"
-                      (click)="toggleWaitGroup(row.id)">
-                <span class="supervisor-group__chevron" aria-hidden="true">▶</span>
-                <svg class="supervisor-group__shield" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M8 1.5 13 3v3.7c0 3.3-1.9 6.1-5 7.8-3.1-1.7-5-4.5-5-7.8V3l5-1.5Z"
-                        stroke="currentColor" stroke-width="1.4" />
-                </svg>
-                <span class="supervisor-group__count">
-                  {{ row.items.length }} {{ row.items.length === 1 ? 'wait' : 'waits' }}
-                </span>
-                <span class="supervisor-group__states">
-                  {{ row.quietCount }} quiet · <strong>{{ row.resumedCount }} resumed</strong>
-                </span>
-                <span class="supervisor-group__budget"
-                      [attr.aria-label]="waitBudgetLabel(row)">
-                  <span class="supervisor-group__budget-track" aria-hidden="true">
-                    <span class="supervisor-group__budget-fill"
-                          [style.width.%]="waitBudgetPercent(row)"></span>
-                  </span>
-                  <span class="supervisor-group__budget-value">
-                    @if (row.budgetSeconds) {
-                      max {{ row.longestQuietSeconds }} / {{ row.budgetSeconds }}s
-                    } @else {
-                      max {{ row.longestQuietSeconds }}s
-                    }
-                  </span>
-                </span>
-                <time class="supervisor-group__time"
-                      [cacTooltip]="waitGroupTimeTooltip(row)">{{ formatWaitGroupTime(row) }}</time>
-              </button>
-              @if (isWaitGroupExpanded(row.id)) {
-                <ol class="supervisor-group__events"
-                    data-testid="conversation-supervisor-wait-events"
-                    [id]="waitGroupPanelId(row)">
-                  @for (event of row.items; track event.id) {
-                    <li class="supervisor-group__event"
-                        data-testid="conversation-supervisor-wait-event"
-                        [attr.data-state]="event.state">
-                      <span class="supervisor-group__event-dot" aria-hidden="true"></span>
-                      <span class="supervisor-group__event-state">{{ event.state }}</span>
-                      <span class="supervisor-group__event-quiet">
-                        {{ event.quietSeconds > 0 ? event.quietSeconds + 's' : '—' }}
-                      </span>
-                      <span class="supervisor-group__event-reason">{{ formatSupervisorReason(event.reason) }}</span>
-                      <time [cacTooltip]="formatDateTime(event.timestamp)">{{ formatTime(event.timestamp) }}</time>
+                      </div>
+                      @if (item.attachments?.length) {
+                        <ul class="msg__attachments" aria-label="Attachments">
+                          @for (a of item.attachments; track a) {
+                            <li>
+                              <code>{{ a }}</code>
+                            </li>
+                          }
+                        </ul>
+                      }
+                      @if (item.collapsible) {
+                        <button
+                          type="button"
+                          class="msg__item-toggle"
+                          data-testid="conversation-message-item-expand"
+                          [attr.aria-expanded]="isItemExpanded(item.id)"
+                          [cacTooltip]="
+                            isItemExpanded(item.id) ? 'Collapse this message' : 'Show full message'
+                          "
+                          (click)="toggleItem(item.id)"
+                        >
+                          {{ isItemExpanded(item.id) ? 'collapse' : 'expand' }}
+                        </button>
+                      }
                     </li>
                   }
                 </ol>
-              }
-            </div>
-          </li>
-        }
+              </div>
+            </li>
+          }
 
-        @case ('supervisorWait') {
-          <li class="conv__row conv__row--supervisor-terminal"
+          @case ('sessionMeta') {
+            <li class="conv__row conv__row--session-meta" data-testid="conversation-session-meta">
+              <cac-conversation-session-card [data]="row.data" />
+            </li>
+          }
+
+          @case ('toolBurst') {
+            @if (showTools()) {
+              <li class="conv__row conv__row--burst" data-testid="conversation-tool-burst">
+                <cac-tool-burst-chip
+                  [event]="row.event"
+                  (openSourceLocation)="emitOpenSourceLocation($event, row.event.rawRange)"
+                />
+              </li>
+            }
+          }
+
+          @case ('workPhase') {
+            @if (showTools()) {
+              <li
+                class="conv__row conv__row--burst conv__row--work-phase"
+                data-testid="conversation-work-phase"
+              >
+                <cac-tool-burst-chip
+                  [event]="row.event"
+                  (openSourceLocation)="emitOpenSourceLocation($event, row.event.rawRange)"
+                />
+              </li>
+            }
+          }
+
+          @case ('planUpdate') {
+            <li class="conv__row conv__row--plan" data-testid="conversation-plan-update">
+              <cac-plan-checklist [items]="row.event.items" />
+            </li>
+          }
+
+          @case ('runtimeNotice') {
+            <li
+              class="conv__row conv__row--runtime-notice"
+              data-testid="conversation-runtime-notice"
+              [attr.data-category]="row.event.category"
+              [attr.data-severity]="row.event.severity ?? 'info'"
+            >
+              <span class="runtime-notice__label">{{ row.event.label }}</span>
+              <span class="runtime-notice__detail">{{ row.event.detail }}</span>
+              @if (row.event.status) {
+                <span class="runtime-notice__status">{{ row.event.status }}</span>
+              }
+              <button
+                type="button"
+                class="runtime-notice__trace"
+                data-testid="conversation-runtime-open-trace"
+                [cacTooltip]="'Open the source range in Trace mode'"
+                (click)="emitOpenTrace(row.event.rawRange)"
+              >
+                trace
+              </button>
+            </li>
+          }
+
+          @case ('runMarker') {
+            <li
+              class="conv__row conv__row--marker conv__row--run"
+              data-testid="conversation-run-marker"
+              [attr.data-marker]="row.event.marker"
+            >
+              <span class="marker__dot" aria-hidden="true">●</span>
+              <span class="marker__label"
+                >Run {{ row.event.runId ?? '?' }} · {{ row.event.marker }}</span
+              >
+              @if (row.event.cli) {
+                <span class="marker__meta">{{ row.event.cli }}</span>
+              }
+              @if (row.event.model) {
+                <cac-model-level-indicator
+                  [model]="row.event.model"
+                  [thinking]="row.event.thinkingLevel ?? null"
+                  data-testid="conversation-run-model"
+                />
+              }
+              <time class="marker__time" [cacTooltip]="formatDateTime(row.event.timestamp)">{{
+                formatTime(row.event.timestamp)
+              }}</time>
+            </li>
+          }
+
+          @case ('taskMarker') {
+            <li
+              class="conv__row conv__row--marker conv__row--task"
+              data-testid="conversation-task-marker"
+              [attr.data-marker]="row.event.marker"
+            >
+              <span class="marker__dot" aria-hidden="true">◆</span>
+              <span class="marker__label">{{ row.event.title }}</span>
+              <span class="marker__meta"
+                >{{ row.event.marker }}
+                @if (row.event.lane) {
+                  <span> · {{ row.event.lane }}</span>
+                }
+              </span>
+              <time class="marker__time" [cacTooltip]="formatDateTime(row.event.timestamp)">{{
+                formatTime(row.event.timestamp)
+              }}</time>
+            </li>
+          }
+
+          @case ('decision') {
+            <li
+              class="conv__row conv__row--decision"
+              data-testid="conversation-decision-orchestrator"
+              [attr.data-decision-type]="row.event.decisionType"
+              [attr.data-severity]="row.event.severity ?? 'info'"
+            >
+              <div class="decision">
+                <span class="decision__rail" aria-hidden="true"></span>
+                <div class="decision__body">
+                  <div class="decision__head">
+                    <span class="decision__actor"
+                      ><span aria-hidden="true">🛰</span> Orchestrator</span
+                    >
+                    <span class="decision__type" data-testid="conversation-decision-type">{{
+                      decisionTypeLabel(row.event.decisionType)
+                    }}</span>
+                    @if (row.event.retryBudget) {
+                      <span class="decision__budget"
+                        >retry {{ row.event.retryBudget.used }}/{{
+                          row.event.retryBudget.max
+                        }}</span
+                      >
+                    }
+                    <button
+                      type="button"
+                      class="decision__trace"
+                      data-testid="conversation-decision-open-trace"
+                      [cacTooltip]="'Open the source range in Trace mode'"
+                      (click)="emitOpenTrace(row.event.rawRange)"
+                    >
+                      trace
+                    </button>
+                  </div>
+                  <span class="decision__reason">{{ row.event.reason }}</span>
+                  @if (row.event.action) {
+                    <span class="decision__action">→ {{ row.event.action }}</span>
+                  }
+                </div>
+              </div>
+            </li>
+          }
+
+          @case ('supervisorWaitGroup') {
+            <li
+              class="conv__row conv__row--supervisor-group"
+              data-testid="conversation-supervisor-wait-group"
+              [attr.data-item-count]="row.items.length"
+              [attr.data-expanded]="isWaitGroupExpanded(row.id) ? 'true' : 'false'"
+            >
+              <div class="supervisor-group">
+                <button
+                  type="button"
+                  class="supervisor-group__summary"
+                  data-testid="conversation-supervisor-wait-toggle"
+                  [attr.aria-expanded]="isWaitGroupExpanded(row.id)"
+                  [attr.aria-controls]="waitGroupPanelId(row)"
+                  (click)="toggleWaitGroup(row.id)"
+                >
+                  <span class="supervisor-group__chevron" aria-hidden="true">▶</span>
+                  <svg
+                    class="supervisor-group__shield"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M8 1.5 13 3v3.7c0 3.3-1.9 6.1-5 7.8-3.1-1.7-5-4.5-5-7.8V3l5-1.5Z"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                    />
+                  </svg>
+                  <span class="supervisor-group__count">
+                    {{ row.items.length }} {{ row.items.length === 1 ? 'wait' : 'waits' }}
+                  </span>
+                  <span class="supervisor-group__states">
+                    {{ row.quietCount }} quiet · <strong>{{ row.resumedCount }} resumed</strong>
+                  </span>
+                  <span class="supervisor-group__budget" [attr.aria-label]="waitBudgetLabel(row)">
+                    <span class="supervisor-group__budget-track" aria-hidden="true">
+                      <span
+                        class="supervisor-group__budget-fill"
+                        [style.width.%]="waitBudgetPercent(row)"
+                      ></span>
+                    </span>
+                    <span class="supervisor-group__budget-value">
+                      @if (row.budgetSeconds) {
+                        max {{ row.longestQuietSeconds }} / {{ row.budgetSeconds }}s
+                      } @else {
+                        max {{ row.longestQuietSeconds }}s
+                      }
+                    </span>
+                  </span>
+                  <time class="supervisor-group__time" [cacTooltip]="waitGroupTimeTooltip(row)">{{
+                    formatWaitGroupTime(row)
+                  }}</time>
+                </button>
+                @if (isWaitGroupExpanded(row.id)) {
+                  <ol
+                    class="supervisor-group__events"
+                    data-testid="conversation-supervisor-wait-events"
+                    [id]="waitGroupPanelId(row)"
+                  >
+                    @for (event of row.items; track event.id) {
+                      <li
+                        class="supervisor-group__event"
+                        data-testid="conversation-supervisor-wait-event"
+                        [attr.data-state]="event.state"
+                      >
+                        <span class="supervisor-group__event-dot" aria-hidden="true"></span>
+                        <span class="supervisor-group__event-state">{{ event.state }}</span>
+                        <span class="supervisor-group__event-quiet">
+                          {{ event.quietSeconds > 0 ? event.quietSeconds + 's' : '—' }}
+                        </span>
+                        <span class="supervisor-group__event-reason">{{
+                          formatSupervisorReason(event.reason)
+                        }}</span>
+                        <time [cacTooltip]="formatDateTime(event.timestamp)">{{
+                          formatTime(event.timestamp)
+                        }}</time>
+                      </li>
+                    }
+                  </ol>
+                }
+              </div>
+            </li>
+          }
+
+          @case ('supervisorWait') {
+            <li
+              class="conv__row conv__row--supervisor-terminal"
               role="alert"
               data-testid="conversation-supervisor-wait"
-              [attr.data-state]="supervisorTerminalState(row.event) ?? row.event.state">
-            <svg class="supervisor-terminal__shield" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M8 1.5 13 3v3.7c0 3.3-1.9 6.1-5 7.8-3.1-1.7-5-4.5-5-7.8V3l5-1.5Z"
-                    stroke="currentColor" stroke-width="1.4" />
-              <path d="M8 5v3.5M8 11v.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-            </svg>
-            <span class="supervisor-terminal__actor">Supervisor</span>
-            <strong class="supervisor-terminal__state">{{ supervisorTerminalState(row.event) ?? row.event.state }}</strong>
-            <span class="supervisor-terminal__detail">after {{ row.event.quietSeconds }}s quiet</span>
-            @if (row.event.reason) {
-              <span class="supervisor-terminal__reason">{{ formatSupervisorReason(row.event.reason) }}</span>
-            }
-            <time class="supervisor-terminal__time"
-                  [cacTooltip]="formatDateTime(row.event.timestamp)">{{ formatTime(row.event.timestamp) }}</time>
-          </li>
-        }
+              [attr.data-state]="supervisorTerminalState(row.event) ?? row.event.state"
+            >
+              <svg
+                class="supervisor-terminal__shield"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M8 1.5 13 3v3.7c0 3.3-1.9 6.1-5 7.8-3.1-1.7-5-4.5-5-7.8V3l5-1.5Z"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                />
+                <path
+                  d="M8 5v3.5M8 11v.1"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span class="supervisor-terminal__actor">Supervisor</span>
+              <strong class="supervisor-terminal__state">{{
+                supervisorTerminalState(row.event) ?? row.event.state
+              }}</strong>
+              <span class="supervisor-terminal__detail"
+                >after {{ row.event.quietSeconds }}s quiet</span
+              >
+              @if (row.event.reason) {
+                <span class="supervisor-terminal__reason">{{
+                  formatSupervisorReason(row.event.reason)
+                }}</span>
+              }
+              <time
+                class="supervisor-terminal__time"
+                [cacTooltip]="formatDateTime(row.event.timestamp)"
+                >{{ formatTime(row.event.timestamp) }}</time
+              >
+            </li>
+          }
 
-        @case ('needsInput') {
-          <li class="conv__row conv__row--needs-input"
-              data-testid="conversation-needs-input">
-            <span class="needs__actor"><span aria-hidden="true">❓</span> Agent</span>
-            <span class="needs__loop">loop {{ row.event.loopIndex }}/{{ row.event.loopLimit }}</span>
-            <span class="needs__question">{{ row.event.question }}</span>
-            @if (row.event.answerSource) {
-              <span class="needs__source">answer: {{ row.event.answerSource }}</span>
-            }
-          </li>
-        }
+          @case ('needsInput') {
+            <li class="conv__row conv__row--needs-input" data-testid="conversation-needs-input">
+              <span class="needs__actor"><span aria-hidden="true">❓</span> Agent</span>
+              <span class="needs__loop"
+                >loop {{ row.event.loopIndex }}/{{ row.event.loopLimit }}</span
+              >
+              <span class="needs__question">{{ row.event.question }}</span>
+              @if (row.event.answerSource) {
+                <span class="needs__source">answer: {{ row.event.answerSource }}</span>
+              }
+            </li>
+          }
 
-        @case ('captureFail') {
-          <li class="conv__row conv__row--system conv__row--warn"
-              data-testid="conversation-capture-fail">
-            <span class="sys__actor"><span aria-hidden="true">⚠</span> System</span>
-            <span class="sys__message">Session capture failed for {{ row.event.cliType }}</span>
-            @if (row.event.fallback) {
-              <span class="sys__fallback">→ {{ row.event.fallback }}</span>
-            }
-          </li>
-        }
+          @case ('captureFail') {
+            <li
+              class="conv__row conv__row--system conv__row--warn"
+              data-testid="conversation-capture-fail"
+            >
+              <span class="sys__actor"><span aria-hidden="true">⚠</span> System</span>
+              <span class="sys__message">Session capture failed for {{ row.event.cliType }}</span>
+              @if (row.event.fallback) {
+                <span class="sys__fallback">→ {{ row.event.fallback }}</span>
+              }
+            </li>
+          }
 
-        @case ('parserWarning') {
-          <li class="conv__row conv__row--system conv__row--warn"
-              data-testid="conversation-parser-warning">
-            <span class="sys__actor"><span aria-hidden="true">⚠</span> Parser</span>
-            <span class="sys__message">{{ row.event.message }}</span>
-            <code class="sys__expected">expected: {{ row.event.expectedKind }}</code>
-          </li>
-        }
+          @case ('parserWarning') {
+            <li
+              class="conv__row conv__row--system conv__row--warn"
+              data-testid="conversation-parser-warning"
+            >
+              <span class="sys__actor"><span aria-hidden="true">⚠</span> Parser</span>
+              <span class="sys__message">{{ row.event.message }}</span>
+              <code class="sys__expected">expected: {{ row.event.expectedKind }}</code>
+            </li>
+          }
 
-        @case ('systemStatus') {
-          <li class="conv__row conv__row--system-status"
+          @case ('systemStatus') {
+            <li
+              class="conv__row conv__row--system-status"
               data-testid="conversation-system-status"
               [attr.data-category]="row.event.category"
-              [attr.data-severity]="row.event.severity ?? 'info'">
-            <span class="status-row__chip">{{ row.event.label }}</span>
-            <span class="status-row__text">{{ row.event.explanation }}</span>
-            @if (row.event.nextStep) {
-              <span class="status-row__next">{{ row.event.nextStep }}</span>
-            }
-            <button type="button"
-                    class="status-row__trace"
-                    data-testid="conversation-status-open-trace"
-                    [cacTooltip]="'Open the source range in Trace mode'"
-                    (click)="emitOpenTrace(row.event.rawRange)">trace</button>
-          </li>
-        }
+              [attr.data-severity]="row.event.severity ?? 'info'"
+            >
+              <span class="status-row__chip">{{ row.event.label }}</span>
+              <span class="status-row__text">{{ row.event.explanation }}</span>
+              @if (row.event.nextStep) {
+                <span class="status-row__next">{{ row.event.nextStep }}</span>
+              }
+              <button
+                type="button"
+                class="status-row__trace"
+                data-testid="conversation-status-open-trace"
+                [cacTooltip]="'Open the source range in Trace mode'"
+                (click)="emitOpenTrace(row.event.rawRange)"
+              >
+                trace
+              </button>
+            </li>
+          }
 
-        @case ('unknownFrame') {
-          <li class="conv__row conv__row--system conv__row--warn"
+          @case ('unknownFrame') {
+            <li
+              class="conv__row conv__row--system conv__row--warn"
               data-testid="conversation-unknown-frame"
               [attr.data-frame-kind]="row.event.frameKind"
               [attr.data-cli]="row.event.cli"
-              [attr.data-cli-version]="row.event.cliVersion">
-            <span class="sys__actor"><span aria-hidden="true">⚠</span> Protocol drift</span>
-            <span class="sys__message">{{ row.event.message }}</span>
-            @if (row.event.transport) {
-              <code class="sys__expected">transport: {{ row.event.transport }}</code>
-            }
-            <button type="button"
-                    class="status-row__trace"
-                    data-testid="conversation-unknown-frame-open-trace"
-                    [cacTooltip]="'Open the unknown raw frame in Trace mode'"
-                    (click)="emitOpenTrace(row.event.rawRange)">trace</button>
-          </li>
-        }
+              [attr.data-cli-version]="row.event.cliVersion"
+            >
+              <span class="sys__actor"><span aria-hidden="true">⚠</span> Protocol drift</span>
+              <span class="sys__message">{{ row.event.message }}</span>
+              @if (row.event.transport) {
+                <code class="sys__expected">transport: {{ row.event.transport }}</code>
+              }
+              <button
+                type="button"
+                class="status-row__trace"
+                data-testid="conversation-unknown-frame-open-trace"
+                [cacTooltip]="'Open the unknown raw frame in Trace mode'"
+                (click)="emitOpenTrace(row.event.rawRange)"
+              >
+                trace
+              </button>
+            </li>
+          }
 
-        @case ('schemaDrift') {
-          <li class="conv__row conv__row--system conv__row--warn"
-              data-testid="conversation-schema-drift">
-            <span class="sys__actor"><span aria-hidden="true">⚠</span> Schema</span>
-            <span class="sys__message">{{ row.event.message }}</span>
-            <code class="sys__expected">expected: {{ row.event.expectedSchema }}</code>
-            @if (row.event.recovery) {
-              <span class="sys__fallback">→ {{ row.event.recovery }}</span>
-            }
-          </li>
-        }
+          @case ('schemaDrift') {
+            <li
+              class="conv__row conv__row--system conv__row--warn"
+              data-testid="conversation-schema-drift"
+            >
+              <span class="sys__actor"><span aria-hidden="true">⚠</span> Schema</span>
+              <span class="sys__message">{{ row.event.message }}</span>
+              <code class="sys__expected">expected: {{ row.event.expectedSchema }}</code>
+              @if (row.event.recovery) {
+                <span class="sys__fallback">→ {{ row.event.recovery }}</span>
+              }
+            </li>
+          }
 
-        @case ('feedbackQueued') {
-          <li class="conv__row conv__row--feedback"
+          @case ('feedbackQueued') {
+            <li
+              class="conv__row conv__row--feedback"
               data-testid="conversation-feedback-queued"
               [attr.data-mode]="row.event.mode"
-              [attr.data-parent-lane]="row.event.parentLane">
-            <span class="feedback__glyph" aria-hidden="true">{{ feedbackMeta[row.event.mode].glyph }}</span>
-            <span class="feedback__verb">{{ feedbackMeta[row.event.mode].verb }}</span>
-            <span class="feedback__label">{{ row.event.label }}</span>
-            @if (row.event.followUpJobId) {
-              <button type="button"
-                      class="feedback__open"
-                      data-testid="conversation-feedback-open-followup"
-                      [cacTooltip]="'Open the queued follow-up task'"
-                      (click)="emitOpenFollowUp(row.event.followUpJobId)">open in queue</button>
-            }
-            <button type="button"
-                    class="feedback__trace"
-                    data-testid="conversation-feedback-open-trace"
-                    [cacTooltip]="'Open the source range in Trace mode'"
-                    (click)="emitOpenTrace(row.event.rawRange)">trace</button>
-          </li>
-        }
+              [attr.data-parent-lane]="row.event.parentLane"
+            >
+              <span class="feedback__glyph" aria-hidden="true">{{
+                feedbackMeta[row.event.mode].glyph
+              }}</span>
+              <span class="feedback__verb">{{ feedbackMeta[row.event.mode].verb }}</span>
+              <span class="feedback__label">{{ row.event.label }}</span>
+              @if (row.event.followUpJobId) {
+                <button
+                  type="button"
+                  class="feedback__open"
+                  data-testid="conversation-feedback-open-followup"
+                  [cacTooltip]="'Open the queued follow-up task'"
+                  (click)="emitOpenFollowUp(row.event.followUpJobId)"
+                >
+                  open in queue
+                </button>
+              }
+              <button
+                type="button"
+                class="feedback__trace"
+                data-testid="conversation-feedback-open-trace"
+                [cacTooltip]="'Open the source range in Trace mode'"
+                (click)="emitOpenTrace(row.event.rawRange)"
+              >
+                trace
+              </button>
+            </li>
+          }
 
-        @case ('image') {
-          <li class="conv__row conv__row--image"
-              data-testid="conversation-artifact-image">
-            @if (row.event.url) {
-              <figure class="image image--rendered" cacMarkdownLightbox>
-                <img class="image__img"
-                     data-testid="conversation-artifact-image-img"
-                     [src]="row.event.url"
-                     [alt]="row.event.caption"
-                     loading="lazy" />
-                @if (row.event.caption) {
+          @case ('image') {
+            <li class="conv__row conv__row--image" data-testid="conversation-artifact-image">
+              @if (row.event.url) {
+                <figure class="image image--rendered" cacMarkdownLightbox>
+                  <img
+                    class="image__img"
+                    data-testid="conversation-artifact-image-img"
+                    [src]="row.event.url"
+                    [alt]="row.event.caption"
+                    loading="lazy"
+                  />
+                  @if (row.event.caption) {
+                    <figcaption class="image__caption">{{ row.event.caption }}</figcaption>
+                  }
+                </figure>
+              } @else {
+                <figure class="image">
+                  <span class="image__icon" aria-hidden="true">🖼</span>
                   <figcaption class="image__caption">{{ row.event.caption }}</figcaption>
-                }
-              </figure>
-            } @else {
-              <figure class="image">
-                <span class="image__icon" aria-hidden="true">🖼</span>
-                <figcaption class="image__caption">{{ row.event.caption }}</figcaption>
-                <code class="image__path">{{ row.event.durablePath || row.event.sourcePath }}</code>
-              </figure>
-            }
-          </li>
-        }
+                  <code class="image__path">{{
+                    row.event.durablePath || row.event.sourcePath
+                  }}</code>
+                </figure>
+              }
+            </li>
+          }
 
-        @case ('tokenMetric') {
-          <li class="conv__row conv__row--metric"
-              data-testid="conversation-metric-token">
-            <span class="metric__chip">
-              <span aria-hidden="true">🪙</span>
-              <span class="metric__label">{{ row.event.scope }}</span>
-              <span class="metric__value">{{ formatTokens(row.event.inputTokens + row.event.outputTokens) }} tok</span>
-            </span>
-          </li>
-        }
+          @case ('tokenMetric') {
+            <li class="conv__row conv__row--metric" data-testid="conversation-metric-token">
+              <span class="metric__chip">
+                <span aria-hidden="true">🪙</span>
+                <span class="metric__label">{{ row.event.scope }}</span>
+                <span class="metric__value"
+                  >{{ formatTokens(row.event.inputTokens + row.event.outputTokens) }} tok</span
+                >
+              </span>
+            </li>
+          }
 
-        @case ('traceLink') {
-          <li class="conv__row conv__row--trace-link"
-              data-testid="conversation-trace-link">
-            <button type="button"
-                    class="trace-link"
-                    [cacTooltip]="row.event.label"
-                    (click)="emitOpenTrace(row.event.link.range)">
-              <span aria-hidden="true">≣</span>
-              <span>{{ row.event.label }}</span>
-            </button>
-          </li>
-        }
+          @case ('traceLink') {
+            <li class="conv__row conv__row--trace-link" data-testid="conversation-trace-link">
+              <button
+                type="button"
+                class="trace-link"
+                [cacTooltip]="row.event.label"
+                (click)="emitOpenTrace(row.event.link.range)"
+              >
+                <span aria-hidden="true">≣</span>
+                <span>{{ row.event.label }}</span>
+              </button>
+            </li>
+          }
         }
       }
       @if (virtualised() && bottomSpacerPx() > 0) {
-        <li class="conv__spacer" aria-hidden="true"
-            data-testid="conversation-spacer-bottom"
-            [style.height.px]="bottomSpacerPx()"></li>
+        <li
+          class="conv__spacer"
+          aria-hidden="true"
+          data-testid="conversation-spacer-bottom"
+          [style.height.px]="bottomSpacerPx()"
+        ></li>
       }
     </ol>
     <!-- Persistent live region: it must exist BEFORE a status appears, or
@@ -489,31 +695,47 @@
          stays decorative. -->
     <span class="conv__sr-status" role="status">
       @if (statusKind(); as status) {
-        {{ status === 'working' ? 'Working — agent is active on this task.' : 'Queued — will run on the next pickup.' }}
+        {{
+          status === 'working'
+            ? 'Working — agent is active on this task.'
+            : 'Queued — will run on the next pickup.'
+        }}
       }
     </span>
     @if (statusKind(); as status) {
-      <div class="conv__status"
-           [attr.data-status]="status"
-           [attr.data-testid]="'conversation-status-' + status">
+      <div
+        class="conv__status"
+        [attr.data-status]="status"
+        [attr.data-testid]="'conversation-status-' + status"
+      >
         <div class="conv__status-text">
           <span class="conv__status-title">{{ status === 'working' ? 'Working' : 'Queued' }}</span>
           <span class="conv__status-detail">
-            {{ status === 'working' ? 'Agent is active on this task.' : 'Will run on the next pickup.' }}
+            {{
+              status === 'working'
+                ? 'Agent is active on this task.'
+                : 'Will run on the next pickup.'
+            }}
           </span>
         </div>
-        <cac-pixel-progress class="conv__status-scene"
-                            [state]="status"
-                            [model]="activeModel()"
-                            [thinking]="activeThinking()" />
+        <cac-pixel-progress
+          class="conv__status-scene"
+          [state]="status"
+          [model]="activeModel()"
+          [thinking]="activeThinking()"
+        />
       </div>
     }
     @if (!stick.stuck()) {
-      <button type="button"
-              class="conv__jump"
-              data-testid="conversation-jump-latest"
-              [cacTooltip]="'Jump to the latest entry and resume following'"
-              (click)="jumpToLatest()">↓ Jump to latest</button>
+      <button
+        type="button"
+        class="conv__jump"
+        data-testid="conversation-jump-latest"
+        [cacTooltip]="'Jump to the latest entry and resume following'"
+        (click)="jumpToLatest()"
+      >
+        ↓ Jump to latest
+      </button>
     }
   }
 </section>

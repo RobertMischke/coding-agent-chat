@@ -1,4 +1,6 @@
-:host { display: block; }
+:host {
+  display: block;
+}
 
 .conv {
   position: relative; /* anchors the hidden .conv__sr-status live region */
@@ -130,8 +132,13 @@
   flex: 0 0 auto;
 }
 
-.conv__status-title { font-weight: 700; }
-.conv__status-detail { color: color-mix(in srgb, currentColor 66%, transparent); font-size: 11.5px; }
+.conv__status-title {
+  font-weight: 700;
+}
+.conv__status-detail {
+  color: color-mix(in srgb, currentColor 66%, transparent);
+  font-size: 11.5px;
+}
 
 .conv__status-scene {
   flex: 1 1 auto;
@@ -322,8 +329,12 @@
   font-size: 12.5px;
   word-break: break-word;
 }
-.msg__body :first-child { margin-top: 0; }
-.msg__body :last-child { margin-bottom: 0; }
+.msg__body :first-child {
+  margin-top: 0;
+}
+.msg__body :last-child {
+  margin-bottom: 0;
+}
 .msg__payload {
   display: block;
   margin: 6px 0;
@@ -345,7 +356,9 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
-.msg__payload--image { width: fit-content; }
+.msg__payload--image {
+  width: fit-content;
+}
 .msg__payload-image {
   display: block;
   max-width: min(100%, 420px);
@@ -411,18 +424,79 @@
 }
 
 /* Session meta-card row: the init / rate-limit block as a readable header. */
-.conv__row--session-meta { padding: 6px 12px; }
-.conv__row--session-meta cac-conversation-session-card { display: block; width: 100%; }
+.conv__row--session-meta {
+  padding: 6px 12px;
+}
+.conv__row--session-meta cac-conversation-session-card {
+  display: block;
+  width: 100%;
+}
 
 /* Tool burst host row — shares the 12px content padding so the burst's
  * 15px gutter lines up exactly with the message bullets above it. */
-.conv__row--burst { width: 100%; padding: 2px 12px; }
-.conv__row--burst cac-tool-burst-chip { display: block; width: 100%; }
+.conv__row--burst {
+  width: 100%;
+  padding: 2px 12px;
+}
+.conv__row--burst cac-tool-burst-chip {
+  display: block;
+  width: 100%;
+}
 
 /* Plan checklist host row — same content inset as the burst so the plan
  * card lines up with the rest of the feed. */
-.conv__row--plan { width: 100%; padding: 3px 12px; }
-.conv__row--plan cac-plan-checklist { display: block; width: 100%; }
+.conv__row--plan {
+  width: 100%;
+  padding: 3px 12px;
+}
+.conv__row--plan cac-plan-checklist {
+  display: block;
+  width: 100%;
+}
+
+/* Orphan structured updates are exceptional fallbacks: one calm line with a
+ * Trace escape hatch. Normal file-change frames never reach this renderer;
+ * they enrich the work-phase row above. */
+.conv__row--runtime-notice {
+  align-items: baseline;
+  gap: var(--studio-spacing-2, 8px);
+  margin: 0 var(--studio-spacing-3, 12px);
+  padding: var(--studio-spacing-1, 4px) var(--studio-spacing-2, 8px);
+  border-left: 2px solid color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 55%, transparent);
+  background: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 6%, transparent);
+  font-size: 11.5px;
+}
+.conv__row--runtime-notice[data-severity='error'] {
+  border-left-color: color-mix(in srgb, var(--studio-accent-6, #f87171) 65%, transparent);
+  background: color-mix(in srgb, var(--studio-accent-6, #f87171) 7%, transparent);
+}
+.runtime-notice__label {
+  font-weight: 650;
+}
+.runtime-notice__detail {
+  color: color-mix(in srgb, currentColor 78%, transparent);
+}
+.runtime-notice__status {
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.runtime-notice__trace {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, currentColor 68%, transparent);
+  font: inherit;
+  font-size: 10.5px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.runtime-notice__trace:hover,
+.runtime-notice__trace:focus-visible {
+  color: inherit;
+}
 
 /* Slim markers — quiet timeline text, no chrome. The row keeps full color;
  * each fragment dims exactly once. */
@@ -433,10 +507,19 @@
   font-size: 11.5px;
   color: inherit;
 }
-.marker__dot { color: color-mix(in srgb, currentColor 45%, transparent); }
-.marker__label { font-weight: 600; color: color-mix(in srgb, currentColor 78%, transparent); }
-.conv__row--marker.conv__row--task .marker__label { color: color-mix(in srgb, currentColor 86%, transparent); }
-.marker__meta { color: color-mix(in srgb, currentColor 62%, transparent); }
+.marker__dot {
+  color: color-mix(in srgb, currentColor 45%, transparent);
+}
+.marker__label {
+  font-weight: 600;
+  color: color-mix(in srgb, currentColor 78%, transparent);
+}
+.conv__row--marker.conv__row--task .marker__label {
+  color: color-mix(in srgb, currentColor 86%, transparent);
+}
+.marker__meta {
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
 .marker__time {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
@@ -447,7 +530,14 @@
  * Decisions, supervisor waits, questions and system notices are accents in
  * the flow, not boxes: a 2px color rail plus a soft tint, inset from the
  * edges, no full border. */
-.conv__row--decision, .conv__row--supervisor-group, .conv__row--supervisor-terminal, .conv__row--needs-input, .conv__row--system, .conv__row--system-status, .conv__row--metric, .conv__row--trace-link {
+.conv__row--decision,
+.conv__row--supervisor-group,
+.conv__row--supervisor-terminal,
+.conv__row--needs-input,
+.conv__row--system,
+.conv__row--system-status,
+.conv__row--metric,
+.conv__row--trace-link {
   align-items: center;
 }
 .conv__row--decision,
@@ -463,13 +553,20 @@
   margin: 3px 10px;
   padding: 4px 10px;
 }
-.conv__row--needs-input > *, .conv__row--system > * { display: inline-flex; gap: 4px; align-items: center; }
+.conv__row--needs-input > *,
+.conv__row--system > * {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
 
 /* Orchestrator decisions are the highest-signal rows in the feed — auto-review,
  * reissue, accept, escalate, worktree-containment. They keep the strongest
  * treatment: color rail, kind chip, tinted band. The accent colour shifts per
  * severity so a blocking escalate reads as urgent. */
-.conv__row--decision { padding: 0 10px; }
+.conv__row--decision {
+  padding: 0 10px;
+}
 .decision {
   display: flex;
   align-items: stretch;
@@ -515,7 +612,9 @@
   color: color-mix(in srgb, var(--decision-accent, #6366f1) 60%, currentColor);
 }
 /* The reason IS the row's content — full foreground, never dimmed. */
-.decision__reason { color: inherit; }
+.decision__reason {
+  color: inherit;
+}
 .decision__action {
   color: color-mix(in srgb, var(--decision-accent, #6366f1) 65%, currentColor);
   font-weight: 600;
@@ -537,14 +636,26 @@
   font-size: 11px;
   color: inherit;
 }
-.decision__budget + .decision__trace { margin-left: 0; }
-.decision__trace:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.decision__budget + .decision__trace {
+  margin-left: 0;
+}
+.decision__trace:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
 
 /* Severity-driven accent: warnings amber, errors/escalations red. */
-.conv__row--decision[data-severity='warn'] { --decision-accent: var(--studio-accent-warn, #f59e0b); }
-.conv__row--decision[data-severity='error'] { --decision-accent: var(--studio-accent-6, #ef4444); }
-.conv__row--decision[data-decision-type='escalate'] { --decision-accent: var(--studio-accent-6, #ef4444); }
-.conv__row--decision[data-decision-type='accept'] { --decision-accent: var(--studio-accent-success, #22c55e); }
+.conv__row--decision[data-severity='warn'] {
+  --decision-accent: var(--studio-accent-warn, #f59e0b);
+}
+.conv__row--decision[data-severity='error'] {
+  --decision-accent: var(--studio-accent-6, #ef4444);
+}
+.conv__row--decision[data-decision-type='escalate'] {
+  --decision-accent: var(--studio-accent-6, #ef4444);
+}
+.conv__row--decision[data-decision-type='accept'] {
+  --decision-accent: var(--studio-accent-success, #22c55e);
+}
 
 .conv__row--supervisor-group {
   width: auto;
@@ -572,7 +683,9 @@
   text-align: left;
   cursor: pointer;
 }
-.supervisor-group__summary:hover { background: color-mix(in srgb, currentColor 4%, transparent); }
+.supervisor-group__summary:hover {
+  background: color-mix(in srgb, currentColor 4%, transparent);
+}
 .supervisor-group__summary:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 70%, currentColor);
   outline-offset: 2px;
@@ -583,13 +696,19 @@
   line-height: 1;
   transition: transform 0.12s ease;
 }
-.conv__row--supervisor-group[data-expanded='true'] .supervisor-group__chevron { transform: rotate(90deg); }
-.supervisor-group__shield, .supervisor-terminal__shield {
+.conv__row--supervisor-group[data-expanded='true'] .supervisor-group__chevron {
+  transform: rotate(90deg);
+}
+.supervisor-group__shield,
+.supervisor-terminal__shield {
   width: 14px;
   height: 14px;
   color: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 74%, currentColor);
 }
-.supervisor-group__count { font-weight: 650; white-space: nowrap; }
+.supervisor-group__count {
+  font-weight: 650;
+  white-space: nowrap;
+}
 .supervisor-group__states {
   color: color-mix(in srgb, currentColor 66%, transparent);
   font-size: 11px;
@@ -627,7 +746,9 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.supervisor-group__budget-value { font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace); }
+.supervisor-group__budget-value {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+}
 .supervisor-group__events {
   margin: 0 0 0 36px;
   padding: 2px var(--studio-spacing-2, 8px) 6px var(--studio-spacing-3, 12px);
@@ -642,15 +763,22 @@
   min-height: 24px;
   padding: var(--studio-row-gap, 3px) 0;
 }
-.supervisor-group__event + .supervisor-group__event { border-top: 1px solid color-mix(in srgb, currentColor 7%, transparent); }
+.supervisor-group__event + .supervisor-group__event {
+  border-top: 1px solid color-mix(in srgb, currentColor 7%, transparent);
+}
 .supervisor-group__event-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 72%, currentColor);
 }
-.supervisor-group__event[data-state='resumed'] .supervisor-group__event-dot { background: var(--studio-accent-success, #22c55e); }
-.supervisor-group__event-state { font-size: 11px; font-weight: 650; }
+.supervisor-group__event[data-state='resumed'] .supervisor-group__event-dot {
+  background: var(--studio-accent-success, #22c55e);
+}
+.supervisor-group__event-state {
+  font-size: 11px;
+  font-weight: 650;
+}
 .supervisor-group__event-quiet {
   color: color-mix(in srgb, currentColor 64%, transparent);
   font: 10.5px var(--font-mono, ui-monospace, SFMono-Regular, monospace);
@@ -679,7 +807,8 @@
   flex: 0 0 auto;
   color: color-mix(in srgb, var(--studio-accent-6, #ef4444) 80%, currentColor);
 }
-.supervisor-terminal__actor, .supervisor-terminal__state {
+.supervisor-terminal__actor,
+.supervisor-terminal__state {
   color: color-mix(in srgb, var(--studio-accent-6, #ef4444) 76%, currentColor);
   font-weight: 700;
 }
@@ -733,8 +862,11 @@
   border-left-color: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 65%, transparent);
   background: color-mix(in srgb, var(--studio-accent-warn, #f59e0b) 7%, transparent);
 }
-.sys__actor { font-weight: 600; }
-.sys__expected, .sys__fallback {
+.sys__actor {
+  font-weight: 600;
+}
+.sys__expected,
+.sys__fallback {
   font-size: 11px;
   color: color-mix(in srgb, currentColor 68%, transparent);
 }
@@ -836,8 +968,12 @@
   font-size: 11px;
   font-weight: 600;
 }
-.feedback__label { color: color-mix(in srgb, currentColor 90%, transparent); margin-right: auto; }
-.feedback__open, .feedback__trace {
+.feedback__label {
+  color: color-mix(in srgb, currentColor 90%, transparent);
+  margin-right: auto;
+}
+.feedback__open,
+.feedback__trace {
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
@@ -847,7 +983,10 @@
   font-size: 11px;
   color: inherit;
 }
-.feedback__open:hover, .feedback__trace:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.feedback__open:hover,
+.feedback__trace:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
 
 /* Image artefact */
 .conv__row--image .image {
@@ -863,8 +1002,12 @@
   font-size: 12px;
   width: 100%;
 }
-.image__icon { font-size: 14px; }
-.image__caption { font-weight: 600; }
+.image__icon {
+  font-size: 14px;
+}
+.image__caption {
+  font-weight: 600;
+}
 .image__path {
   font-size: 11px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
@@ -908,7 +1051,9 @@
 }
 
 /* Token metric chip */
-.conv__row--metric { justify-content: flex-end; }
+.conv__row--metric {
+  justify-content: flex-end;
+}
 .metric__chip {
   display: inline-flex;
   align-items: center;
@@ -919,7 +1064,11 @@
   font-size: 11px;
   color: color-mix(in srgb, currentColor 75%, transparent);
 }
-.metric__value { font-variant-numeric: tabular-nums; font-weight: 600; color: inherit; }
+.metric__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: inherit;
+}
 
 /* Trace link */
 .trace-link {
@@ -935,4 +1084,6 @@
   font-size: 11.5px;
   cursor: pointer;
 }
-.trace-link:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.trace-link:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}

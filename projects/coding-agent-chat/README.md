@@ -68,6 +68,21 @@ The `core` entry point keeps the `ConversationEvent` wire contract importable wi
 zero Angular weight, so backends, SSR and tests can consume the types without the
 renderer.
 
+## Structured runtime projection
+
+`projectConversation()` treats structured runtime telemetry as detail, not as
+chat. Codex command clusters plus surrounding `item.*` frames become one
+collapsed `workPhase` event with aggregate call, failure, and touched-file
+counts. `file_change` lifecycles enrich that phase; an unmatched file update is
+the exceptional `runtime.notice` fallback and links back to its raw range.
+Lifecycle and reasoning frames with no user action stay Trace-only.
+
+Codex `todo_list` and legacy TodoWrite snapshots both project to `plan.update`.
+The event id is stable per source/run and only the newest full snapshot is
+returned, so `<cac-plan-checklist>` updates one living checklist instead of
+stacking rows. Hosts provide task context and transport; the library owns this
+projection and rendering behavior.
+
 ## Composer context attachments
 
 `<cac-chat>` can present host-owned context as removable chips above the textarea.

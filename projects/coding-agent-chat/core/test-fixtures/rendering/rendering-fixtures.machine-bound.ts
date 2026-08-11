@@ -25,6 +25,7 @@ type ContentCase =
 
 interface StreamCapture {
   schemaVersion: 1;
+  fixtureKind?: 'content-matrix' | 'work-phase';
   cli: FixtureCli;
   cliVersion: string;
   transport: string;
@@ -60,13 +61,17 @@ const LAB_SCENARIOS = readFileSync(
 );
 
 const captures = fixtureFiles(FIXTURE_DIRECTORY)
-  .filter((name) => name.endsWith('content-matrix.stream.json'))
+  .filter(
+    (name) =>
+      name.endsWith('content-matrix.stream.json') || name.endsWith('work-phase.stream.json'),
+  )
   .sort()
   .map((name) => JSON.parse(readFileSync(name, 'utf8')) as StreamCapture);
+const contentCaptures = captures.filter((capture) => capture.fixtureKind !== 'work-phase');
 
 describe('rendering stream fixtures [MachineBound]', () => {
   it('has a sanitized recorded envelope for every supported CLI', () => {
-    expect(captures.map((capture) => capture.cli)).toEqual(['claude', 'codex', 'gemini']);
+    expect(contentCaptures.map((capture) => capture.cli)).toEqual(['claude', 'codex', 'gemini']);
     for (const capture of captures) {
       expect(capture.schemaVersion).toBe(1);
       expect(capture.cliVersion).toBeTruthy();
@@ -76,7 +81,7 @@ describe('rendering stream fixtures [MachineBound]', () => {
     }
   });
 
-  for (const capture of captures) {
+  for (const capture of contentCaptures) {
     it(`${capture.cli} classifies every captured content type`, () => {
       const matrix = extractContentMatrix(capture);
       const snapshot: Record<string, unknown> = {};
@@ -133,6 +138,42 @@ describe('rendering stream fixtures [MachineBound]', () => {
       expect(messages[1]?.content?.map((payload) => payload.type)).toEqual(EXPECTED_TYPES.mixed);
     });
   }
+
+  it('folds the versioned Codex item-update capture into a work phase and checklist', () => {
+    const capture = captures.find((candidate) => candidate.fixtureKind === 'work-phase');
+    expect(capture).toBeDefined();
+    const lines: CliOutputLine[] = capture!.frames.map((frame, index) => ({
+      timestamp: `2026-08-11T08:00:${String(index).padStart(2, '0')}.000Z`,
+      stream: 'stdout',
+      text: JSON.stringify(frame),
+    }));
+    const events = projectConversation({ source: 'codex-0.146.0-work-phase', lines });
+
+    expect(events.some((event) => event.kind === 'system.status')).toBe(false);
+    expect(events.some((event) => event.kind === 'runtime.notice')).toBe(false);
+    expect(
+      events.map((event) => {
+        if (event.kind === 'workPhase') {
+          return {
+            kind: event.kind,
+            count: event.count,
+            failures: event.failures,
+            files: event.files,
+            segmentCount: event.segmentCount,
+            runtimeFrameCount: event.runtimeFrameCount,
+            rawRange: event.rawRange,
+          };
+        }
+        if (event.kind === 'plan.update') {
+          return { kind: event.kind, id: event.id, items: event.items };
+        }
+        if (event.kind === 'message.taskAgent') {
+          return { kind: event.kind, body: event.body };
+        }
+        return { kind: event.kind };
+      }),
+    ).toMatchSnapshot();
+  });
 });
 
 function projectCase(cli: FixtureCli, caseName: ContentCase, text: string): MessageEvent {

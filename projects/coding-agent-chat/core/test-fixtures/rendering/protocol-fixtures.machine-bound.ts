@@ -136,11 +136,19 @@ function eventProbe(event: ConversationEvent): Record<string, unknown> {
     case 'message.taskAgent':
       return { ...base, body: event.body, content: event.content?.map((item) => item.type) };
     case 'toolBurst':
+    case 'workPhase':
       return {
         ...base,
         count: event.count,
         families: event.families,
         failures: event.failures,
+        ...(event.kind === 'workPhase'
+          ? {
+              files: event.files,
+              segmentCount: event.segmentCount,
+              runtimeFrameCount: event.runtimeFrameCount,
+            }
+          : {}),
         commands: event.commands?.map((command) => ({
           command: command.command,
           status: command.status,

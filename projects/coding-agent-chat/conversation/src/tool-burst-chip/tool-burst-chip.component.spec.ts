@@ -5,7 +5,7 @@
 import { TestBed } from '@angular/core/testing';
 import type { ComponentFixture } from '@angular/core/testing';
 
-import type { RawLineRange, ToolBurstEvent } from 'coding-agent-chat/core';
+import type { RawLineRange, ToolBurstEvent, WorkPhaseEvent } from 'coding-agent-chat/core';
 
 import { ToolBurstChipComponent } from './tool-burst-chip.component';
 
@@ -26,7 +26,7 @@ function burstEvent(overrides: Partial<Omit<ToolBurstEvent, 'kind'>> = {}): Tool
 }
 
 async function render(
-  event: ToolBurstEvent,
+  event: ToolBurstEvent | WorkPhaseEvent,
   inputs: Record<string, unknown> = {},
 ): Promise<ComponentFixture<ToolBurstChipComponent>> {
   const fixture = TestBed.createComponent(ToolBurstChipComponent);
@@ -44,7 +44,9 @@ describe('ToolBurstChipComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
 
     expect(el.querySelector('[data-testid="tool-burst-icon"]')?.textContent?.trim()).toBe('📖');
-    expect(el.querySelector('[data-testid="tool-burst-count"]')?.textContent?.trim()).toBe('4');
+    expect(el.querySelector('[data-testid="tool-burst-count"]')?.textContent?.trim()).toBe(
+      '4 tool calls',
+    );
     expect(fixture.componentInstance.glyphTooltip().title).toBe('Read - Files read');
   });
 
@@ -70,6 +72,39 @@ describe('ToolBurstChipComponent', () => {
     );
     expect(el.querySelector('[data-testid="tool-burst-chip"]')?.getAttribute('data-failed')).toBe(
       'true',
+    );
+  });
+
+  it('renders a work-phase aggregate with call, failure, file, and folded-frame detail', async () => {
+    const phase: WorkPhaseEvent = {
+      ...burstEvent({
+        count: 11,
+        failures: 3,
+        families: { command: 11 },
+        files: ['src/a.ts', 'src/b.ts'],
+      }),
+      id: 'phase-1',
+      kind: 'workPhase',
+      segmentCount: 3,
+      runtimeFrameCount: 8,
+    };
+    const fixture = await render(phase, { initialOpen: true });
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelector('[data-testid="work-phase-label"]')?.textContent).toContain(
+      'Work phase',
+    );
+    expect(el.querySelector('[data-testid="tool-burst-count"]')?.textContent).toContain(
+      '11 tool calls',
+    );
+    expect(el.querySelector('[data-testid="tool-burst-failures"]')?.textContent).toContain(
+      '3 failed',
+    );
+    expect(el.querySelector('[data-testid="tool-burst-file-count"]')?.textContent).toContain(
+      '2 files touched',
+    );
+    expect(el.querySelector('[data-testid="tool-burst-glyph-label"]')?.textContent).toContain(
+      '3 segments · 8 runtime frames folded',
     );
   });
 

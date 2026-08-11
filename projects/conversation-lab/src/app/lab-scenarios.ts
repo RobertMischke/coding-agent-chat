@@ -28,7 +28,10 @@ import type {
   RunInfoLite,
   RunTimelineLite,
 } from 'coding-agent-chat/core';
-import { codexTextModeStderrTranscriptFragment } from 'coding-agent-chat/core';
+import {
+  codexStructuredWorkPhaseFragment,
+  codexTextModeStderrTranscriptFragment,
+} from 'coding-agent-chat/core';
 
 import {
   LAB_CONVERSATION_EVENTS,
@@ -149,24 +152,27 @@ const testFailRetryLines = script([
   ['The suite passes: the failed run had an overly tight polling budget, not a product defect.'],
 ]);
 
-const watchdogWaitLines = script([
-  ['Analyze the entire log directory and summarize the error categories.', 'user'],
+const watchdogWaitLines = script(
   [
-    '[taskboard] Started claude CLI (PID 4713), model=claude-sonnet-5, thinkingLevel=high',
-    'system',
+    ['Analyze the entire log directory and summarize the error categories.', 'user'],
+    [
+      '[taskboard] Started claude CLI (PID 4713), model=claude-sonnet-5, thinkingLevel=high',
+      'system',
+    ],
+    ['* Read logs/2026-06-30.log'],
+    ['  | 48,000 lines'],
+    ['[watchdog] Agent has been quiet for 30s (budget 600s)', 'orchestrator'],
+    ['[watchdog] Still silent at 60s', 'orchestrator'],
+    ['[watchdog] Still silent at 90s', 'orchestrator'],
+    ['[watchdog] Still silent at 120s', 'orchestrator'],
+    ['[watchdog] Still silent at 150s', 'orchestrator'],
+    ['[watchdog] Agent resumed streaming', 'orchestrator'],
+    [
+      'The long pause came from reading the 48k-line log. Here are the three dominant error categories.',
+    ],
   ],
-  ['* Read logs/2026-06-30.log'],
-  ['  | 48,000 lines'],
-  ['[watchdog] Agent has been quiet for 30s (budget 600s)', 'orchestrator'],
-  ['[watchdog] Still silent at 60s', 'orchestrator'],
-  ['[watchdog] Still silent at 90s', 'orchestrator'],
-  ['[watchdog] Still silent at 120s', 'orchestrator'],
-  ['[watchdog] Still silent at 150s', 'orchestrator'],
-  ['[watchdog] Agent resumed streaming', 'orchestrator'],
-  [
-    'The long pause came from reading the 48k-line log. Here are the three dominant error categories.',
-  ],
-], 30);
+  30,
+);
 
 const watchdogKillLines = script([
   ['Start the migration and wait for the result.', 'user'],
@@ -215,6 +221,7 @@ const stderrCrashLines = script([
 ]);
 
 const codexTextModeStderrLines = codexTextModeStderrTranscriptFragment();
+const codexStructuredWorkPhaseLines = codexStructuredWorkPhaseFragment();
 
 const capturedCodexProtocolLines = script([
   ['{"type":"thread.started","thread_id":"<redacted>"}'],
@@ -466,6 +473,14 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
       version: '0.49.0',
       transport: 'runner-normalized-stream-json',
     },
+  },
+  {
+    id: 'codex-work-phase',
+    kind: 'replay',
+    title: 'Codex work phase + todo',
+    description:
+      'CAC-25 before/after: twelve raw Codex JSONL frames (including file-change pairs and todo updates) project to one collapsed work phase, one living checklist, and one agent reply. Open Trace to compare the raw stream.',
+    lines: codexStructuredWorkPhaseLines,
   },
   {
     id: 'long-run',

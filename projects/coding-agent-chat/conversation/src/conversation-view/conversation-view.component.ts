@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, input, output, signal, untracked, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 
 import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
@@ -16,7 +27,11 @@ import {
   TooltipDirective,
   type StructuredTooltip,
 } from 'coding-agent-chat/shared';
-import { parseRateLimit, type MessageContentPayload, type SessionCardData } from 'coding-agent-chat/core';
+import {
+  parseRateLimit,
+  type MessageContentPayload,
+  type SessionCardData,
+} from 'coding-agent-chat/core';
 import type {
   AgentNeedsInputEvent,
   ArtifactImageEvent,
@@ -29,6 +44,7 @@ import type {
   PlanUpdateEvent,
   RawLineRange,
   RunMarkerEvent,
+  RuntimeNoticeEvent,
   SupervisorWaitEvent,
   SystemCaptureFailEvent,
   SystemParserWarningEvent,
@@ -39,6 +55,7 @@ import type {
   ToolBurstEvent,
   ToolOutputHit,
   TraceLinkEvent,
+  WorkPhaseEvent,
 } from 'coding-agent-chat/core';
 
 interface MessageGroupItem {
@@ -113,7 +130,9 @@ type RenderRow =
   | MessageGroupRow
   | SessionMetaRow
   | { kind: 'toolBurst'; id: string; event: ToolBurstEvent }
+  | { kind: 'workPhase'; id: string; event: WorkPhaseEvent }
   | { kind: 'planUpdate'; id: string; event: PlanUpdateEvent }
+  | { kind: 'runtimeNotice'; id: string; event: RuntimeNoticeEvent }
   | { kind: 'runMarker'; id: string; event: RunMarkerEvent }
   | { kind: 'taskMarker'; id: string; event: TaskMarkerEvent }
   | { kind: 'decision'; id: string; event: OrchestratorDecisionEvent }
@@ -343,9 +362,8 @@ export class ConversationViewComponent {
       // and zero payload) would paint an empty bubble — drop it instead so
       // the user never sees a hollow "Agent" frame.
       if (open.items.length > 0) {
-        open.showHeader = lastRole !== open.actor
-          || lastModel !== open.model
-          || lastThinking !== open.thinking;
+        open.showHeader =
+          lastRole !== open.actor || lastModel !== open.model || lastThinking !== open.thinking;
         lastRole = open.actor;
         lastModel = open.model;
         lastThinking = open.thinking;
@@ -434,7 +452,13 @@ export class ConversationViewComponent {
       // Same actor with the same model and thinking level stays in the bubble.
       // A mid-run attribution switch (including a thinking-level change) closes
       // the group so each bubble names one model / level pair at its boundary.
-      if (current && current.actor === actor && current.model === model && current.thinking === thinking) return current;
+      if (
+        current &&
+        current.actor === actor &&
+        current.model === model &&
+        current.thinking === thinking
+      )
+        return current;
       closeGroup();
       const next: MessageGroupRow = {
         kind: 'messageGroup',
@@ -585,9 +609,8 @@ export class ConversationViewComponent {
           id: m.id,
           timestamp: ts,
           body,
-          content: body === m.body && m.content?.length
-            ? m.content
-            : [{ type: 'markdown', text: body }],
+          content:
+            body === m.body && m.content?.length ? m.content : [{ type: 'markdown', text: body }],
           target: m.target,
           attachments: m.attachments,
           severity: m.severity,
@@ -608,6 +631,12 @@ export class ConversationViewComponent {
       switch (e.kind) {
         case 'toolBurst':
           out.push({ kind: 'toolBurst', id: e.id, event: e });
+          break;
+        case 'workPhase':
+          out.push({ kind: 'workPhase', id: e.id, event: e });
+          break;
+        case 'runtime.notice':
+          out.push({ kind: 'runtimeNotice', id: e.id, event: e });
           break;
         case 'taskMarker':
           out.push({ kind: 'taskMarker', id: e.id, event: e });
@@ -657,7 +686,7 @@ export class ConversationViewComponent {
       }
       // A tool burst preserves the surrounding role so two agent turns it
       // separates stay one thread; any other visible event resets it.
-      if (e.kind !== 'toolBurst' && out.length > before) lastRole = null;
+      if (e.kind !== 'toolBurst' && e.kind !== 'workPhase' && out.length > before) lastRole = null;
     }
 
     closeGroup();
@@ -814,7 +843,7 @@ export class ConversationViewComponent {
     intervention: 'Intervention',
     'worktree-containment': 'Worktree containment',
     'environment-blocker': 'Environment blocker',
-    decision: 'Decision'
+    decision: 'Decision',
   };
 
   /**
@@ -887,7 +916,7 @@ export class ConversationViewComponent {
         month: 'short',
         day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       });
     } catch {
       return '';
@@ -978,7 +1007,7 @@ export class ConversationViewComponent {
     if (event.state === 'killed') return 'killed';
     if (
       /\[watchdog-timeout\]|\b(?:silence|watchdog)\s+timeout\b|\btimeout\s+(?:after|at)\b/i.test(
-        event.reason ?? ''
+        event.reason ?? '',
       )
     ) {
       return 'timeout';
@@ -989,27 +1018,29 @@ export class ConversationViewComponent {
   // ── Session-meta tooltip ────────────────────────────────────────────
 
   hasMetaTooltip(group: MessageGroupRow): boolean {
-    return !!(
-      group.meta.sessionIdFull ||
-      group.meta.sessionInitAt ||
-      group.meta.rateLimitText
-    );
+    return !!(group.meta.sessionIdFull || group.meta.sessionInitAt || group.meta.rateLimitText);
   }
 
   metaTooltip(group: MessageGroupRow): StructuredTooltip | null {
     if (!this.hasMetaTooltip(group)) return null;
     const lines: string[] = [];
     if (group.meta.sessionIdFull) {
-      lines.push(`<div><strong>Session</strong> <code>${escapeHtml(group.meta.sessionIdFull)}</code></div>`);
+      lines.push(
+        `<div><strong>Session</strong> <code>${escapeHtml(group.meta.sessionIdFull)}</code></div>`,
+      );
     }
     if (group.meta.sessionInitAt) {
-      lines.push(`<div><strong>Init</strong> ${escapeHtml(this.formatDateTime(group.meta.sessionInitAt))}</div>`);
+      lines.push(
+        `<div><strong>Init</strong> ${escapeHtml(this.formatDateTime(group.meta.sessionInitAt))}</div>`,
+      );
     }
     if (group.meta.rateLimitText) {
-      lines.push(`<div><strong>Rate limit</strong> <small>${escapeHtml(group.meta.rateLimitText)}</small></div>`);
+      lines.push(
+        `<div><strong>Rate limit</strong> <small>${escapeHtml(group.meta.rateLimitText)}</small></div>`,
+      );
     }
     lines.push(
-      `<div><small>First ${escapeHtml(this.formatDateTime(group.firstTs))} · Last ${escapeHtml(this.formatDateTime(group.lastTs))}</small></div>`
+      `<div><small>First ${escapeHtml(this.formatDateTime(group.firstTs))} · Last ${escapeHtml(this.formatDateTime(group.lastTs))}</small></div>`,
     );
     return { title: this.actorLabel(group.actor), body: lines.join('') };
   }

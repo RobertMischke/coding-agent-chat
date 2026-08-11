@@ -39,13 +39,5 @@
     { "type": "turn.completed" }
   ],
   "renderLines": "raw-frames",
-  "expectedEventKinds": [
-    "system.status",
-    "system.status",
-    "toolBurst",
-    "system.status",
-    "system.status",
-    "message.taskAgent",
-    "system.status"
-  ]
+  "expectedEventKinds": ["workPhase", "system.status", "message.taskAgent"]
 }

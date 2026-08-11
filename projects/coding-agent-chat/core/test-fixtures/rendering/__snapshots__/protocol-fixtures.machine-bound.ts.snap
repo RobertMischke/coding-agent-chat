@@ -45,22 +45,6 @@ exports[`versioned CLI protocol fixtures [MachineBound] > claude 2.1.220 pins fr
 exports[`versioned CLI protocol fixtures [MachineBound] > codex 0.146.0 pins frame recognition and rendered events 1`] = `
 [
   {
-    "category": "codex",
-    "collapsedByDefault": false,
-    "explanation": "Codex emitted session lifecycle metadata.",
-    "kind": "system.status",
-    "label": "Codex thread.started",
-    "severity": "info",
-  },
-  {
-    "category": "codex",
-    "collapsedByDefault": false,
-    "explanation": "Codex started a model turn.",
-    "kind": "system.status",
-    "label": "Codex turn.started",
-    "severity": "info",
-  },
-  {
     "collapsedByDefault": true,
     "commands": [
       {
@@ -76,15 +60,10 @@ exports[`versioned CLI protocol fixtures [MachineBound] > codex 0.146.0 pins fra
     "families": {
       "command": 1,
     },
-    "kind": "toolBurst",
-    "severity": "info",
-  },
-  {
-    "category": "codex",
-    "collapsedByDefault": false,
-    "explanation": "Codex emitted a structured runtime frame.",
-    "kind": "system.status",
-    "label": "Codex item.completed reasoning",
+    "files": undefined,
+    "kind": "workPhase",
+    "runtimeFrameCount": 4,
+    "segmentCount": 1,
     "severity": "info",
   },
   {
@@ -103,14 +82,6 @@ exports[`versioned CLI protocol fixtures [MachineBound] > codex 0.146.0 pins fra
     ],
     "kind": "message.taskAgent",
     "severity": null,
-  },
-  {
-    "category": "codex",
-    "collapsedByDefault": false,
-    "explanation": "Codex completed the model turn.",
-    "kind": "system.status",
-    "label": "Codex turn.completed",
-    "severity": "info",
   },
 ]
 `;

@@ -21,7 +21,11 @@ import type {
   SystemUnknownFrameEvent,
   ToolBurstEvent,
 } from '../../../core/src/public-api';
-import { codexTextModeStderrTranscriptFragment, projectConversation } from '../../../core/src/public-api';
+import {
+  codexStructuredWorkPhaseFragment,
+  codexTextModeStderrTranscriptFragment,
+  projectConversation,
+} from '../../../core/src/public-api';
 
 import { ConversationViewComponent } from './conversation-view.component';
 
@@ -87,10 +91,7 @@ function supervisorWait(
   };
 }
 
-async function render(
-  events: readonly ConversationEvent[],
-  inputs: Record<string, unknown> = {},
-) {
+async function render(events: readonly ConversationEvent[], inputs: Record<string, unknown> = {}) {
   const fixture = TestBed.createComponent(ConversationViewComponent);
   fixture.componentRef.setInput('events', events);
   for (const [key, value] of Object.entries(inputs)) {
@@ -131,8 +132,16 @@ describe('ConversationViewComponent', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].getAttribute('data-show-header')).toBe('true');
     expect(rows[1].getAttribute('data-show-header')).toBe('true');
-    expect(rows[0].querySelector('[data-testid="conversation-message-model"]')?.textContent?.replace(/\s/g, '')).toBe('CDXL');
-    expect(rows[1].querySelector('[data-testid="conversation-message-model"]')?.textContent?.replace(/\s/g, '')).toBe('CDXH');
+    expect(
+      rows[0]
+        .querySelector('[data-testid="conversation-message-model"]')
+        ?.textContent?.replace(/\s/g, ''),
+    ).toBe('CDXL');
+    expect(
+      rows[1]
+        .querySelector('[data-testid="conversation-message-model"]')
+        ?.textContent?.replace(/\s/g, ''),
+    ).toBe('CDXH');
   });
 
   it('renders Codex text-mode stderr as one compact system row and keeps the stdout reply visible', async () => {
@@ -160,7 +169,9 @@ describe('ConversationViewComponent', () => {
 
     const agentRows = el.querySelectorAll('[data-actor="message.taskAgent"]');
     expect(agentRows).toHaveLength(1);
-    expect(agentRows[0].textContent).toContain('The stdout reply is still the visible answer, and it appears in the correct turn.');
+    expect(agentRows[0].textContent).toContain(
+      'The stdout reply is still the visible answer, and it appears in the correct turn.',
+    );
     expect(agentRows[0].textContent).toContain('Its second line is preserved in that same turn.');
     expect(agentRows[0].textContent).not.toContain('OpenAI Codex v0.144.1');
     expect(agentRows[0].textContent).not.toContain('export function projectConversation');
@@ -210,9 +221,9 @@ describe('ConversationViewComponent', () => {
     // isRunning switches the copy to the waiting variant.
     fixture.componentRef.setInput('isRunning', true);
     await fixture.whenStable();
-    expect(
-      el.querySelector('[data-testid="conversation-empty"]')?.textContent,
-    ).toContain('Waiting for the agent');
+    expect(el.querySelector('[data-testid="conversation-empty"]')?.textContent).toContain(
+      'Waiting for the agent',
+    );
   });
 
   it('renders a user bubble and folds consecutive agent messages into one group', async () => {
@@ -285,12 +296,18 @@ describe('ConversationViewComponent', () => {
   });
 
   it('collapses long diffs and remembers expansion by message id for the session', async () => {
-    const longDiff = ['```diff', ...Array.from({ length: 41 }, (_, index) => `+ changed line ${index + 1}`), '```'].join('\n');
+    const longDiff = [
+      '```diff',
+      ...Array.from({ length: 41 }, (_, index) => `+ changed line ${index + 1}`),
+      '```',
+    ].join('\n');
     const event = msg('message.orchestrator', longDiff, { id: 'long-diff' });
     const fixture = await render([event]);
     const el: HTMLElement = fixture.nativeElement;
     const item = el.querySelector<HTMLElement>('[data-item-id="long-diff"]');
-    const toggle = item?.querySelector<HTMLButtonElement>('[data-testid="conversation-message-item-expand"]');
+    const toggle = item?.querySelector<HTMLButtonElement>(
+      '[data-testid="conversation-message-item-expand"]',
+    );
 
     expect(item?.getAttribute('data-collapsed')).toBe('true');
     expect(toggle?.textContent?.trim()).toBe('expand');
@@ -301,7 +318,9 @@ describe('ConversationViewComponent', () => {
 
     expect(item?.getAttribute('data-collapsed')).toBe('false');
     expect(toggle?.textContent?.trim()).toBe('collapse');
-    expect(JSON.parse(sessionStorage.getItem('coding-agent-chat.expanded-message-ids') ?? '[]')).toContain('long-diff');
+    expect(
+      JSON.parse(sessionStorage.getItem('coding-agent-chat.expanded-message-ids') ?? '[]'),
+    ).toContain('long-diff');
 
     fixture.destroy();
     const remounted = await render([event]);
@@ -309,7 +328,11 @@ describe('ConversationViewComponent', () => {
       '[data-item-id="long-diff"]',
     );
     expect(remembered?.getAttribute('data-collapsed')).toBe('false');
-    expect(remembered?.querySelector('[data-testid="conversation-message-item-expand"]')?.textContent?.trim()).toBe('collapse');
+    expect(
+      remembered
+        ?.querySelector('[data-testid="conversation-message-item-expand"]')
+        ?.textContent?.trim(),
+    ).toBe('collapse');
   });
 
   it('collapses only after the character threshold and never collapses user messages', async () => {
@@ -320,9 +343,15 @@ describe('ConversationViewComponent', () => {
     ]);
     const el: HTMLElement = fixture.nativeElement;
 
-    expect(el.querySelector('[data-item-id="at-char-limit"]')?.getAttribute('data-collapsed')).toBe('false');
-    expect(el.querySelector('[data-item-id="over-char-limit"]')?.getAttribute('data-collapsed')).toBe('true');
-    expect(el.querySelector('[data-item-id="long-user-message"]')?.getAttribute('data-collapsed')).toBe('false');
+    expect(el.querySelector('[data-item-id="at-char-limit"]')?.getAttribute('data-collapsed')).toBe(
+      'false',
+    );
+    expect(
+      el.querySelector('[data-item-id="over-char-limit"]')?.getAttribute('data-collapsed'),
+    ).toBe('true');
+    expect(
+      el.querySelector('[data-item-id="long-user-message"]')?.getAttribute('data-collapsed'),
+    ).toBe('false');
   });
 
   it('renders a tool burst between agent turns, keeps the role continuous, and hides bursts when toolsVisible is false', async () => {
@@ -348,6 +377,56 @@ describe('ConversationViewComponent', () => {
     expect(el.querySelector('[data-testid="conversation-tool-burst"]')).toBeNull();
   });
 
+  it('renders structured Codex work as one collapsed phase plus one living checklist', async () => {
+    const events = projectConversation({
+      source: 'codex-work-phase',
+      lines: codexStructuredWorkPhaseFragment(),
+    });
+    const fixture = await render(events);
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelectorAll('[data-testid="conversation-work-phase"]')).toHaveLength(1);
+    expect(el.querySelectorAll('[data-testid="conversation-plan-update"]')).toHaveLength(1);
+    expect(el.querySelectorAll('[data-testid="conversation-system-status"]')).toHaveLength(0);
+    expect(el.querySelectorAll('[data-testid="conversation-runtime-notice"]')).toHaveLength(0);
+
+    const phase = el.querySelector<HTMLElement>('[data-testid="conversation-work-phase"]');
+    expect(phase?.textContent).toContain('3 tool calls');
+    expect(phase?.textContent).toContain('1 failed');
+    expect(phase?.textContent).toContain('2 files touched');
+    expect(phase?.querySelector('[data-testid="tool-burst-details"]')).toBeNull();
+
+    const plan = el.querySelector<HTMLElement>('[data-testid="conversation-plan-update"]');
+    expect(plan?.querySelectorAll('[data-testid="plan-item"]')).toHaveLength(2);
+    expect(plan?.querySelector('[data-testid="plan-progress"]')?.textContent?.trim()).toBe('2/2');
+  });
+
+  it('renders an orphan runtime notice as one compact line with a Trace action', async () => {
+    const events = projectConversation({
+      source: 'orphan-file-change',
+      lines: [
+        {
+          timestamp: nextTs(),
+          stream: 'stdout',
+          text: '{"type":"item.completed","item":{"id":"files_1","type":"file_change","changes":[{"path":"src/app.ts","kind":"update"}],"status":"completed"}}',
+        },
+      ],
+    });
+    const fixture = await render(events);
+    const el = fixture.nativeElement as HTMLElement;
+    const emitted: Array<RawLineRange | null> = [];
+    fixture.componentInstance.openTrace.subscribe((range) => emitted.push(range));
+
+    const notice = el.querySelector<HTMLElement>('[data-testid="conversation-runtime-notice"]');
+    expect(notice?.textContent).toContain('File change');
+    expect(notice?.textContent).toContain('1 file touched');
+    expect(notice?.textContent).not.toContain('item.completed');
+    notice
+      ?.querySelector<HTMLButtonElement>('[data-testid="conversation-runtime-open-trace"]')
+      ?.click();
+    expect(emitted).toEqual([{ source: 'orphan-file-change', start: 1, end: 1 }]);
+  });
+
   it('coalesces plan snapshots into a single latest checklist row', async () => {
     const fixture = await render([
       msg('message.user', 'build the tool'),
@@ -369,7 +448,9 @@ describe('ConversationViewComponent', () => {
     const items = planRows[0].querySelectorAll('[data-testid="plan-item"]');
     expect(items[0].getAttribute('data-status')).toBe('completed');
     expect(items[1].getAttribute('data-status')).toBe('in_progress');
-    expect(planRows[0].querySelector('[data-testid="plan-progress"]')?.textContent?.trim()).toBe('1/2');
+    expect(planRows[0].querySelector('[data-testid="plan-progress"]')?.textContent?.trim()).toBe(
+      '1/2',
+    );
   });
 
   it('filters runMarker start rows but seeds the session id, and renders terminal run markers', async () => {
@@ -434,9 +515,9 @@ describe('ConversationViewComponent', () => {
     const row = el.querySelector('[data-testid="conversation-decision-orchestrator"]');
     expect(row).toBeTruthy();
     expect(row?.getAttribute('data-decision-type')).toBe('reissue-open-items');
-    expect(
-      row?.querySelector('[data-testid="conversation-decision-type"]')?.textContent,
-    ).toBe('Reissue · Open items');
+    expect(row?.querySelector('[data-testid="conversation-decision-type"]')?.textContent).toBe(
+      'Reissue · Open items',
+    );
     expect(row?.textContent).toContain('evidence was incomplete');
     expect(row?.textContent).toContain('retry 1/3');
 
@@ -445,11 +526,9 @@ describe('ConversationViewComponent', () => {
 
     const emitted: (RawLineRange | null)[] = [];
     fixture.componentInstance.openTrace.subscribe((range) => emitted.push(range));
-    (
-      row?.querySelector<HTMLButtonElement>(
-        '[data-testid="conversation-decision-open-trace"]',
-      )
-    )?.click();
+    row
+      ?.querySelector<HTMLButtonElement>('[data-testid="conversation-decision-open-trace"]')
+      ?.click();
     expect(emitted).toEqual([{ source: 'cli-output.log', start: 40, end: 44 }]);
   });
 
@@ -561,12 +640,23 @@ describe('ConversationViewComponent', () => {
       supervisorWait('quiet', 30, { budgetSeconds: 600, reason: '[watchdog] Quiet for 30s' }),
       supervisorWait('quiet', 60, { budgetSeconds: 600, reason: '[watchdog] Still silent at 60s' }),
       supervisorWait('quiet', 90, { budgetSeconds: 600, reason: '[watchdog] Still silent at 90s' }),
-      supervisorWait('quiet', 120, { budgetSeconds: 600, reason: '[watchdog] Still silent at 120s' }),
-      supervisorWait('quiet', 120, { budgetSeconds: 600, reason: '[watchdog] Waiting within budget' }),
-      supervisorWait('resumed', 0, { budgetSeconds: 600, reason: '[watchdog] Agent resumed streaming' }),
+      supervisorWait('quiet', 120, {
+        budgetSeconds: 600,
+        reason: '[watchdog] Still silent at 120s',
+      }),
+      supervisorWait('quiet', 120, {
+        budgetSeconds: 600,
+        reason: '[watchdog] Waiting within budget',
+      }),
+      supervisorWait('resumed', 0, {
+        budgetSeconds: 600,
+        reason: '[watchdog] Agent resumed streaming',
+      }),
     ]);
     const el = fixture.nativeElement as HTMLElement;
-    const group = el.querySelector<HTMLElement>('[data-testid="conversation-supervisor-wait-group"]');
+    const group = el.querySelector<HTMLElement>(
+      '[data-testid="conversation-supervisor-wait-group"]',
+    );
     const toggle = group?.querySelector<HTMLButtonElement>(
       '[data-testid="conversation-supervisor-wait-toggle"]',
     );
@@ -622,9 +712,7 @@ describe('ConversationViewComponent', () => {
     const rows = el.querySelectorAll('[data-testid="conversation-artifact-image"]');
     expect(rows.length).toBe(2);
     expect(rows[0].querySelector('figcaption')?.textContent).toBe('Empty state screenshot');
-    expect(rows[0].querySelector('.image__path')?.textContent).toBe(
-      'results/01-empty-state.png',
-    );
+    expect(rows[0].querySelector('.image__path')?.textContent).toBe('results/01-empty-state.png');
     // No durable copy yet: falls back to the scratch source path.
     expect(rows[1].querySelector('.image__path')?.textContent).toBe('/tmp/shot-02.png');
   });
@@ -643,7 +731,9 @@ describe('ConversationViewComponent', () => {
     const fixture = await render([withUrl]);
     const el: HTMLElement = fixture.nativeElement;
 
-    const img = el.querySelector<HTMLImageElement>('[data-testid="conversation-artifact-image-img"]');
+    const img = el.querySelector<HTMLImageElement>(
+      '[data-testid="conversation-artifact-image-img"]',
+    );
     expect(img).toBeTruthy();
     expect(img?.getAttribute('src')).toContain('data:image/png');
     expect(img?.getAttribute('alt')).toBe('Dashboard');
@@ -660,9 +750,9 @@ describe('ConversationViewComponent', () => {
 
     const card = el.querySelector('[data-testid="conversation-session-meta"]');
     expect(card).toBeTruthy();
-    expect(
-      card?.querySelector('[data-testid="conversation-session-card-id"]')?.textContent,
-    ).toBe('0a1b2c3d…');
+    expect(card?.querySelector('[data-testid="conversation-session-card-id"]')?.textContent).toBe(
+      '0a1b2c3d…',
+    );
 
     // The lifecycle line itself never renders as a message item.
     const agentRow = el.querySelector('[data-actor="message.taskAgent"]');
@@ -719,7 +809,9 @@ describe('ConversationViewComponent', () => {
       // The view owns its scroll container in virtualised mode.
       expect(el.querySelector('.conv--virtualised')).toBeTruthy();
       // The tail row is in the window (the newest answer is rendered).
-      expect(el.querySelector('[data-testid="conversation-feed"]')?.textContent).toContain('Answer 39');
+      expect(el.querySelector('[data-testid="conversation-feed"]')?.textContent).toContain(
+        'Answer 39',
+      );
     });
 
     it('leaves the window at the full list when it fits (small N)', async () => {
@@ -743,7 +835,9 @@ describe('ConversationViewComponent', () => {
         scrollTop: {
           configurable: true,
           get: () => state.scrollTop,
-          set: (value: number) => { state.scrollTop = value; },
+          set: (value: number) => {
+            state.scrollTop = value;
+          },
         },
       });
       c.visibleStart.set(0);
@@ -757,7 +851,9 @@ describe('ConversationViewComponent', () => {
         state.scrollTop = state.scrollHeight - state.clientHeight;
       });
 
-      const jumpButton = el.querySelector<HTMLButtonElement>('[data-testid="conversation-jump-latest"]');
+      const jumpButton = el.querySelector<HTMLButtonElement>(
+        '[data-testid="conversation-jump-latest"]',
+      );
       expect(jumpButton).toBeTruthy();
       jumpButton!.click();
 
