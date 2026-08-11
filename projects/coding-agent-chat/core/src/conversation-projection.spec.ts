@@ -3,6 +3,7 @@ import {
   agentTextFragment,
   captureFailFragment,
   compositeFragment,
+  codexStructuredWorkPhaseFragment,
   codexTextModeStderrTranscriptFragment,
   codexTextModeStderrFailureFragment,
   heuristicWarningFragment,
@@ -25,16 +26,24 @@ import {
   userMessageFragment,
   waitLoopFragment,
   watchdogKillFragment,
-  watchdogQuietResumeFragment
+  watchdogQuietResumeFragment,
 } from './conversation-projection.fixtures';
 import { CONVERSATION_EVENT_KINDS } from './conversation-event';
-import type { ConversationEvent, MessageEvent as ConversationMessageEvent, RawLineRange } from './conversation-event';
+import type {
+  ConversationEvent,
+  MessageEvent as ConversationMessageEvent,
+  RawLineRange,
+} from './conversation-event';
 import { projectConversation } from './conversation-projection';
 import type { CliOutputLine } from './projection-inputs';
 
 const SOURCE = 'fixture-job';
 
-function line(text: string, stream = 'stdout', timestamp = '2026-04-26T12:00:00.000Z'): CliOutputLine {
+function line(
+  text: string,
+  stream = 'stdout',
+  timestamp = '2026-04-26T12:00:00.000Z',
+): CliOutputLine {
   return { timestamp, stream, text };
 }
 
@@ -71,6 +80,7 @@ interface EventProbe {
   }[];
   category?: string;
   decisionType?: string;
+  detail?: string;
   durablePath?: string;
   expectedKind?: string;
   expectedSchema?: string;
@@ -89,7 +99,9 @@ interface EventProbe {
   question?: string;
   rawLink?: { range: RawLineRange };
   rawRange: RawLineRange;
+  runtimeFrameCount?: number;
   runStats: { runCount: number; completedCount: number };
+  segmentCount?: number;
   severity?: string;
   state?: string;
   tests: readonly { status: string }[];
@@ -148,10 +160,12 @@ describe('projectConversation', () => {
       source: SOURCE,
       lines: [
         line('{"type":"turn.started"}'),
-        line(JSON.stringify({
-          type: 'item.completed',
-          item: { id: 'item_1', type: 'agent_message', text: diff },
-        })),
+        line(
+          JSON.stringify({
+            type: 'item.completed',
+            item: { id: 'item_1', type: 'agent_message', text: diff },
+          }),
+        ),
       ],
     });
 
@@ -183,8 +197,8 @@ describe('projectConversation', () => {
         line(''),
         line('A small folder for throwaway scripts.'),
         line(''),
-        line('```')
-      ]
+        line('```'),
+      ],
     });
     const joined = events
       .filter((e) => e.kind === 'message.taskAgent')
@@ -208,7 +222,10 @@ describe('projectConversation', () => {
   });
 
   it('keeps code fences and streaming boundaries verbatim while removing only the envelope line', () => {
-    const events = projectConversation({ source: SOURCE, lines: envelopeStreamingBoundaryFragment() });
+    const events = projectConversation({
+      source: SOURCE,
+      lines: envelopeStreamingBoundaryFragment(),
+    });
     const body = events.map((event) => probe(event).body ?? '').join('\n');
 
     expect(body).toContain('Proceed with the parser normalization.');
@@ -221,11 +238,13 @@ describe('projectConversation', () => {
   it('does not resurrect a frame-only streaming chunk through the raw-title fallback', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: [{
-        timestamp: '2026-07-01T09:00:00.000Z',
-        stream: 'stdout',
-        text: '2026-07-01 09:00 Supervisor:'
-      }]
+      lines: [
+        {
+          timestamp: '2026-07-01T09:00:00.000Z',
+          stream: 'stdout',
+          text: '2026-07-01 09:00 Supervisor:',
+        },
+      ],
     });
 
     expect(events).toEqual([]);
@@ -234,7 +253,7 @@ describe('projectConversation', () => {
   it('collapses Codex text-mode stderr transcripts into trace-only system evidence and keeps stdout visible', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: codexTextModeStderrTranscriptFragment()
+      lines: codexTextModeStderrTranscriptFragment(),
     });
 
     expect(events[0].kind).toBe('system.status');
@@ -243,13 +262,17 @@ describe('projectConversation', () => {
     expect(probe(events[0]).severity).toBe('info');
     expect(probe(events[0]).explanation).toBe('Codex captured a text-mode stderr transcript.');
     expect(probe(events[0]).nextStep).toBe('Open raw transcript in Trace.');
-    expect(events.some((event) => event.kind === 'message.taskAgent' && probe(event).body?.includes('/**'))).toBe(false);
+    expect(
+      events.some(
+        (event) => event.kind === 'message.taskAgent' && probe(event).body?.includes('/**'),
+      ),
+    ).toBe(false);
 
     const agent = events.find((event) => event.kind === 'message.taskAgent');
     expect(agent).toBeDefined();
     expect(probe(agent).body).toBe(
       'The stdout reply is still the visible answer, and it appears in the correct turn.\n' +
-      'Its second line is preserved in that same turn.'
+        'Its second line is preserved in that same turn.',
     );
     expect(probe(agent).body).not.toContain('OpenAI Codex v0.144.1');
     expect(probe(agent).body).not.toContain('/**');
@@ -268,7 +291,7 @@ describe('projectConversation', () => {
         .join('\n');
       const events = projectConversation({
         source: SOURCE,
-        lines: lines.slice(0, length)
+        lines: lines.slice(0, length),
       });
       const agentBodies = events
         .filter((event) => event.kind === 'message.taskAgent')
@@ -277,7 +300,9 @@ describe('projectConversation', () => {
       expect(agentBodies.join('\n')).not.toContain('OpenAI Codex');
       expect(agentBodies.join('\n')).not.toContain('/**');
       expect(agentBodies.join('\n')).not.toContain('Process exited with code 1');
-      expect(events.filter((event) => probe(event).category === 'codex-transcript')).toHaveLength(1);
+      expect(events.filter((event) => probe(event).category === 'codex-transcript')).toHaveLength(
+        1,
+      );
       expect(agentBodies).toHaveLength(stdoutBody ? 1 : 0);
       if (stdoutBody) {
         expect(agentBodies[0]).toBe(stdoutBody);
@@ -288,7 +313,7 @@ describe('projectConversation', () => {
   it('renders a failing Codex text-mode stderr transcript as a concise CLI failure status', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: codexTextModeStderrFailureFragment()
+      lines: codexTextModeStderrFailureFragment(),
     });
 
     expect(events).toHaveLength(1);
@@ -303,36 +328,42 @@ describe('projectConversation', () => {
   it('does not resurrect an envelope-only orchestrator frame through its raw fallback', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: [{
-        timestamp: '2026-07-01T09:00:00.000Z',
-        stream: 'orchestrator',
-        text: '[orchestrator]'
-      }]
+      lines: [
+        {
+          timestamp: '2026-07-01T09:00:00.000Z',
+          stream: 'orchestrator',
+          text: '[orchestrator]',
+        },
+      ],
     });
 
     expect(events).toEqual([]);
   });
 
   it('uses persisted run failure metadata without mistaking an inner tool exit for the run outcome', () => {
-    const lines = codexTextModeStderrTranscriptFragment().filter((line) => line.stream !== 'stdout');
+    const lines = codexTextModeStderrTranscriptFragment().filter(
+      (line) => line.stream !== 'stdout',
+    );
     const events = projectConversation({
       source: SOURCE,
       lines,
       runTimeline: {
         runCount: 1,
-        runs: [{
-          index: 1,
-          intent: 'start',
-          startedAt: lines[0].timestamp,
-          status: 'failed',
-          cli: 'codex',
-          exitCode: 7,
-          durationSeconds: 30,
-          capturedSessionId: null,
-          lineStart: 1,
-          lineEnd: lines.length
-        }]
-      }
+        runs: [
+          {
+            index: 1,
+            intent: 'start',
+            startedAt: lines[0].timestamp,
+            status: 'failed',
+            cli: 'codex',
+            exitCode: 7,
+            durationSeconds: 30,
+            capturedSessionId: null,
+            lineStart: 1,
+            lineEnd: lines.length,
+          },
+        ],
+      },
     });
 
     expect(events).toHaveLength(1);
@@ -347,16 +378,15 @@ describe('projectConversation', () => {
     const messages = events.filter(isTaskAgentEvent);
     const rawBody = messages.map((message) => message.diagnostics?.rawBody ?? '').join('\n');
     const strippedEnvelopes = messages.flatMap(
-      (message) => message.diagnostics?.strippedEnvelopes ?? []
+      (message) => message.diagnostics?.strippedEnvelopes ?? [],
     );
 
     expect(rawBody).toContain('2026-07-01 09:00 Supervisor:');
-    expect(strippedEnvelopes).toEqual(expect.arrayContaining([
-      '2026-07-01 09:00 Supervisor:',
-      '2026-07-01 09:00 Orchestrator:'
-    ]));
+    expect(strippedEnvelopes).toEqual(
+      expect.arrayContaining(['2026-07-01 09:00 Supervisor:', '2026-07-01 09:00 Orchestrator:']),
+    );
     expect(messages.map((message) => message.body).join('\n')).not.toContain(
-      '2026-07-01 09:00 Supervisor:'
+      '2026-07-01 09:00 Supervisor:',
     );
   });
 
@@ -403,12 +433,15 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line('* Todo [completed] Analyse the repo; [InProgress] Write the README; [pending] Add tests'),
+        line(
+          '* Todo [completed] Analyse the repo; [InProgress] Write the README; [pending] Add tests',
+        ),
       ],
     });
     const plan = events.find((e) => e.kind === 'plan.update');
     expect(plan).toBeDefined();
-    const items = (plan as unknown as { items: { title: string; status: string; id: string }[] }).items;
+    const items = (plan as unknown as { items: { title: string; status: string; id: string }[] })
+      .items;
     expect(items).toHaveLength(3);
     expect(items[0]).toMatchObject({ title: 'Analyse the repo', status: 'completed' });
     // Mixed casing (Codex/enum PascalCase) normalises onto the closed set.
@@ -438,10 +471,12 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line('{"type":"item.completed","item":{"id":"cmd_1","type":"command_execution","command":"rg -n \\"needle\\" frontend/src/app","aggregated_output":"frontend/src/app/a.ts:12:const needle = true;\\nfrontend/src/app/b.ts:8:needle();","exit_code":0,"status":"completed"}}')
-      ]
+        line(
+          '{"type":"item.completed","item":{"id":"cmd_1","type":"command_execution","command":"rg -n \\"needle\\" frontend/src/app","aggregated_output":"frontend/src/app/a.ts:12:const needle = true;\\nfrontend/src/app/b.ts:8:needle();","exit_code":0,"status":"completed"}}',
+        ),
+      ],
     });
-    const burst = probe(events.find((e) => e.kind === 'toolBurst'));
+    const burst = probe(events.find((e) => e.kind === 'workPhase'));
     expect(burst.commands).toHaveLength(1);
     expect(burst.commands[0].command).toContain('rg -n');
     expect(burst.commands[0].exitCode).toBe(0);
@@ -458,10 +493,12 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line('{"type":"item.completed","item":{"id":"cmd_1","type":"command_execution","command":"npm run build","aggregated_output":"$ npm run build\\nBuild succeeded\\nDone in 4.2s","exit_code":0,"status":"completed"}}')
-      ]
+        line(
+          '{"type":"item.completed","item":{"id":"cmd_1","type":"command_execution","command":"npm run build","aggregated_output":"$ npm run build\\nBuild succeeded\\nDone in 4.2s","exit_code":0,"status":"completed"}}',
+        ),
+      ],
     });
-    const burst = probe(events.find((e) => e.kind === 'toolBurst'));
+    const burst = probe(events.find((e) => e.kind === 'workPhase'));
     expect(burst.commands).toHaveLength(1);
     expect(burst.commands[0].command).toBe('npm run build');
     // The echoed command line is gone; only the real output remains.
@@ -471,12 +508,92 @@ describe('projectConversation', () => {
     expect(echoes).toHaveLength(0);
   });
 
-  it('turns Codex tool-router errors into typed parser warning rows', () => {
+  it('folds interleaved Codex item frames into one work phase and one checklist', () => {
+    const lines = codexStructuredWorkPhaseFragment();
+    const events = projectConversation({ source: SOURCE, lines });
+
+    expect(events.map((event) => event.kind)).toEqual([
+      'workPhase',
+      'plan.update',
+      'message.taskAgent',
+    ]);
+    const phase = probe(events[0]);
+    expect(phase.count).toBe(3);
+    expect(phase.failures).toBe(1);
+    expect(phase.files).toEqual(['projects/chat.ts', 'projects/chat.spec.ts']);
+    expect(phase.segmentCount).toBe(3);
+    expect(phase.runtimeFrameCount).toBe(9);
+    expect(phase.rawRange).toEqual({ source: SOURCE, start: 1, end: 10 });
+
+    const plan = events[1] as Extract<ConversationEvent, { kind: 'plan.update' }>;
+    expect(plan.id).toBe(`${SOURCE}:plan:default`);
+    expect(plan.items.map((item) => item.status)).toEqual(['completed', 'completed']);
+    expect(events.some((event) => event.kind === 'system.status')).toBe(false);
+    expect(events.some((event) => event.kind === 'runtime.notice')).toBe(false);
+  });
+
+  it('keeps a Codex todo list as one stable living entry across streaming prefixes', () => {
+    const lines = codexStructuredWorkPhaseFragment();
+    const seenPlanIds = new Set<string>();
+    const seenPhaseIds = new Set<string>();
+
+    for (let length = 1; length <= lines.length; length += 1) {
+      const events = projectConversation({ source: SOURCE, lines: lines.slice(0, length) });
+      const plans = events.filter(
+        (event): event is Extract<ConversationEvent, { kind: 'plan.update' }> =>
+          event.kind === 'plan.update',
+      );
+      expect(plans.length).toBeLessThanOrEqual(1);
+      if (plans[0]) seenPlanIds.add(plans[0].id);
+      const phases = events.filter((event) => event.kind === 'workPhase');
+      expect(phases.length).toBeLessThanOrEqual(1);
+      if (phases[0]) seenPhaseIds.add(phases[0].id);
+    }
+
+    expect([...seenPlanIds]).toEqual([`${SOURCE}:plan:default`]);
+    expect([...seenPhaseIds]).toEqual([`${SOURCE}:1:work-phase`]);
+  });
+
+  it('suppresses no-action Codex runtime frames and keeps them available only in Trace', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line('ERROR codex_core::tools::router: error=Exit code: 1', 'stderr')
-      ]
+        line('{"type":"turn.started"}'),
+        line(
+          '{"type":"item.updated","item":{"id":"reason_1","type":"reasoning","text":"checking"}}',
+        ),
+        line('{"type":"turn.completed"}'),
+      ],
+    });
+
+    expect(events).toEqual([]);
+  });
+
+  it('degrades an orphan file-change lifecycle to one compact trace-backed notice', () => {
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [
+        line(
+          '{"type":"item.started","item":{"id":"files_orphan","type":"file_change","changes":[{"path":"src/a.ts","kind":"update"}],"status":"in_progress"}}',
+        ),
+        line(
+          '{"type":"item.completed","item":{"id":"files_orphan","type":"file_change","changes":[{"path":"src/a.ts","kind":"update"}],"status":"completed"}}',
+        ),
+      ],
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].kind).toBe('runtime.notice');
+    expect(probe(events[0]).files).toEqual(['src/a.ts']);
+    expect(probe(events[0]).detail).toBe('1 file touched');
+    expect(events[0].rawRange).toEqual({ source: SOURCE, start: 1, end: 2 });
+    expect(JSON.stringify(events[0])).not.toContain('"type":"item.started"');
+  });
+
+  it('turns Codex tool-router errors into typed parser warning rows', () => {
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line('ERROR codex_core::tools::router: error=Exit code: 1', 'stderr')],
     });
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('system.parserWarning');
@@ -486,7 +603,7 @@ describe('projectConversation', () => {
   it('renders a genuine stderr failure as a concise system status instead of a Markdown agent turn', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: [line('Build failed: syntax error in src/app.ts', 'stderr')]
+      lines: [line('Build failed: syntax error in src/app.ts', 'stderr')],
     });
 
     expect(events).toHaveLength(1);
@@ -501,8 +618,11 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line('[codex-silent-completion] Codex stopped after final tool call (silence=64s >= 60s)', 'orchestrator')
-      ]
+        line(
+          '[codex-silent-completion] Codex stopped after final tool call (silence=64s >= 60s)',
+          'orchestrator',
+        ),
+      ],
     });
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('system.status');
@@ -514,8 +634,11 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line('[recovery] watchdog: silence timeout -> reissue (attempt 1/2, session resumed)', 'orchestrator')
-      ]
+        line(
+          '[recovery] watchdog: silence timeout -> reissue (attempt 1/2, session resumed)',
+          'orchestrator',
+        ),
+      ],
     });
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('system.status');
@@ -535,8 +658,11 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line('[recovery] watchdog: silence timeout -> reissue (attempt 2/2, session resumed)', 'orchestrator')
-      ]
+        line(
+          '[recovery] watchdog: silence timeout -> reissue (attempt 2/2, session resumed)',
+          'orchestrator',
+        ),
+      ],
     });
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('system.status');
@@ -563,7 +689,7 @@ describe('projectConversation', () => {
   it('preserves the silence budget on explicitly tagged watchdog timeouts', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: [line('[watchdog-timeout] No output for 600s', 'orchestrator')]
+      lines: [line('[watchdog-timeout] No output for 600s', 'orchestrator')],
     });
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('supervisor.wait');
@@ -575,7 +701,7 @@ describe('projectConversation', () => {
   it('classifies a generic watchdog timeout as a terminal-budget wait event', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: [line('[watchdog] Silence timeout after 600s', 'orchestrator')]
+      lines: [line('[watchdog] Silence timeout after 600s', 'orchestrator')],
     });
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('supervisor.wait');
@@ -618,7 +744,10 @@ describe('projectConversation', () => {
   });
 
   it('keeps agent prose and strips the sentinel when both share a line', () => {
-    const events = projectConversation({ source: SOURCE, lines: [line('All checks pass. [[TASK_DONE]]')] });
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line('All checks pass. [[TASK_DONE]]')],
+    });
     const msg = events.find((e) => e.kind === 'message.taskAgent');
     const status = events.find((e) => e.kind === 'system.status');
     expect(msg).toBeDefined();
@@ -633,7 +762,10 @@ describe('projectConversation', () => {
   });
 
   it('parses [[TASK_BLOCKED:reason]] into an error result carrying the reason', () => {
-    const events = projectConversation({ source: SOURCE, lines: [line('[[TASK_BLOCKED: backend is down]]')] });
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line('[[TASK_BLOCKED: backend is down]]')],
+    });
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('system.status');
     expect(probe(events[0]).category).toBe('result');
@@ -650,7 +782,10 @@ describe('projectConversation', () => {
   });
 
   it('parses an agent-stream [[TASK_NEEDS_INPUT:...]] into agent.needsInput', () => {
-    const events = projectConversation({ source: SOURCE, lines: [line('[[TASK_NEEDS_INPUT: which port should I use?]]')] });
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line('[[TASK_NEEDS_INPUT: which port should I use?]]')],
+    });
     expect(events).toHaveLength(1);
     expect(events[0].kind).toBe('agent.needsInput');
     expect(probe(events[0]).question).toMatch(/port/i);
@@ -676,7 +811,7 @@ describe('projectConversation', () => {
       source: SOURCE,
       lines,
       runTimeline: runTimelineForComposite(),
-      emitRunMarkers: true
+      emitRunMarkers: true,
     });
     const runs = events.filter((e) => e.kind === 'runMarker');
     // The initial run is selected up-front; only the second run-boundary
@@ -689,7 +824,7 @@ describe('projectConversation', () => {
   it('reads the per-run model from a [taskboard] Started marker and drops the marker line', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: taskboardStartedFragment('claude-opus-4-8')
+      lines: taskboardStartedFragment('claude-opus-4-8'),
     });
     // The marker is run bookkeeping, not a chat row: only the agent turn
     // survives, and it carries the model the marker announced.
@@ -704,12 +839,9 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line(
-          '[taskboard] Model changed from=claude-sonnet-4-6 to=claude-sonnet-5',
-          'system'
-        ),
-        line('Continuing with the migration plan.')
-      ]
+        line('[taskboard] Model changed from=claude-sonnet-4-6 to=claude-sonnet-5', 'system'),
+        line('Continuing with the migration plan.'),
+      ],
     });
     const chip = events.find((e) => e.kind === 'system.status');
     expect(chip).toBeDefined();
@@ -725,7 +857,7 @@ describe('projectConversation', () => {
   it('reads the per-run thinking level from the [taskboard] Started marker', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: taskboardStartedFragment('claude-opus-4-8')
+      lines: taskboardStartedFragment('claude-opus-4-8'),
     });
     // Same attribution lifecycle as the model: the Started marker names
     // thinkingLevel=high (see fixture), and the run's agent turn carries it.
@@ -738,7 +870,7 @@ describe('projectConversation', () => {
       source: SOURCE,
       lines: modelSwitchFragment('gpt-5-codex', 'claude-opus-4-7'),
       runTimeline: runTimelineForModelSwitch(),
-      emitRunMarkers: true
+      emitRunMarkers: true,
     });
     const agents = events.filter((e) => e.kind === 'message.taskAgent');
     // Each run's reply keeps its OWN run model — never one global value.
@@ -754,7 +886,10 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: [
-        line('[taskboard] Started codex CLI (PID 11), model=gpt-5-codex, thinkingLevel=high', 'system'),
+        line(
+          '[taskboard] Started codex CLI (PID 11), model=gpt-5-codex, thinkingLevel=high',
+          'system',
+        ),
         line('First run reply.'),
         line('[taskboard] Started claude CLI (PID 22), model=claude-opus-4-7', 'system'),
         line('Second run reply.'),
@@ -774,8 +909,8 @@ describe('projectConversation', () => {
       lines: [
         ...taskboardStartedFragment('claude-opus-4-8'),
         ...orchestratorReissueFragment(),
-        ...userMessageFragment()
-      ]
+        ...userMessageFragment(),
+      ],
     });
     const orchestrator = events.find((e) => e.kind === 'decision.orchestrator');
     const user = events.find((e) => e.kind === 'message.user');
@@ -787,7 +922,7 @@ describe('projectConversation', () => {
   it('attaches the current run model to a contiguous tool burst', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: [...taskboardStartedFragment('claude-opus-4-8'), ...toolBurstFragment()]
+      lines: [...taskboardStartedFragment('claude-opus-4-8'), ...toolBurstFragment()],
     });
     const burst = events.find((e) => e.kind === 'toolBurst');
     expect(burst?.model).toBe('claude-opus-4-8');
@@ -802,9 +937,9 @@ describe('projectConversation', () => {
           caption: 'Empty state',
           sourcePath: '/tmp/scratch.png',
           durablePath: 'results/01-empty-state.png',
-          sourceTool: 'playwright'
-        }
-      ]
+          sourceTool: 'playwright',
+        },
+      ],
     });
     const image = events.find((e) => e.kind === 'artifact.image');
     expect(image).toBeDefined();
@@ -818,8 +953,8 @@ describe('projectConversation', () => {
       tokenSummary: {
         inputTokens: 1500,
         outputTokens: 400,
-        lastUpdate: '2026-05-05T12:00:00Z'
-      }
+        lastUpdate: '2026-05-05T12:00:00Z',
+      },
     });
     const metric = events.find((e) => e.kind === 'metric.token');
     expect(metric).toBeDefined();
@@ -836,15 +971,15 @@ describe('projectConversation', () => {
           shortSha: 'abcd',
           subject: 'feat: scaffold projection',
           authorDateUtc: '2026-05-05T12:00:00Z',
-          files: [{ status: 'M', path: 'frontend/src/app/foo.ts', added: 4, removed: 1 }]
-        }
+          files: [{ status: 'M', path: 'frontend/src/app/foo.ts', added: 4, removed: 1 }],
+        },
       ],
       screenshots: [
-        { caption: 'Empty state', sourcePath: 'results/01.png', durablePath: 'results/01.png' }
+        { caption: 'Empty state', sourcePath: 'results/01.png', durablePath: 'results/01.png' },
       ],
       emitWorkbenchSummary: true,
       emitWorkbenchPreviews: true,
-      emitTraceLink: true
+      emitTraceLink: true,
     });
     const kinds = events.map((e) => e.kind);
     expect(kinds).toContain('workbench.gitPreview');
@@ -868,7 +1003,7 @@ describe('projectConversation', () => {
       'supervisor.wait',
       'supervisor.wait',
       'supervisor.wait',
-      'supervisor.wait'
+      'supervisor.wait',
     ]);
     expect(probe(events[0]).state).toBe('quiet');
     expect(probe(events[3]).state).toBe('resumed');
@@ -894,7 +1029,7 @@ describe('projectConversation', () => {
       source: SOURCE,
       lines: tokenSpikeFragment(),
       tokenSummary: tokenSpikeSummary(),
-      emitWorkbenchSummary: true
+      emitWorkbenchSummary: true,
     });
     const metric = events.find((e) => e.kind === 'metric.token');
     expect(metric).toBeDefined();
@@ -913,7 +1048,7 @@ describe('projectConversation', () => {
     const events = projectConversation({
       source: SOURCE,
       lines: testFailRetryFragment(),
-      emitWorkbenchSummary: true
+      emitWorkbenchSummary: true,
     });
     const tools = events.filter((e) => e.kind === 'toolBurst').map(probe);
     // Fail/retry/pass is one tool burst, not three. Failure stays visible in
@@ -935,10 +1070,7 @@ describe('projectConversation', () => {
   it('extracts touched files and artifact paths from contiguous tool bursts', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: [
-        ...toolBurstFragment(),
-        ...imageArtifactFragment()
-      ]
+      lines: [...toolBurstFragment(), ...imageArtifactFragment()],
     });
     const tools = events.filter((e) => e.kind === 'toolBurst').map(probe);
     expect(tools).toHaveLength(1);
@@ -956,11 +1088,7 @@ describe('projectConversation', () => {
   it('does not merge tool bursts across an agent reply', () => {
     const events = projectConversation({
       source: SOURCE,
-      lines: [
-        ...toolBurstFragment(),
-        ...agentTextFragment(),
-        ...toolBurstFragment()
-      ]
+      lines: [...toolBurstFragment(), ...agentTextFragment(), ...toolBurstFragment()],
     });
     const tools = events.filter((e) => e.kind === 'toolBurst');
     // The agent prose breaks the burst so the chat reads as
@@ -980,12 +1108,12 @@ describe('projectConversation', () => {
         title: 'Fixture',
         state: '3-progress',
         createdAt: '2026-05-05T11:55:00Z',
-        lastActivity: '2026-05-05T12:02:00Z'
+        lastActivity: '2026-05-05T12:02:00Z',
       },
       tokenSummary: {
         inputTokens: 1200,
         outputTokens: 250,
-        lastUpdate: '2026-05-05T12:02:00Z'
+        lastUpdate: '2026-05-05T12:02:00Z',
       },
       commits: [
         {
@@ -995,17 +1123,15 @@ describe('projectConversation', () => {
           authorDateUtc: '2026-05-05T12:01:00Z',
           files: [
             { status: 'M', path: 'a.ts', added: 1, removed: 0 },
-            { status: 'M', path: 'b.ts', added: 2, removed: 1 }
-          ]
-        }
+            { status: 'M', path: 'b.ts', added: 2, removed: 1 },
+          ],
+        },
       ],
-      screenshots: [
-        { caption: 'one', sourcePath: 'results/a.png', durablePath: 'results/a.png' }
-      ],
+      screenshots: [{ caption: 'one', sourcePath: 'results/a.png', durablePath: 'results/a.png' }],
       latestResult: '[[TASK_DONE]]',
       emitWorkbenchSummary: true,
       emitWorkbenchPreviews: true,
-      emitRunMarkers: true
+      emitRunMarkers: true,
     });
 
     const summary = probe(events.find((e) => e.kind === 'workbench.summary'));
@@ -1033,15 +1159,15 @@ describe('projectConversation', () => {
         ...compositeFragment(),
         ...captureFailFragment(),
         ...heuristicWarningFragment(),
-        ...schemaDriftFragment()
+        ...schemaDriftFragment(),
       ],
       runTimeline: runTimelineForComposite(),
       tokenSummary: {
         inputTokens: 1200,
         outputTokens: 250,
-        lastUpdate: '2026-05-05T12:02:00Z'
+        lastUpdate: '2026-05-05T12:02:00Z',
       },
-      emitDebugAggregate: true
+      emitDebugAggregate: true,
     });
     const debug = probe(events.find((e) => e.kind === 'workbench.debug'));
     expect(debug.actorCounts.user).toBeGreaterThan(0);
@@ -1069,7 +1195,7 @@ describe('projectConversation', () => {
       runTimeline: runTimelineForComposite(),
       emitWorkbenchSummary: true,
       emitDebugAggregate: true,
-      emitTraceLink: true
+      emitTraceLink: true,
     });
     expect(events.length).toBeGreaterThan(0);
     for (const ev of events) {
@@ -1090,6 +1216,8 @@ describe('projectConversation', () => {
     // jobs can iterate kinds without TypeScript discriminated-union juggling.
     expect(CONVERSATION_EVENT_KINDS).toContain('message.user');
     expect(CONVERSATION_EVENT_KINDS).toContain('toolBurst');
+    expect(CONVERSATION_EVENT_KINDS).toContain('workPhase');
+    expect(CONVERSATION_EVENT_KINDS).toContain('runtime.notice');
     expect(CONVERSATION_EVENT_KINDS).toContain('decision.orchestrator');
     expect(CONVERSATION_EVENT_KINDS).toContain('workbench.summary');
     expect(CONVERSATION_EVENT_KINDS).toContain('workbench.gitPreview');

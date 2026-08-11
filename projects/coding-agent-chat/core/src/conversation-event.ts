@@ -29,11 +29,7 @@
  * ZERO host imports (the library owns its contract).
  */
 export type ParentLane =
-  | '4-auto-review'
-  | '5-human-review'
-  | '5e-escalated'
-  | '6-completed'
-  | '7-archive';
+  '4-auto-review' | '5-human-review' | '5e-escalated' | '6-completed' | '7-archive';
 
 /** 1-based, inclusive line range into the source CLI log. */
 export interface RawLineRange {
@@ -53,14 +49,7 @@ export interface TraceLink {
 }
 
 /** Tool families recognised by the projection. */
-export type ToolFamily =
-  | 'read'
-  | 'search'
-  | 'command'
-  | 'edit'
-  | 'task'
-  | 'todo'
-  | 'other';
+export type ToolFamily = 'read' | 'search' | 'command' | 'edit' | 'task' | 'todo' | 'other';
 
 export type ToolBurstSamples = Readonly<Record<string, string | undefined>>;
 
@@ -93,7 +82,9 @@ export type ConversationEventKind =
   | 'message.supportingAgent'
   // Activity-log edge cases (see activity-log-edge-cases.md)
   | 'toolBurst'
+  | 'workPhase'
   | 'plan.update'
+  | 'runtime.notice'
   | 'supervisor.wait'
   | 'decision.orchestrator'
   | 'agent.needsInput'
@@ -208,6 +199,22 @@ export interface ToolBurstEvent extends ConversationEventBase {
   commands?: readonly ToolCommandExecution[];
 }
 
+/**
+ * One continuous burst of runtime work between conversational turns.
+ *
+ * Codex emits structured `item.*` lifecycle frames around the command groups
+ * that already make up a tool burst. A work phase absorbs those surrounding
+ * frames, folds file-change metadata into the aggregate, and preserves one
+ * collapsed row instead of exposing every lifecycle transition separately.
+ */
+export interface WorkPhaseEvent extends Omit<ToolBurstEvent, 'kind'> {
+  kind: 'workPhase';
+  /** Tool clusters joined by structured runtime metadata inside this phase. */
+  segmentCount: number;
+  /** Structured frames folded into the phase and retained in the raw trace. */
+  runtimeFrameCount: number;
+}
+
 /** Status of a single plan / todo item, normalised across CLIs. */
 export type PlanItemStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -228,6 +235,21 @@ export interface PlanItem {
 export interface PlanUpdateEvent extends ConversationEventBase {
   kind: 'plan.update';
   items: readonly PlanItem[];
+}
+
+/**
+ * Compact fallback for actionable structured runtime metadata that cannot be
+ * attached to a work phase. No-action lifecycle frames never use this kind;
+ * they remain trace-only.
+ */
+export interface RuntimeNoticeEvent extends ConversationEventBase {
+  kind: 'runtime.notice';
+  category: 'file-change' | 'runtime-error';
+  label: string;
+  detail: string;
+  frameType: string;
+  status?: string;
+  files?: readonly string[];
 }
 
 export interface SupervisorWaitEvent extends ConversationEventBase {
@@ -538,7 +560,9 @@ export interface TraceLinkEvent extends ConversationEventBase {
 export type ConversationEvent =
   | MessageEvent
   | ToolBurstEvent
+  | WorkPhaseEvent
   | PlanUpdateEvent
+  | RuntimeNoticeEvent
   | SupervisorWaitEvent
   | OrchestratorDecisionEvent
   | AgentNeedsInputEvent
@@ -565,7 +589,9 @@ export const CONVERSATION_EVENT_KINDS: readonly ConversationEventKind[] = [
   'message.supervisor',
   'message.supportingAgent',
   'toolBurst',
+  'workPhase',
   'plan.update',
+  'runtime.notice',
   'supervisor.wait',
   'decision.orchestrator',
   'agent.needsInput',
@@ -582,5 +608,5 @@ export const CONVERSATION_EVENT_KINDS: readonly ConversationEventKind[] = [
   'workbench.debug',
   'taskMarker',
   'runMarker',
-  'traceLink'
+  'traceLink',
 ];

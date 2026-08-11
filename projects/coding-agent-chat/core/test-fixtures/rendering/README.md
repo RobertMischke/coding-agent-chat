@@ -8,6 +8,9 @@ while assistant payload text and transport field names stay unchanged.
 - `claude-2.1.220.stream.json` was recorded with
   `claude -p --output-format stream-json --verbose`.
 - `codex-0.146.0.stream.json` was recorded with `codex exec --json`.
+- `codex-0.146.0.work-phase.stream.json` retains the versioned Codex
+  `file_change` and `todo_list` item lifecycles from the CAC-25 operator case.
+  It is a projection fixture rather than a second content-matrix capture.
 - `gemini-0.49.0.stream.json` uses the runner-normalized message frame retained
   by the parity archive. The local capture runner had no non-interactive Gemini
   credentials, so the checked-in archival capture is used rather than
@@ -30,3 +33,8 @@ The suite replays the actual CLI envelope, extracts the recorded assistant
 matrix, projects each case, and snapshots the typed content contract. Only
 `markdown` is allowed to reach Markdown parsing; all raw/file-oriented payloads
 must remain typed.
+
+The Codex work-phase fixture additionally locks the visual row contract: the
+raw frame flood projects to one `workPhase`, one stable `plan.update`, and one
+agent message. The Conversation Lab scenario “Codex work phase + todo” renders
+that same capture; opening Trace supplies the before/raw side of the comparison.

@@ -11,6 +11,12 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ### Added
 
+- The next library release adds `workPhase` and `runtime.notice` conversation
+  kinds. Structured Codex command bursts now absorb surrounding `item.*`
+  lifecycle frames, aggregate calls/failures/files in one collapsed phase, and
+  retain raw frame evidence in Trace.
+- Codex `todo_list` snapshots now project to one stable per-run
+  `plan.update` entry rendered by the live checklist component.
 - Consecutive non-terminal `supervisor.wait` events now render as one compact,
   default-collapsed group with quiet/resumed counts, longest-silence budget
   context, a time range, and full per-event disclosure. Watchdog kills and
@@ -18,6 +24,9 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ### Fixed
 
+- Codex `file_change` started/completed metadata no longer renders as standalone
+  rows; paired frames enrich their owning work phase, orphan frames degrade to
+  one compact trace-backed notice, and no-action runtime frames stay trace-only.
 - Focused conversation viewports now contain vertical navigation keys so they
   scroll only the chat, while composer arrows retain native editing behavior;
   embedding hosts no longer receive those handled key events.

@@ -20,13 +20,15 @@ import type {
   RunInfoLite,
   RunTimelineLite,
   TaskInfoLite,
-  TokenSummaryLite
+  TokenSummaryLite,
 } from './projection-inputs';
 import {
   parseActivityLog,
   isCodexTextModeTranscriptFailure,
   type ActivityLogGroup,
   type ActivityLogKind,
+  type StructuredRuntimeFileChange,
+  type StructuredRuntimeFrame,
   normalizeVisibleChatBody,
 } from './activity-log.parser';
 import { shortModelLabel } from './composer-controls';
@@ -41,7 +43,7 @@ import type {
   ToolOutputHit,
   ToolFamily,
   TraceLink,
-  WorkbenchSummaryAggregate
+  WorkbenchSummaryAggregate,
 } from './conversation-event';
 
 export interface ScreenshotEvidence {
@@ -91,9 +93,7 @@ export interface ConversationProjectionContext {
 }
 
 /** Public entry point — returns a flat, ordered list of conversation events. */
-export function projectConversation(
-  ctx: ConversationProjectionContext
-): ConversationEvent[] {
+export function projectConversation(ctx: ConversationProjectionContext): ConversationEvent[] {
   const events: ConversationEvent[] = [];
   const lineNumbers = numberLines(ctx.lines);
   const groups = parseActivityLog([...ctx.lines]);
@@ -106,6 +106,7 @@ export function projectConversation(
   let currentRun: RunContext = pickInitialRun(ctx.runTimeline ?? null);
   const runByLineIndex = buildRunIndex(ctx.lines, ctx.runTimeline ?? null);
   const seenParserDedupeKeys = new Set<string>();
+  const planEventIndexByRun = new Map<string | number, number>();
   // The generating model + thinking level for the current run. Updated
   // whenever a `[taskboard] Started ... model=` marker is seen so agent
   // outputs in the run carry that run's attribution — which is what makes
@@ -157,7 +158,7 @@ export function projectConversation(
           severity: 'info',
           category: 'model-change',
           label: 'Model changed',
-          explanation: `${modelChangeLabel(change.from)} → ${modelChangeLabel(change.to)}`
+          explanation: `${modelChangeLabel(change.from)} → ${modelChangeLabel(change.to)}`,
         });
         // Attribute subsequent outputs to the new model until the next run's
         // Started marker re-asserts it.
@@ -166,54 +167,50 @@ export function projectConversation(
       continue;
     }
 
-    // The agent's own task plan (`* Todo [status] title; …`, from Claude's
-    // TodoWrite / Codex's update_plan) is a first-class row, not tool noise:
-    // parse the latest snapshot into a plan.update event and never fold it
-    // into a tool burst. Emitted before the burst logic so a todo group
-    // starts its own row; the burst lookahead below also stops at todos.
-    const planItems = readPlanUpdate(group);
-    if (planItems) {
-      events.push(
-        toPlanUpdate(planItems, range, currentRun?.run?.index, group.lines[0]?.timestamp ?? '', currentModel, currentThinking)
-      );
-      continue;
-    }
-
-    // Contiguous tool / failed-tool groups collapse into a single ToolBurst
-    // event so the chat does not paint a wall of chips. The window stops at
-    // the first non-tool group; user / agent / orchestrator turns always
-    // break a burst even when the agent immediately resumes tool calls
-    // afterwards (the natural reading rhythm is tool burst → reply).
-    const burstFamily = classifyToolGroup(group);
-    if (burstFamily) {
-      const burstGroups: { group: ActivityLogGroup; family: ToolFamily }[] = [
-        { group, family: burstFamily }
-      ];
-      let lookahead = i + 1;
+    // Work material is broader than immediately-adjacent tool groups. Codex
+    // interleaves item lifecycle, file-change, and todo snapshots between the
+    // command clusters that belong to one burst. Consume the whole structured
+    // window up to the next conversational/system boundary and project it as
+    // one phase. Passive runtime frames stay addressable in Trace but never
+    // become standalone conversation rows.
+    const material = classifyWorkMaterial(group);
+    if (material) {
+      const collected: CollectedWorkMaterial[] = [];
+      let lookahead = i;
       while (lookahead < groups.length) {
         const next = groups[lookahead];
-        const nextFamily = classifyToolGroup(next);
-        // A todo group is a plan.update, not burst material — stop here so it
-        // becomes its own row on the next iteration.
-        if (!nextFamily || nextFamily === 'todo') break;
-        burstGroups.push({ group: next, family: nextFamily });
+        const nextRange = rangeForGroup(next, indexByLine, ctx.source);
+        if (lookahead > i) {
+          const nextRun = runByLineIndex.get(nextRange.start);
+          if (nextRun?.run && nextRun.run.index !== currentRun?.run?.index) break;
+        }
+        const nextMaterial = classifyWorkMaterial(next);
+        if (!nextMaterial) break;
+        collected.push({ group: next, range: nextRange, material: nextMaterial });
         lookahead += 1;
       }
-      const lastIdx = lookahead - 1;
-      const lastRange = rangeForGroup(groups[lastIdx], indexByLine, ctx.source);
-      const mergedRange: RawLineRange = {
+
+      projectWorkMaterial({
+        collected,
+        events,
+        planEventIndexByRun,
+        runId: currentRun?.run?.index,
+        model: currentModel,
+        thinkingLevel: currentThinking,
         source: ctx.source,
-        start: range.start,
-        end: Math.max(range.end, lastRange.end)
-      };
-      events.push(
-        toMergedToolBurst(burstGroups, mergedRange, currentRun?.run?.index, currentModel, currentThinking)
-      );
-      i = lastIdx;
+      });
+      i = Math.max(i, lookahead - 1);
       continue;
     }
 
-    const ev = projectGroup(group, range, currentRun, seenParserDedupeKeys, currentModel, currentThinking);
+    const ev = projectGroup(
+      group,
+      range,
+      currentRun,
+      seenParserDedupeKeys,
+      currentModel,
+      currentThinking,
+    );
     if (ev) events.push(...ev);
   }
 
@@ -262,7 +259,7 @@ function projectGroup(
   currentRun: RunContext,
   seenParserDedupeKeys: Set<string>,
   model: string | null,
-  thinkingLevel: string | null
+  thinkingLevel: string | null,
 ): ConversationEvent[] | null {
   const firstLine = group.lines[0];
   if (!firstLine) return null;
@@ -271,12 +268,13 @@ function projectGroup(
   const runId = currentRun?.run?.index;
   const normalizedBody = normalizeVisibleChatBody(group.lines);
   const visibleBody = normalizedBody.text;
-  const diagnostics = normalizedBody.strippedEnvelopes.length > 0
-    ? {
-        rawBody: group.lines.map((line) => line.text ?? '').join('\n'),
-        strippedEnvelopes: normalizedBody.strippedEnvelopes
-      }
-    : undefined;
+  const diagnostics =
+    normalizedBody.strippedEnvelopes.length > 0
+      ? {
+          rawBody: group.lines.map((line) => line.text ?? '').join('\n'),
+          strippedEnvelopes: normalizedBody.strippedEnvelopes,
+        }
+      : undefined;
 
   // User messages are always their own turn.
   if (firstLine.stream === 'user') {
@@ -292,8 +290,8 @@ function projectGroup(
         body: visibleBody,
         content: classifyMessageContent(visibleBody),
         diagnostics,
-        target: extractUserTarget(firstLine.text)
-      }
+        target: extractUserTarget(firstLine.text),
+      },
     ];
   }
 
@@ -318,12 +316,17 @@ function projectGroup(
             timestamp: ts,
             runId,
             rawRange: range,
-            severity: wait.state === 'killed' || timedOut ? 'error' : wait.state === 'quiet' ? 'warn' : 'info',
+            severity:
+              wait.state === 'killed' || timedOut
+                ? 'error'
+                : wait.state === 'quiet'
+                  ? 'warn'
+                  : 'info',
             state: wait.state,
             quietSeconds: wait.quietSeconds,
             budgetSeconds: wait.budgetSeconds,
-            reason: wait.reason
-          }
+            reason: wait.reason,
+          },
         ];
       }
     }
@@ -341,8 +344,8 @@ function projectGroup(
           category: status.category,
           label: status.label,
           explanation: status.explanation,
-          nextStep: status.nextStep
-        }
+          nextStep: status.nextStep,
+        },
       ];
     }
 
@@ -359,17 +362,22 @@ function projectGroup(
           rawRange: range,
           severity: 'warn',
           cliType: cliMatch?.[1] ?? 'unknown',
-          fallback: 'rebuild from disk on next follow-up'
-        }
+          fallback: 'rebuild from disk on next follow-up',
+        },
       ];
     }
-    if (/\[schema-drift\]/i.test(orchestratorText) || /report is unstructured/i.test(orchestratorText) || /failed to parse/i.test(orchestratorText)) {
+    if (
+      /\[schema-drift\]/i.test(orchestratorText) ||
+      /report is unstructured/i.test(orchestratorText) ||
+      /failed to parse/i.test(orchestratorText)
+    ) {
       const dedupeKey = `schema-drift:${orchestratorText.trim()}`;
       if (seenParserDedupeKeys.has(dedupeKey)) return null;
       seenParserDedupeKeys.add(dedupeKey);
       const expectedRaw = /expected\s+([A-Za-z][\w-]*)/i.exec(orchestratorText)?.[1];
-      const expected = expectedRaw
-        ?? (/MetaCycle/i.test(orchestratorText) ? 'MetaCycleReport' : 'structured-report');
+      const expected =
+        expectedRaw ??
+        (/MetaCycle/i.test(orchestratorText) ? 'MetaCycleReport' : 'structured-report');
       return [
         {
           id: `${baseId}:schema-drift`,
@@ -382,8 +390,8 @@ function projectGroup(
           message: orchestratorText.trim(),
           recovery: 'Open raw report and regenerate',
           rawLink: { range, label: 'Open raw report' },
-          collapsedByDefault: true
-        }
+          collapsedByDefault: true,
+        },
       ];
     }
     if (/could not classify/i.test(orchestratorText) || /\[heuristic\]/i.test(orchestratorText)) {
@@ -401,11 +409,14 @@ function projectGroup(
           expectedKind: 'sentinel',
           message: orchestratorText.trim(),
           dedupeKey,
-          collapsedByDefault: true
-        }
+          collapsedByDefault: true,
+        },
       ];
     }
-    if (/\[\[TASK_NEEDS_INPUT/i.test(orchestratorText) || /needs[- ]input/i.test(orchestratorText)) {
+    if (
+      /\[\[TASK_NEEDS_INPUT/i.test(orchestratorText) ||
+      /needs[- ]input/i.test(orchestratorText)
+    ) {
       const question = extractNeedsInputQuestion(orchestratorText);
       return [
         {
@@ -419,14 +430,16 @@ function projectGroup(
           loopIndex: 0,
           loopLimit: 0,
           answerSource: null,
-          nextAction: 'await-human'
-        }
+          nextAction: 'await-human',
+        },
       ];
     }
 
     // Fall back to a generic orchestrator decision row.
     const reason = orchestratorText.replace(/^\s*\[[^\]]+\]\s*/, '').trim();
-    const decisionType = (/^\s*\[([^\]]+)\]/.exec(orchestratorText)?.[1] ?? 'decision').toLowerCase();
+    const decisionType = (
+      /^\s*\[([^\]]+)\]/.exec(orchestratorText)?.[1] ?? 'decision'
+    ).toLowerCase();
     return [
       {
         id: `${baseId}:decision`,
@@ -436,8 +449,8 @@ function projectGroup(
         rawRange: range,
         decisionType,
         reason,
-        action: decisionType === 'reissue' ? 'reissue' : undefined
-      }
+        action: decisionType === 'reissue' ? 'reissue' : undefined,
+      },
     ];
   }
 
@@ -454,8 +467,8 @@ function projectGroup(
         actor: 'Supervisor',
         body: visibleBody,
         content: classifyMessageContent(visibleBody),
-        diagnostics
-      }
+        diagnostics,
+      },
     ];
   }
 
@@ -480,7 +493,7 @@ function projectGroup(
         rawRange: range,
         actor: 'Agent',
         body: sentinel.strippedBody,
-        content: classifyMessageContent(sentinel.strippedBody)
+        content: classifyMessageContent(sentinel.strippedBody),
       });
     }
     if (sentinel.kind === 'needs-input') {
@@ -495,7 +508,7 @@ function projectGroup(
         loopIndex: 0,
         loopLimit: 0,
         answerSource: null,
-        nextAction: 'await-human'
+        nextAction: 'await-human',
       });
     } else {
       const meta = TERMINAL_RESULT_META[sentinel.kind];
@@ -509,14 +522,44 @@ function projectGroup(
         category: 'result',
         label: meta.label,
         explanation: sentinel.detail ?? meta.explanation,
-        nextStep: meta.nextStep
+        nextStep: meta.nextStep,
       });
     }
     return out;
   }
 
   if (isCodexDebugGroup(group)) {
-    const transcript = /exec transcript/i.test(group.title) || /text-mode stderr transcript/i.test(group.title);
+    const runtimeFrame = group.runtimeFrame;
+    if (runtimeFrame) {
+      if (runtimeFrame.semantics === 'error') {
+        const status = runtimeFrame.status ?? 'failed';
+        return [
+          {
+            id: `${range.source}:runtime:${runtimeFrame.itemId ?? range.start}`,
+            kind: 'runtime.notice',
+            timestamp: ts,
+            runId,
+            model,
+            thinkingLevel,
+            rawRange: range,
+            severity: 'error',
+            category: 'runtime-error',
+            label: 'Codex runtime error',
+            detail: runtimeFrame.label ?? 'Codex reported a structured runtime failure.',
+            frameType: runtimeFrame.frameType,
+            status,
+            collapsedByDefault: true,
+          },
+        ];
+      }
+      // Lifecycle, reasoning, and other no-action item frames are useful in
+      // Trace but not as timeline rows. Action/update frames are consumed by
+      // the work-phase window before this branch; a defensive null keeps a
+      // malformed or partial frame from resurrecting raw protocol noise.
+      return null;
+    }
+    const transcript =
+      /exec transcript/i.test(group.title) || /text-mode stderr transcript/i.test(group.title);
     const failed = transcript && isCodexTranscriptFailure(group, currentRun);
     return [
       {
@@ -527,12 +570,19 @@ function projectGroup(
         rawRange: range,
         severity: failed ? 'error' : 'info',
         category: failed ? 'cli-failure' : transcript ? 'codex-transcript' : 'codex',
-        label: failed ? 'CLI failed' : transcript ? 'Codex transcript' : group.title.replace(/^Codex\s+/i, 'Codex '),
-        explanation: failed ? codexTranscriptFailureExplanation(group, currentRun) : codexLifecycleExplanation(group.title),
-        nextStep: (transcript || failed)
-          ? 'Open raw transcript in Trace.'
-          : 'No action needed; raw frame is available in Trace.'
-      }
+        label: failed
+          ? 'CLI failed'
+          : transcript
+            ? 'Codex transcript'
+            : group.title.replace(/^Codex\s+/i, 'Codex '),
+        explanation: failed
+          ? codexTranscriptFailureExplanation(group, currentRun)
+          : codexLifecycleExplanation(group.title),
+        nextStep:
+          transcript || failed
+            ? 'Open raw transcript in Trace.'
+            : 'No action needed; raw frame is available in Trace.',
+      },
     ];
   }
 
@@ -555,8 +605,8 @@ function projectGroup(
           expectedKind: 'tool-result',
           message: routerError,
           dedupeKey: `tool-router:${routerError}`,
-          collapsedByDefault: true
-        }
+          collapsedByDefault: true,
+        },
       ];
     }
     if (!visibleBody) return null;
@@ -572,8 +622,8 @@ function projectGroup(
         category: 'cli-failure',
         label: 'CLI failed',
         explanation: firstLine || visibleBody,
-        nextStep: 'Open raw transcript in Trace.'
-      }
+        nextStep: 'Open raw transcript in Trace.',
+      },
     ];
   }
 
@@ -591,8 +641,8 @@ function projectGroup(
       actor: 'Agent',
       body: visibleBody,
       content: classifyMessageContent(visibleBody),
-      diagnostics
-    }
+      diagnostics,
+    },
   ];
 }
 
@@ -600,7 +650,14 @@ function projectGroup(
 // Tool burst summarisation
 // ──────────────────────────────────────────────────────────────────────────
 
-const TOOL_KINDS: readonly ActivityLogKind[] = ['read', 'search', 'command', 'edit', 'task', 'todo'];
+const TOOL_KINDS: readonly ActivityLogKind[] = [
+  'read',
+  'search',
+  'command',
+  'edit',
+  'task',
+  'todo',
+];
 
 function isToolKind(k: ActivityLogKind): k is Exclude<ToolFamily, 'other'> {
   return TOOL_KINDS.includes(k);
@@ -630,6 +687,14 @@ function classifyToolGroup(group: ActivityLogGroup): ToolFamily | null {
  * batched group carries several `* Todo …` lines — the last one wins.
  */
 function readPlanUpdate(group: ActivityLogGroup): PlanItem[] | null {
+  const structuredItems = group.runtimeFrame?.todoItems;
+  if (group.runtimeFrame?.itemType === 'todo_list' && structuredItems) {
+    return structuredItems.map((item) => ({
+      id: planItemId(item.text),
+      title: item.text,
+      status: item.completed ? 'completed' : 'pending',
+    }));
+  }
   if (classifyToolGroup(group) !== 'todo') return null;
   let items: PlanItem[] | null = null;
   for (const line of group.lines) {
@@ -661,16 +726,33 @@ function parseTodoLine(text: string): PlanItem[] | null {
 
 /** Normalise a CLI-native status token onto the closed PlanItemStatus set. */
 function normalizePlanStatus(raw: string): PlanItemStatus {
-  const s = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
-  if (s === 'in_progress' || s === 'inprogress' || s === 'active' || s === 'running' || s === 'started') return 'in_progress';
+  const s = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  if (
+    s === 'in_progress' ||
+    s === 'inprogress' ||
+    s === 'active' ||
+    s === 'running' ||
+    s === 'started'
+  )
+    return 'in_progress';
   if (s === 'completed' || s === 'complete' || s === 'done' || s === 'finished') return 'completed';
-  if (s === 'cancelled' || s === 'canceled' || s === 'skipped' || s === 'dropped') return 'cancelled';
+  if (s === 'cancelled' || s === 'canceled' || s === 'skipped' || s === 'dropped')
+    return 'cancelled';
   return 'pending';
 }
 
 /** Stable id from the title so an item keeps identity across snapshots. */
 function planItemId(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'item';
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'item'
+  );
 }
 
 function toPlanUpdate(
@@ -679,30 +761,65 @@ function toPlanUpdate(
   runId: number | undefined,
   timestamp: string,
   model: string | null,
-  thinkingLevel: string | null
+  thinkingLevel: string | null,
 ): ConversationEvent {
+  const planKey = runId ?? 'default';
   return {
-    id: `${range.source}:${range.start}-${range.end}:plan`,
+    id: `${range.source}:plan:${planKey}`,
     kind: 'plan.update',
     timestamp,
     runId,
     model,
     thinkingLevel,
     rawRange: range,
-    items
+    items,
   };
+}
+
+function upsertPlanUpdate(
+  events: ConversationEvent[],
+  indexByRun: Map<string | number, number>,
+  items: readonly PlanItem[],
+  range: RawLineRange,
+  runId: number | undefined,
+  timestamp: string,
+  model: string | null,
+  thinkingLevel: string | null,
+): void {
+  const key = runId ?? 'default';
+  const event = toPlanUpdate(items, range, runId, timestamp, model, thinkingLevel);
+  const existing = indexByRun.get(key);
+  if (existing !== undefined) {
+    events[existing] = event;
+    return;
+  }
+  indexByRun.set(key, events.length);
+  events.push(event);
 }
 
 function recoverToolFamilyFromErrorLine(text: string): ToolFamily | null {
   // Action lines are emitted as `<marker> <verb> ...`. The parser already
   // stripped the marker, but the original CliOutputLine still carries it.
-  const m = /^[xX*]\s+(?<verb>Read|Search|Grep|Edit|Write|Run|Execute|Build|Check|Update|Apply|Move|Delete|Create|Task|Todo)\b/i.exec(text);
+  const m =
+    /^[xX*]\s+(?<verb>Read|Search|Grep|Edit|Write|Run|Execute|Build|Check|Update|Apply|Move|Delete|Create|Task|Todo)\b/i.exec(
+      text,
+    );
   if (!m) return null;
   const verb = m.groups!['verb'].toLowerCase();
   if (verb === 'read') return 'read';
   if (verb === 'search' || verb === 'grep') return 'search';
-  if (verb === 'edit' || verb === 'write' || verb === 'create' || verb === 'delete' || verb === 'move' || verb === 'update' || verb === 'apply') return 'edit';
-  if (verb === 'run' || verb === 'execute' || verb === 'build' || verb === 'check') return 'command';
+  if (
+    verb === 'edit' ||
+    verb === 'write' ||
+    verb === 'create' ||
+    verb === 'delete' ||
+    verb === 'move' ||
+    verb === 'update' ||
+    verb === 'apply'
+  )
+    return 'edit';
+  if (verb === 'run' || verb === 'execute' || verb === 'build' || verb === 'check')
+    return 'command';
   if (verb === 'task') return 'task';
   if (verb === 'todo') return 'todo';
   return null;
@@ -713,12 +830,237 @@ interface BurstMember {
   family: ToolFamily;
 }
 
+type WorkMaterial =
+  | { kind: 'tool'; member: BurstMember; structured: boolean }
+  | { kind: 'plan'; items: readonly PlanItem[] }
+  | { kind: 'file-change'; frame: StructuredRuntimeFrame }
+  | { kind: 'passive'; frame: StructuredRuntimeFrame };
+
+interface CollectedWorkMaterial {
+  group: ActivityLogGroup;
+  range: RawLineRange;
+  material: WorkMaterial;
+}
+
+interface ProjectWorkMaterialContext {
+  collected: readonly CollectedWorkMaterial[];
+  events: ConversationEvent[];
+  planEventIndexByRun: Map<string | number, number>;
+  runId: number | undefined;
+  model: string | null;
+  thinkingLevel: string | null;
+  source: string;
+}
+
+function classifyWorkMaterial(group: ActivityLogGroup): WorkMaterial | null {
+  const planItems = readPlanUpdate(group);
+  if (planItems) return { kind: 'plan', items: planItems };
+
+  const family = classifyToolGroup(group);
+  if (family && family !== 'todo') {
+    return {
+      kind: 'tool',
+      member: { group, family },
+      structured: group.runtimeFrame !== undefined,
+    };
+  }
+
+  const frame = group.runtimeFrame;
+  if (!frame) return null;
+  if (frame.itemType === 'file_change') return { kind: 'file-change', frame };
+  if (frame.semantics === 'no-action') return { kind: 'passive', frame };
+  if (frame.semantics !== 'action') return null;
+
+  const structuredFamily = runtimeToolFamily(frame);
+  if (!structuredFamily) return { kind: 'passive', frame };
+  const label = frame.label ?? frame.itemType?.replace(/_/g, ' ') ?? 'Structured tool';
+  return {
+    kind: 'tool',
+    structured: true,
+    member: {
+      family: structuredFamily,
+      group: {
+        ...group,
+        title: label,
+        subtitle: label,
+      },
+    },
+  };
+}
+
+function runtimeToolFamily(frame: StructuredRuntimeFrame): ToolFamily | null {
+  switch (frame.itemType) {
+    case 'command_execution':
+      return 'command';
+    case 'web_search':
+      return 'search';
+    case 'collab_tool_call':
+      return 'task';
+    case 'mcp_tool_call':
+      return 'other';
+    default:
+      return null;
+  }
+}
+
+function projectWorkMaterial(ctx: ProjectWorkMaterialContext): void {
+  if (ctx.collected.length === 0) return;
+
+  const members: BurstMember[] = [];
+  const structuredMemberIndex = new Map<string, number>();
+  const fileChanges = new Map<string, StructuredRuntimeFileChange>();
+  const plans: CollectedWorkMaterial[] = [];
+  let hasStructuredFrames = false;
+  let runtimeFrameCount = 0;
+  let segmentCount = 0;
+  let previousWasTool = false;
+
+  for (const entry of ctx.collected) {
+    const frame = entry.group.runtimeFrame;
+    if (frame) {
+      hasStructuredFrames = true;
+      runtimeFrameCount += Math.max(1, entry.group.sourceLines?.length ?? 1);
+    }
+
+    if (entry.material.kind === 'tool') {
+      if (!previousWasTool) segmentCount += 1;
+      previousWasTool = true;
+      const itemId = entry.group.runtimeFrame?.itemId;
+      const canDedupe = itemId && inferBatchSize(entry.material.member.group) === 1;
+      const prior = canDedupe ? structuredMemberIndex.get(itemId) : undefined;
+      if (prior !== undefined) {
+        // `item.started` + `item.completed` describes one invocation. Keep the
+        // terminal snapshot in the expanded detail without incrementing calls.
+        members[prior] = entry.material.member;
+      } else {
+        if (canDedupe) structuredMemberIndex.set(itemId, members.length);
+        members.push(entry.material.member);
+      }
+      continue;
+    }
+
+    previousWasTool = false;
+    if (entry.material.kind === 'plan') plans.push(entry);
+    if (entry.material.kind === 'file-change') {
+      for (const change of entry.material.frame.fileChanges ?? []) {
+        fileChanges.set(change.path, change);
+      }
+    }
+  }
+
+  const latestPlan = plans.at(-1);
+  const firstToolIndex = ctx.collected.findIndex((entry) => entry.material.kind === 'tool');
+  const firstPlanIndex = ctx.collected.findIndex((entry) => entry.material.kind === 'plan');
+  const planComesFirst =
+    firstPlanIndex >= 0 && (firstToolIndex < 0 || firstPlanIndex < firstToolIndex);
+  const upsertLatestPlan = (): void => {
+    if (!latestPlan || latestPlan.material.kind !== 'plan') return;
+    upsertPlanUpdate(
+      ctx.events,
+      ctx.planEventIndexByRun,
+      latestPlan.material.items,
+      latestPlan.range,
+      ctx.runId,
+      latestPlan.group.lines[0]?.timestamp ?? '',
+      ctx.model,
+      ctx.thinkingLevel,
+    );
+  };
+
+  if (planComesFirst) upsertLatestPlan();
+
+  if (members.length > 0) {
+    const first = ctx.collected[0];
+    const last = ctx.collected[ctx.collected.length - 1];
+    const mergedRange: RawLineRange = {
+      source: ctx.source,
+      start: first.range.start,
+      end: Math.max(first.range.end, last.range.end),
+    };
+    const burst = toMergedToolBurst(members, mergedRange, ctx.runId, ctx.model, ctx.thinkingLevel);
+    const files = [...new Set([...(burst.files ?? []), ...fileChanges.keys()])];
+    if (hasStructuredFrames) {
+      ctx.events.push({
+        ...burst,
+        id: `${mergedRange.source}:${mergedRange.start}:work-phase`,
+        kind: 'workPhase',
+        files: files.length > 0 ? files : undefined,
+        segmentCount: Math.max(1, segmentCount),
+        runtimeFrameCount,
+      });
+    } else {
+      ctx.events.push({ ...burst, files: files.length > 0 ? files : undefined });
+    }
+  } else {
+    projectOrphanFileChanges(ctx, fileChanges);
+  }
+
+  if (!planComesFirst) upsertLatestPlan();
+}
+
+function projectOrphanFileChanges(
+  ctx: ProjectWorkMaterialContext,
+  fileChanges: ReadonlyMap<string, StructuredRuntimeFileChange>,
+): void {
+  const fileEntries = ctx.collected.filter((entry) => entry.material.kind === 'file-change');
+  if (fileEntries.length === 0) return;
+
+  const byItem = new Map<string, CollectedWorkMaterial[]>();
+  for (const entry of fileEntries) {
+    const frame = entry.material.kind === 'file-change' ? entry.material.frame : undefined;
+    const key = frame?.itemId ?? `${entry.range.start}`;
+    const entries = byItem.get(key) ?? [];
+    entries.push(entry);
+    byItem.set(key, entries);
+  }
+
+  for (const [itemId, entries] of byItem) {
+    const first = entries[0];
+    const last = entries[entries.length - 1];
+    const latestFrame = last.material.kind === 'file-change' ? last.material.frame : undefined;
+    const paths = new Set<string>();
+    for (const entry of entries) {
+      if (entry.material.kind !== 'file-change') continue;
+      for (const change of entry.material.frame.fileChanges ?? []) paths.add(change.path);
+    }
+    // Keep paths from a neighbouring orphan snapshot if its item did not
+    // repeat the final payload. This remains one compact row per item id.
+    if (byItem.size === 1) for (const path of fileChanges.keys()) paths.add(path);
+    const files = [...paths];
+    const status = latestFrame?.status ?? 'unknown';
+    ctx.events.push({
+      id: `${ctx.source}:runtime:${itemId}`,
+      kind: 'runtime.notice',
+      timestamp: last.group.lines[0]?.timestamp ?? '',
+      runId: ctx.runId,
+      model: ctx.model,
+      thinkingLevel: ctx.thinkingLevel,
+      rawRange: {
+        source: ctx.source,
+        start: first.range.start,
+        end: Math.max(first.range.end, last.range.end),
+      },
+      severity: /fail|declin|error/i.test(status) ? 'error' : 'info',
+      category: 'file-change',
+      label: 'File change',
+      detail:
+        files.length > 0
+          ? `${files.length} ${files.length === 1 ? 'file' : 'files'} touched`
+          : 'File-change metadata has no owning tool call.',
+      frameType: latestFrame?.frameType ?? 'item.updated',
+      status,
+      files: files.length > 0 ? files : undefined,
+      collapsedByDefault: true,
+    });
+  }
+}
+
 function toMergedToolBurst(
   members: readonly BurstMember[],
   range: RawLineRange,
   runId: number | undefined,
   model: string | null,
-  thinkingLevel: string | null
+  thinkingLevel: string | null,
 ) {
   const families: Partial<Record<ToolFamily, number>> = {};
   const samples: Record<string, string | undefined> = {};
@@ -779,7 +1121,7 @@ function toMergedToolBurst(
     tests: collapsedTests.length > 0 ? collapsedTests : undefined,
     commands: commands.length > 0 ? commands : undefined,
     samples,
-    collapsedByDefault: true
+    collapsedByDefault: true,
   };
 }
 
@@ -799,14 +1141,19 @@ function codexLifecycleExplanation(title: string): string {
 }
 
 function isCodexTranscriptFailure(group: ActivityLogGroup, currentRun: RunContext): boolean {
-  return group.lines.some((line) => isCodexTextModeTranscriptFailure(line.text))
-    || currentRun.run?.status === 'failed'
-    || (currentRun.run?.exitCode !== null
-      && currentRun.run?.exitCode !== undefined
-      && currentRun.run.exitCode !== 0);
+  return (
+    group.lines.some((line) => isCodexTextModeTranscriptFailure(line.text)) ||
+    currentRun.run?.status === 'failed' ||
+    (currentRun.run?.exitCode !== null &&
+      currentRun.run?.exitCode !== undefined &&
+      currentRun.run.exitCode !== 0)
+  );
 }
 
-function codexTranscriptFailureExplanation(group: ActivityLogGroup, currentRun: RunContext): string {
+function codexTranscriptFailureExplanation(
+  group: ActivityLogGroup,
+  currentRun: RunContext,
+): string {
   for (const line of group.lines) {
     const text = line.text.trim();
     if (isCodexTextModeTranscriptFailure(text)) return text;
@@ -843,9 +1190,11 @@ function parseOrchestratorStatus(text: string): ParsedStatus | null {
       return {
         category,
         label: 'Silent completion recovery',
-        explanation: body || 'Codex stopped producing output after a final tool call, so the runner finalized the run through its recovery path.',
+        explanation:
+          body ||
+          'Codex stopped producing output after a final tool call, so the runner finalized the run through its recovery path.',
         nextStep: 'Review the result evidence; this is a recovery signal, not proof of completion.',
-        severity: 'warn'
+        severity: 'warn',
       };
     case 'watchdog':
     case 'watchdog-warning':
@@ -854,8 +1203,10 @@ function parseOrchestratorStatus(text: string): ParsedStatus | null {
         category,
         label: 'Watchdog',
         explanation: body || 'The watchdog observed a quiet or stuck run.',
-        nextStep: /kill|timeout/i.test(category + body) ? 'The runner will stop or escalate the run.' : 'Waiting for output or the timeout threshold.',
-        severity: /timeout|kill|cancel/i.test(category + body) ? 'error' : 'warn'
+        nextStep: /kill|timeout/i.test(category + body)
+          ? 'The runner will stop or escalate the run.'
+          : 'Waiting for output or the timeout threshold.',
+        severity: /timeout|kill|cancel/i.test(category + body) ? 'error' : 'warn',
       };
     case 'quarantined':
     case 'circuit-breaker':
@@ -864,7 +1215,7 @@ function parseOrchestratorStatus(text: string): ParsedStatus | null {
         label: 'Circuit breaker',
         explanation: body || 'The runner stopped a repeated no-progress loop.',
         nextStep: 'Human review should inspect the repeated failure before rerunning.',
-        severity: 'error'
+        severity: 'error',
       };
     case 'environment-blocker':
       return {
@@ -872,7 +1223,7 @@ function parseOrchestratorStatus(text: string): ParsedStatus | null {
         label: 'Environment blocker',
         explanation: body || 'The local environment blocked the run.',
         nextStep: 'Fix the environment issue, then retry the task.',
-        severity: 'error'
+        severity: 'error',
       };
     case 'worktree-containment':
       return {
@@ -880,7 +1231,7 @@ function parseOrchestratorStatus(text: string): ParsedStatus | null {
         label: 'Worktree containment',
         explanation: body || 'The runner detected a worktree or path containment guard.',
         nextStep: 'Keep review inside the task worktree boundary.',
-        severity: 'warn'
+        severity: 'warn',
       };
     case 'recovery':
       // One calm line per recovery (crash / watchdog / host-restart /
@@ -891,14 +1242,15 @@ function parseOrchestratorStatus(text: string): ParsedStatus | null {
         category,
         label: 'Recovery',
         explanation: body || 'The platform recovered an interrupted run.',
-        severity: 'info'
+        severity: 'info',
       };
     default:
       return null;
   }
 }
 
-const COMMAND_SUMMARY_RE = /^\$\s+(?<command>.*?)\s*(?:\[(?<status>[^\]]+)\])?\s*(?:\[exit\s+(?<exit>-?\d+)\])?\s*$/i;
+const COMMAND_SUMMARY_RE =
+  /^\$\s+(?<command>.*?)\s*(?:\[(?<status>[^\]]+)\])?\s*(?:\[exit\s+(?<exit>-?\d+)\])?\s*$/i;
 const SHELL_PROMPT_RE = /^\s*(?:PS[^>]*>|[$>#%])\s+/;
 
 // The shell command is already shown as the dedicated input line. Many runners
@@ -926,26 +1278,35 @@ function commandExecutionFromGroup(group: ActivityLogGroup): ToolCommandExecutio
   const exitCode = exitRaw === undefined ? null : Number(exitRaw);
   const outputLines = stripLeadingCommandEcho(
     group.lines.slice(parsed ? 1 : 0).map((l) => l.text ?? ''),
-    command
+    command,
   );
   return {
     command,
-    status: normalizeCommandStatus(statusRaw, group.status, Number.isFinite(exitCode) ? exitCode : null),
+    status: normalizeCommandStatus(
+      statusRaw,
+      group.status,
+      Number.isFinite(exitCode) ? exitCode : null,
+    ),
     exitCode: Number.isFinite(exitCode) ? exitCode : null,
     output: outputLines.join('\n').trimEnd(),
     outputLineCount: outputLines.length,
     outputTruncated: false,
-    hits: parseOutputHits(outputLines)
+    hits: parseOutputHits(outputLines),
   };
 }
 
 function normalizeCommandStatus(
   status: string,
   groupStatus: ActivityLogGroup['status'],
-  exitCode: number | null
+  exitCode: number | null,
 ): ToolCommandExecution['status'] {
   if (/progress|running|started/.test(status)) return 'running';
-  if (/fail|error|cancel/.test(status) || groupStatus === 'error' || (exitCode !== null && exitCode !== 0)) return 'failed';
+  if (
+    /fail|error|cancel/.test(status) ||
+    groupStatus === 'error' ||
+    (exitCode !== null && exitCode !== 0)
+  )
+    return 'failed';
   if (/complete|success|done/.test(status) || exitCode === 0) return 'completed';
   return 'unknown';
 }
@@ -963,7 +1324,7 @@ function parseOutputHits(lines: readonly string[]): ToolOutputHit[] | undefined 
       path,
       line: Number(match.groups['line']),
       column: match.groups['col'] ? Number(match.groups['col']) : undefined,
-      text: match.groups['text'] ?? ''
+      text: match.groups['text'] ?? '',
     });
     if (hits.length >= 40) break;
   }
@@ -992,7 +1353,9 @@ function collectFilePaths(group: ActivityLogGroup, family: ToolFamily): string[]
   };
   if (family === 'read' || family === 'search' || family === 'edit') {
     push(group.subtitle);
-    const verbMatch = /^(?:Read|Edit|Write|Create|Update|Apply|Delete|Move)\s+(.+)$/i.exec(stripBatchSuffix(group.title));
+    const verbMatch = /^(?:Read|Edit|Write|Create|Update|Apply|Delete|Move)\s+(.+)$/i.exec(
+      stripBatchSuffix(group.title),
+    );
     if (verbMatch) push(verbMatch[1]);
   }
   for (const line of group.lines) {
@@ -1004,20 +1367,25 @@ function collectFilePaths(group: ActivityLogGroup, family: ToolFamily): string[]
 }
 
 function looksLikeArtifact(path: string): boolean {
-  return /\.(png|jpg|jpeg|gif|svg|webp|pdf|html|json|md)$/i.test(path)
-    || /(?:^|[\\/])(results|screenshots|artifacts|evidence)[\\/]/i.test(path);
+  return (
+    /\.(png|jpg|jpeg|gif|svg|webp|pdf|html|json|md)$/i.test(path) ||
+    /(?:^|[\\/])(results|screenshots|artifacts|evidence)[\\/]/i.test(path)
+  );
 }
 
-const TEST_VERB_RE = /\b(test|spec|playwright|pytest|jest|vitest|mocha|xunit|dotnet test|npm (?:run )?test|npx playwright)\b/i;
+const TEST_VERB_RE =
+  /\b(test|spec|playwright|pytest|jest|vitest|mocha|xunit|dotnet test|npm (?:run )?test|npx playwright)\b/i;
 
-function detectTest(group: ActivityLogGroup): { command: string; status: 'pass' | 'fail' | 'unknown' } | null {
+function detectTest(
+  group: ActivityLogGroup,
+): { command: string; status: 'pass' | 'fail' | 'unknown' } | null {
   // The activity-log parser may have merged a fail / retry / pass run into
   // one "Commands ×N" batch group whose title no longer mentions "test".
   // Recover the test signal from any underlying line so the burst still
   // surfaces a Test rollup row in expanded mode.
   const actionLines = group.lines.filter((l) => /^\s*[xX*]\s+/.test(l.text));
-  const looksLikeTest = TEST_VERB_RE.test(group.title)
-    || actionLines.some((l) => TEST_VERB_RE.test(l.text));
+  const looksLikeTest =
+    TEST_VERB_RE.test(group.title) || actionLines.some((l) => TEST_VERB_RE.test(l.text));
   if (!looksLikeTest) return null;
 
   const sourceTitle = actionLines[0]?.text ?? group.title;
@@ -1033,10 +1401,12 @@ function detectTest(group: ActivityLogGroup): { command: string; status: 'pass' 
     .trim();
 
   let status: 'pass' | 'fail' | 'unknown' = 'unknown';
-  const isFailure = group.kind === 'error' || group.status === 'error'
-    || /:\s*exited with error|\bfailed\b|\bFAIL\b/.test(group.title);
-  const passEvidence = group.lines.some(
-    (l) => /\bpassed\b|✓|\bsucceeded\b|\bOK\b|all tests pass/i.test(l.text)
+  const isFailure =
+    group.kind === 'error' ||
+    group.status === 'error' ||
+    /:\s*exited with error|\bfailed\b|\bFAIL\b/.test(group.title);
+  const passEvidence = group.lines.some((l) =>
+    /\bpassed\b|✓|\bsucceeded\b|\bOK\b|all tests pass/i.test(l.text),
   );
   if (passEvidence) status = 'pass';
   else if (isFailure) status = 'fail';
@@ -1044,7 +1414,7 @@ function detectTest(group: ActivityLogGroup): { command: string; status: 'pass' 
 }
 
 function collapseTestsByCommand(
-  tests: readonly { command: string; status: 'pass' | 'fail' | 'unknown' }[]
+  tests: readonly { command: string; status: 'pass' | 'fail' | 'unknown' }[],
 ): { command: string; status: 'pass' | 'fail' | 'unknown' }[] {
   const order: string[] = [];
   const map = new Map<string, 'pass' | 'fail' | 'unknown'>();
@@ -1095,8 +1465,10 @@ interface WatchdogParse {
 function parseWatchdogText(text: string): WatchdogParse | null {
   if (!/\[watchdog[^\]]*\]/i.test(text)) return null;
   const isTaggedTimeout = /\[watchdog-timeout\]/i.test(text);
-  const explicitBudget = /(?:budget|timeout|limit)(?:\s+(?:is|of))?\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text)
-    ?? /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)\s*(?:budget|timeout|limit)/i.exec(text);
+  const explicitBudget =
+    /(?:budget|timeout|limit)(?:\s+(?:is|of))?\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(
+      text,
+    ) ?? /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)\s*(?:budget|timeout|limit)/i.exec(text);
   const budgetSeconds = explicitBudget ? Number(explicitBudget[1]) : undefined;
   if (/killed after|auto-cancelled after/i.test(text)) {
     const sec = /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text);
@@ -1105,21 +1477,22 @@ function parseWatchdogText(text: string): WatchdogParse | null {
       state: 'killed',
       quietSeconds,
       budgetSeconds: budgetSeconds ?? (quietSeconds > 0 ? quietSeconds : undefined),
-      reason: text.trim()
+      reason: text.trim(),
     };
   }
   if (/resumed|streaming output again/i.test(text)) {
     return { state: 'resumed', quietSeconds: 0, budgetSeconds, reason: text.trim() };
   }
   if (/\btimeout\b/i.test(text)) {
-    const sec = /(?:after|at|for)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text)
-      ?? /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text);
+    const sec =
+      /(?:after|at|for)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text) ??
+      /([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i.exec(text);
     const quietSeconds = sec ? Number(sec[1]) : 0;
     return {
       state: 'quiet',
       quietSeconds,
       budgetSeconds: budgetSeconds ?? (quietSeconds > 0 ? quietSeconds : undefined),
-      reason: text.trim()
+      reason: text.trim(),
     };
   }
   if (/quiet|silent|no output for/i.test(text)) {
@@ -1128,7 +1501,7 @@ function parseWatchdogText(text: string): WatchdogParse | null {
       state: 'quiet',
       quietSeconds: sec ? Number(sec[1]) : 0,
       budgetSeconds: budgetSeconds ?? (isTaggedTimeout && sec ? Number(sec[1]) : undefined),
-      reason: text.trim()
+      reason: text.trim(),
     };
   }
   return { state: 'quiet', quietSeconds: 0, budgetSeconds, reason: text.trim() };
@@ -1138,7 +1511,11 @@ function extractNeedsInputQuestion(text: string): string | null {
   const m = /\[\[TASK_NEEDS_INPUT:([^\]]+)\]\]/i.exec(text);
   if (m) return m[1].trim();
   const idx = text.toLowerCase().indexOf('needs-input');
-  if (idx >= 0) return text.slice(idx + 'needs-input'.length).replace(/^[:\s-]+/, '').trim();
+  if (idx >= 0)
+    return text
+      .slice(idx + 'needs-input'.length)
+      .replace(/^[:\s-]+/, '')
+      .trim();
   return null;
 }
 
@@ -1162,19 +1539,19 @@ const TERMINAL_RESULT_META: Record<
   done: {
     label: 'Task complete',
     explanation: 'The agent reported the task finished successfully.',
-    severity: 'info'
+    severity: 'info',
   },
   blocked: {
     label: 'Task blocked',
     explanation: 'The agent stopped and needs a human decision to continue.',
     severity: 'error',
-    nextStep: 'Review the blocker, then re-queue or re-scope the task.'
+    nextStep: 'Review the blocker, then re-queue or re-scope the task.',
   },
   noop: {
     label: 'No action needed',
     explanation: 'The agent determined no changes were required.',
-    severity: 'info'
-  }
+    severity: 'info',
+  },
 };
 
 /**
@@ -1188,7 +1565,13 @@ function parseTerminalSentinel(body: string): TerminalSentinel | null {
   if (!match) return null;
   const token = match[1].toUpperCase();
   const kind: TerminalSentinelKind =
-    token === 'DONE' ? 'done' : token === 'NOOP' ? 'noop' : token === 'BLOCKED' ? 'blocked' : 'needs-input';
+    token === 'DONE'
+      ? 'done'
+      : token === 'NOOP'
+        ? 'noop'
+        : token === 'BLOCKED'
+          ? 'blocked'
+          : 'needs-input';
   const detail = match[2]?.trim() || null;
   const strippedBody = body
     .replace(TERMINAL_SENTINEL_RE_GLOBAL, '')
@@ -1204,7 +1587,14 @@ function extractUserTarget(text: string): string | undefined {
 }
 
 function joinGroupBody(group: ActivityLogGroup): string {
-  return normalizeVisibleChatBody(group.lines).text || group.lines.map((l) => l.text).filter((t) => t !== undefined).join('\n').trim();
+  return (
+    normalizeVisibleChatBody(group.lines).text ||
+    group.lines
+      .map((l) => l.text)
+      .filter((t) => t !== undefined)
+      .join('\n')
+      .trim()
+  );
 }
 
 /**
@@ -1216,7 +1606,7 @@ function joinGroupBody(group: ActivityLogGroup): string {
  * and leave the running model unchanged.
  */
 function readTaskboardMarker(
-  group: ActivityLogGroup
+  group: ActivityLogGroup,
 ): { model: string | null; thinkingLevel: string | null } | null {
   const first = group.lines[0];
   if (!first || first.stream !== 'system') return null;
@@ -1235,7 +1625,7 @@ function readTaskboardMarker(
  * user-visible timeline fact and surfaces as a `system.status` chip.
  */
 function readModelChangeMarker(
-  group: ActivityLogGroup
+  group: ActivityLogGroup,
 ): { from: string | null; to: string | null } | null {
   const first = group.lines[0];
   if (!first || first.stream !== 'system') return null;
@@ -1265,10 +1655,10 @@ function numberLines(lines: readonly CliOutputLine[]): Map<CliOutputLine, number
 function rangeForGroup(
   group: ActivityLogGroup,
   indexByLine: Map<CliOutputLine, number>,
-  source: string
+  source: string,
 ): RawLineRange {
   const indices: number[] = [];
-  for (const l of group.lines) {
+  for (const l of group.sourceLines ?? group.lines) {
     const idx = indexByLine.get(l);
     if (idx !== undefined) indices.push(idx);
   }
@@ -1288,7 +1678,7 @@ function pickInitialRun(timeline: RunTimelineLite | null): RunContext {
 
 function buildRunIndex(
   lines: readonly CliOutputLine[],
-  timeline: RunTimelineLite | null
+  timeline: RunTimelineLite | null,
 ): Map<number, RunContext> {
   const map = new Map<number, RunContext>();
   if (!timeline || timeline.runs.length === 0) return map;
@@ -1304,7 +1694,10 @@ function buildRunIndex(
 // Companion-evidence projection
 // ──────────────────────────────────────────────────────────────────────────
 
-function transcriptRange(ctx: ConversationProjectionContext, lineNumbers: Map<CliOutputLine, number>): RawLineRange {
+function transcriptRange(
+  ctx: ConversationProjectionContext,
+  lineNumbers: Map<CliOutputLine, number>,
+): RawLineRange {
   void lineNumbers;
   const len = ctx.lines.length;
   return { source: ctx.source, start: 1, end: Math.max(1, len) };
@@ -1313,7 +1706,7 @@ function transcriptRange(ctx: ConversationProjectionContext, lineNumbers: Map<Cl
 function toImageEvent(
   shot: ScreenshotEvidence,
   ctx: ConversationProjectionContext,
-  lineNumbers: Map<CliOutputLine, number>
+  lineNumbers: Map<CliOutputLine, number>,
 ) {
   const range = transcriptRange(ctx, lineNumbers);
   return {
@@ -1325,14 +1718,14 @@ function toImageEvent(
     sourcePath: shot.sourcePath,
     durablePath: shot.durablePath ?? null,
     sourceTool: shot.sourceTool,
-    taskLink: shot.taskLink
+    taskLink: shot.taskLink,
   };
 }
 
 function toTaskTokenMetric(
   summary: TokenSummaryLite,
   ctx: ConversationProjectionContext,
-  lineNumbers: Map<CliOutputLine, number>
+  lineNumbers: Map<CliOutputLine, number>,
 ) {
   const range = transcriptRange(ctx, lineNumbers);
   return {
@@ -1342,14 +1735,14 @@ function toTaskTokenMetric(
     rawRange: range,
     scope: 'task',
     inputTokens: summary.inputTokens,
-    outputTokens: summary.outputTokens
+    outputTokens: summary.outputTokens,
   };
 }
 
 function toGitPreview(
   commits: readonly CommitEvidence[],
   ctx: ConversationProjectionContext,
-  lineNumbers: Map<CliOutputLine, number>
+  lineNumbers: Map<CliOutputLine, number>,
 ) {
   const range = transcriptRange(ctx, lineNumbers);
   const files = commits.flatMap((c) => c.files);
@@ -1358,14 +1751,19 @@ function toGitPreview(
     kind: 'workbench.gitPreview' as const,
     timestamp: commits[0]?.authorDateUtc ?? ctx.lines[0]?.timestamp ?? new Date(0).toISOString(),
     rawRange: range,
-    files: files.map((f) => ({ status: f.status, path: f.path, added: f.added, removed: f.removed }))
+    files: files.map((f) => ({
+      status: f.status,
+      path: f.path,
+      added: f.added,
+      removed: f.removed,
+    })),
   };
 }
 
 function toVisualPreview(
   shots: readonly ScreenshotEvidence[],
   ctx: ConversationProjectionContext,
-  lineNumbers: Map<CliOutputLine, number>
+  lineNumbers: Map<CliOutputLine, number>,
 ) {
   const range = transcriptRange(ctx, lineNumbers);
   return {
@@ -1373,7 +1771,7 @@ function toVisualPreview(
     kind: 'workbench.visualPreview' as const,
     timestamp: shots[0]?.timestamp ?? ctx.lines[0]?.timestamp ?? new Date(0).toISOString(),
     rawRange: range,
-    images: shots.map((s) => ({ caption: s.caption, path: s.durablePath ?? s.sourcePath }))
+    images: shots.map((s) => ({ caption: s.caption, path: s.durablePath ?? s.sourcePath })),
   };
 }
 
@@ -1381,7 +1779,7 @@ function toRunMarker(
   matched: RunContext,
   range: RawLineRange,
   model: string | null,
-  thinkingLevel: string | null
+  thinkingLevel: string | null,
 ) {
   const run = matched.run!;
   return {
@@ -1400,20 +1798,21 @@ function toRunMarker(
     traceRange:
       run.lineStart && run.lineEnd
         ? { source: range.source, start: run.lineStart, end: run.lineEnd }
-        : undefined
+        : undefined,
   };
 }
 
 function toTaskMarker(
   task: TaskInfoLite,
   ctx: ConversationProjectionContext,
-  lineNumbers: Map<CliOutputLine, number>
+  lineNumbers: Map<CliOutputLine, number>,
 ) {
   const range = transcriptRange(ctx, lineNumbers);
   return {
     id: `${range.source}:task:${task.id}`,
     kind: 'taskMarker' as const,
-    timestamp: task.lastActivity ?? task.createdAt ?? ctx.lines[0]?.timestamp ?? new Date(0).toISOString(),
+    timestamp:
+      task.lastActivity ?? task.createdAt ?? ctx.lines[0]?.timestamp ?? new Date(0).toISOString(),
     // `jobId` is a frozen wire-contract field name (TaskMarkerEvent); the broad
     // Job->Task field rename across the contract is a separate later task.
     jobId: task.id,
@@ -1423,24 +1822,28 @@ function toTaskMarker(
     title: task.title,
     tokens: task.tokenSummary
       ? { inputTokens: task.tokenSummary.inputTokens, outputTokens: task.tokenSummary.outputTokens }
-      : undefined
+      : undefined,
   };
 }
 
 function toWorkbenchSummary(
   collected: ConversationEvent[],
   ctx: ConversationProjectionContext,
-  lineNumbers: Map<CliOutputLine, number>
+  lineNumbers: Map<CliOutputLine, number>,
 ) {
   const range = transcriptRange(ctx, lineNumbers);
   const aggregate = computeSummaryAggregate(collected, ctx);
 
   const headlineParts: string[] = [];
   if (aggregate.toolCallCount && aggregate.toolCallCount > 0) {
-    headlineParts.push(`${aggregate.toolCallCount} tool call${aggregate.toolCallCount === 1 ? '' : 's'}`);
+    headlineParts.push(
+      `${aggregate.toolCallCount} tool call${aggregate.toolCallCount === 1 ? '' : 's'}`,
+    );
   }
   if (aggregate.toolFailureCount && aggregate.toolFailureCount > 0) {
-    headlineParts.push(`${aggregate.toolFailureCount} failure${aggregate.toolFailureCount === 1 ? '' : 's'}`);
+    headlineParts.push(
+      `${aggregate.toolFailureCount} failure${aggregate.toolFailureCount === 1 ? '' : 's'}`,
+    );
   }
   if (aggregate.commitCount && aggregate.commitCount > 0) {
     headlineParts.push(`${aggregate.commitCount} commit${aggregate.commitCount === 1 ? '' : 's'}`);
@@ -1449,10 +1852,14 @@ function toWorkbenchSummary(
     headlineParts.push(`${aggregate.filesChanged} file${aggregate.filesChanged === 1 ? '' : 's'}`);
   }
   if (aggregate.screenshotCount && aggregate.screenshotCount > 0) {
-    headlineParts.push(`${aggregate.screenshotCount} screenshot${aggregate.screenshotCount === 1 ? '' : 's'}`);
+    headlineParts.push(
+      `${aggregate.screenshotCount} screenshot${aggregate.screenshotCount === 1 ? '' : 's'}`,
+    );
   }
   if (aggregate.retryWarningCount && aggregate.retryWarningCount > 0) {
-    headlineParts.push(`${aggregate.retryWarningCount} warning${aggregate.retryWarningCount === 1 ? '' : 's'}`);
+    headlineParts.push(
+      `${aggregate.retryWarningCount} warning${aggregate.retryWarningCount === 1 ? '' : 's'}`,
+    );
   }
   if (aggregate.totalInputTokens || aggregate.totalOutputTokens) {
     const tokens = (aggregate.totalInputTokens ?? 0) + (aggregate.totalOutputTokens ?? 0);
@@ -1484,30 +1891,32 @@ function toWorkbenchSummary(
     rawRange: range,
     headline: headlineParts.length > 0 ? headlineParts.join(' · ') : 'No activity yet',
     bullets: bullets.length > 0 ? bullets : undefined,
-    aggregate
+    aggregate,
   };
 }
 
 function computeSummaryAggregate(
   collected: ConversationEvent[],
-  ctx: ConversationProjectionContext
+  ctx: ConversationProjectionContext,
 ): WorkbenchSummaryAggregate {
   const toolBursts = collected.filter(
-    (e): e is Extract<ConversationEvent, { kind: 'toolBurst' }> => e.kind === 'toolBurst'
+    (e): e is Extract<ConversationEvent, { kind: 'toolBurst' | 'workPhase' }> =>
+      e.kind === 'toolBurst' || e.kind === 'workPhase',
   );
   const tokenMetrics = collected.filter(
-    (e): e is Extract<ConversationEvent, { kind: 'metric.token' }> => e.kind === 'metric.token'
+    (e): e is Extract<ConversationEvent, { kind: 'metric.token' }> => e.kind === 'metric.token',
   );
   const taskScopedTokens = tokenMetrics.find((m) => m.scope === 'task') ?? tokenMetrics[0];
   const supervisorWaits = collected.filter(
-    (e): e is Extract<ConversationEvent, { kind: 'supervisor.wait' }> => e.kind === 'supervisor.wait'
+    (e): e is Extract<ConversationEvent, { kind: 'supervisor.wait' }> =>
+      e.kind === 'supervisor.wait',
   );
   const parserWarnings = collected.filter((e) => e.kind === 'system.parserWarning');
   const captureFails = collected.filter((e) => e.kind === 'system.captureFail');
   const schemaDrifts = collected.filter((e) => e.kind === 'system.schemaDrift');
   const decisionRetries = collected.filter(
     (e): e is Extract<ConversationEvent, { kind: 'decision.orchestrator' }> =>
-      e.kind === 'decision.orchestrator' && e.action === 'reissue'
+      e.kind === 'decision.orchestrator' && e.action === 'reissue',
   );
 
   const toolCallCount = toolBursts.reduce((acc, b) => acc + b.count, 0);
@@ -1515,15 +1924,12 @@ function computeSummaryAggregate(
   const retryWarningCount =
     parserWarnings.length + captureFails.length + schemaDrifts.length + decisionRetries.length;
 
-  const filesFromCommits = (ctx.commits ?? []).reduce(
-    (acc, c) => acc + (c.files?.length ?? 0),
-    0
-  );
+  const filesFromCommits = (ctx.commits ?? []).reduce((acc, c) => acc + (c.files?.length ?? 0), 0);
+  const filesFromActivity = new Set(toolBursts.flatMap((burst) => burst.files ?? [])).size;
 
   const timeline = ctx.runTimeline ?? null;
-  const latestRun = timeline && timeline.runs.length > 0
-    ? timeline.runs[timeline.runs.length - 1]
-    : null;
+  const latestRun =
+    timeline && timeline.runs.length > 0 ? timeline.runs[timeline.runs.length - 1] : null;
 
   const totalDurationSeconds = timeline
     ? timeline.runs.reduce((acc, r) => acc + (r.durationSeconds ?? 0), 0)
@@ -1534,38 +1940,41 @@ function computeSummaryAggregate(
     runCount: timeline?.runCount,
     latestRunStatus: latestRun?.status,
     latestRunIntent: latestRun?.intent,
-    totalDurationSeconds: totalDurationSeconds && totalDurationSeconds > 0 ? totalDurationSeconds : undefined,
+    totalDurationSeconds:
+      totalDurationSeconds && totalDurationSeconds > 0 ? totalDurationSeconds : undefined,
     totalInputTokens: taskScopedTokens?.inputTokens,
     totalOutputTokens: taskScopedTokens?.outputTokens,
     toolCallCount,
     toolFailureCount,
     commitCount: ctx.commits?.length,
-    filesChanged: filesFromCommits || undefined,
+    filesChanged: filesFromCommits || filesFromActivity || undefined,
     screenshotCount: ctx.screenshots?.length,
     retryWarningCount: retryWarningCount > 0 ? retryWarningCount : undefined,
     watchdogKilled: supervisorWaits.some((w) => w.state === 'killed') || undefined,
-    latestResult: ctx.latestResult
+    latestResult: ctx.latestResult,
   };
 }
 
 function toWorkbenchDebug(
   collected: ConversationEvent[],
   ctx: ConversationProjectionContext,
-  lineNumbers: Map<CliOutputLine, number>
+  lineNumbers: Map<CliOutputLine, number>,
 ) {
   const range = transcriptRange(ctx, lineNumbers);
   const messages = collected.filter(
     (e): e is Extract<ConversationEvent, { kind: `message.${string}` }> =>
-      e.kind.startsWith('message.')
+      e.kind.startsWith('message.'),
   );
   const toolBursts = collected.filter(
-    (e): e is Extract<ConversationEvent, { kind: 'toolBurst' }> => e.kind === 'toolBurst'
+    (e): e is Extract<ConversationEvent, { kind: 'toolBurst' | 'workPhase' }> =>
+      e.kind === 'toolBurst' || e.kind === 'workPhase',
   );
   const supervisorWaits = collected.filter(
-    (e): e is Extract<ConversationEvent, { kind: 'supervisor.wait' }> => e.kind === 'supervisor.wait'
+    (e): e is Extract<ConversationEvent, { kind: 'supervisor.wait' }> =>
+      e.kind === 'supervisor.wait',
   );
   const tokenMetrics = collected.filter(
-    (e): e is Extract<ConversationEvent, { kind: 'metric.token' }> => e.kind === 'metric.token'
+    (e): e is Extract<ConversationEvent, { kind: 'metric.token' }> => e.kind === 'metric.token',
   );
 
   const families: Partial<Record<ToolFamily, number>> = {};
@@ -1578,16 +1987,27 @@ function toWorkbenchDebug(
   }
 
   const timeline = ctx.runTimeline ?? null;
-  const completedCount = timeline ? timeline.runs.filter((r) => r.status === 'completed').length : 0;
+  const completedCount = timeline
+    ? timeline.runs.filter((r) => r.status === 'completed').length
+    : 0;
   const failedCount = timeline ? timeline.runs.filter((r) => r.status === 'failed').length : 0;
-  const cancelledCount = timeline ? timeline.runs.filter((r) => r.status === 'cancelled').length : 0;
+  const cancelledCount = timeline
+    ? timeline.runs.filter((r) => r.status === 'cancelled').length
+    : 0;
 
   const traceLinks: TraceLink[] = collected
-    .filter((e) => e.kind === 'runMarker' || e.kind === 'toolBurst' || e.kind === 'system.parserWarning')
+    .filter(
+      (e) =>
+        e.kind === 'runMarker' ||
+        e.kind === 'toolBurst' ||
+        e.kind === 'workPhase' ||
+        e.kind === 'runtime.notice' ||
+        e.kind === 'system.parserWarning',
+    )
     .slice(0, 12)
     .map((e) => ({
       range: e.rawRange,
-      label: `${e.kind} @ ${e.rawRange.start}-${e.rawRange.end}`
+      label: `${e.kind} @ ${e.rawRange.start}-${e.rawRange.end}`,
     }));
 
   return {
@@ -1600,12 +2020,12 @@ function toWorkbenchDebug(
       taskAgent: messages.filter((m) => m.kind === 'message.taskAgent').length,
       orchestrator: messages.filter((m) => m.kind === 'message.orchestrator').length,
       supervisor: messages.filter((m) => m.kind === 'message.supervisor').length,
-      supportingAgent: messages.filter((m) => m.kind === 'message.supportingAgent').length
+      supportingAgent: messages.filter((m) => m.kind === 'message.supportingAgent').length,
     },
     toolDensity: {
       total: toolBursts.reduce((acc, b) => acc + b.count, 0),
       failures: toolFailures,
-      families
+      families,
     },
     warningCounts: {
       supervisorAdvisories: messages.filter((m) => m.kind === 'message.supervisor').length,
@@ -1614,21 +2034,21 @@ function toWorkbenchDebug(
       schemaDrifts: collected.filter((e) => e.kind === 'system.schemaDrift').length,
       needsInputLoops: collected.filter((e) => e.kind === 'agent.needsInput').length,
       watchdogQuiet: supervisorWaits.filter((w) => w.state === 'quiet').length,
-      watchdogKills: supervisorWaits.filter((w) => w.state === 'killed').length
+      watchdogKills: supervisorWaits.filter((w) => w.state === 'killed').length,
     },
     tokenTotals: {
       inputTokens: tokenMetrics.reduce((acc, m) => acc + (m.inputTokens ?? 0), 0),
       outputTokens: tokenMetrics.reduce((acc, m) => acc + (m.outputTokens ?? 0), 0),
       reasoningTokens: tokenMetrics.reduce((acc, m) => acc + (m.reasoningTokens ?? 0), 0),
-      cost: tokenMetrics.reduce((acc, m) => acc + (m.cost ?? 0), 0) || undefined
+      cost: tokenMetrics.reduce((acc, m) => acc + (m.cost ?? 0), 0) || undefined,
     },
     runStats: {
       runCount: timeline?.runCount ?? 0,
       completedCount,
       failedCount,
-      cancelledCount
+      cancelledCount,
     },
-    traceLinks
+    traceLinks,
   };
 }
 
@@ -1648,10 +2068,7 @@ function formatDurationSec(seconds: number): string {
   return min === 0 ? `${h}h` : `${h}h ${min}m`;
 }
 
-function toTraceLink(
-  ctx: ConversationProjectionContext,
-  lineNumbers: Map<CliOutputLine, number>
-) {
+function toTraceLink(ctx: ConversationProjectionContext, lineNumbers: Map<CliOutputLine, number>) {
   const range = transcriptRange(ctx, lineNumbers);
   return {
     id: `${range.source}:trace`,
@@ -1660,6 +2077,6 @@ function toTraceLink(
     rawRange: range,
     target: 'raw-log',
     label: 'Open raw activity log',
-    link: { range, label: 'Raw activity log' }
+    link: { range, label: 'Raw activity log' },
   };
 }

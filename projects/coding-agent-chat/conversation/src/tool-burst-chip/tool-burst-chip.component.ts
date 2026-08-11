@@ -1,5 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
-import type { ToolBurstEvent, ToolFamily, ToolOutputHit } from 'coding-agent-chat/core';
+import type {
+  ToolBurstEvent,
+  ToolFamily,
+  ToolOutputHit,
+  WorkPhaseEvent,
+} from 'coding-agent-chat/core';
 import { TooltipDirective, type StructuredTooltip } from 'coding-agent-chat/shared';
 
 /**
@@ -25,7 +30,7 @@ import { TooltipDirective, type StructuredTooltip } from 'coding-agent-chat/shar
   styleUrl: './tool-burst-chip.component.scss',
 })
 export class ToolBurstChipComponent {
-  readonly event = input.required<ToolBurstEvent>();
+  readonly event = input.required<ToolBurstEvent | WorkPhaseEvent>();
   readonly density = input<'comfortable' | 'compact'>('comfortable');
   readonly initialOpen = input<boolean>(false);
   readonly openSourceLocation = output<ToolOutputHit>();
@@ -45,6 +50,16 @@ export class ToolBurstChipComponent {
   }
 
   readonly failed = computed(() => (this.event().failures ?? 0) > 0);
+  readonly isWorkPhase = computed(() => this.event().kind === 'workPhase');
+  readonly workPhase = computed<WorkPhaseEvent | null>(() => {
+    const event = this.event();
+    return event.kind === 'workPhase' ? event : null;
+  });
+  readonly fileCount = computed(() => new Set(this.event().files ?? []).size);
+  readonly callLabel = computed(() => {
+    const count = this.event().count;
+    return `${count} tool ${count === 1 ? 'call' : 'calls'}`;
+  });
 
   readonly familyChips = computed<{ family: ToolFamily; label: string; count: number }[]>(() => {
     const families = this.event().families ?? {};

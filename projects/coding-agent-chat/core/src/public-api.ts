@@ -33,4 +33,7 @@ export {
   type ActivityLogGroup,
   type ActivityLogKind,
   type NormalizedChatBody,
+  type StructuredRuntimeFileChange,
+  type StructuredRuntimeFrame,
+  type StructuredRuntimeTodoItem,
 } from './activity-log.parser';

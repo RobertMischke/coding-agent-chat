@@ -1,7 +1,18 @@
 import { CliOutputLine } from './projection-inputs';
 import { shortModelLabel } from './composer-controls';
 
-export type ActivityLogKind = 'read' | 'search' | 'command' | 'edit' | 'task' | 'todo' | 'error' | 'message' | 'orchestrator' | 'supervisor' | 'other';
+export type ActivityLogKind =
+  | 'read'
+  | 'search'
+  | 'command'
+  | 'edit'
+  | 'task'
+  | 'todo'
+  | 'error'
+  | 'message'
+  | 'orchestrator'
+  | 'supervisor'
+  | 'other';
 export type ActivityLogFilters = Record<ActivityLogKind, boolean>;
 
 export interface ActivityLogGroup {
@@ -12,12 +23,58 @@ export interface ActivityLogGroup {
   status: 'ok' | 'error' | 'neutral';
   lines: CliOutputLine[];
   collapsedByDefault: boolean;
+  /** Original transport lines when `lines` contains renderer-friendly text. */
+  sourceLines?: CliOutputLine[];
+  /** Structured runtime metadata retained for the conversation projection. */
+  runtimeFrame?: StructuredRuntimeFrame;
+}
+
+export interface StructuredRuntimeFileChange {
+  path: string;
+  kind: string;
+}
+
+export interface StructuredRuntimeTodoItem {
+  text: string;
+  completed: boolean;
+}
+
+/** Provider-neutral semantics over the Codex JSONL item lifecycle. */
+export interface StructuredRuntimeFrame {
+  provider: 'codex';
+  frameType: string;
+  itemId?: string;
+  itemType?: string;
+  status?: string;
+  semantics: 'action' | 'update' | 'message' | 'no-action' | 'error';
+  label?: string;
+  fileChanges?: readonly StructuredRuntimeFileChange[];
+  todoItems?: readonly StructuredRuntimeTodoItem[];
 }
 
 const actionStartRegex = /^(?<marker>[^\w\s]+|x|X|\*)\s+(?<label>.+)$/i;
-const codexJsonFrameTypes = new Set(['turn.started', 'turn.completed', 'thread.started', 'thread.completed', 'session.started', 'session.completed']);
+const codexJsonFrameTypes = new Set([
+  'turn.started',
+  'turn.completed',
+  'thread.started',
+  'thread.completed',
+  'session.started',
+  'session.completed',
+]);
 
-export const activityLogKinds: ActivityLogKind[] = ['read', 'search', 'command', 'edit', 'task', 'todo', 'error', 'message', 'orchestrator', 'supervisor', 'other'];
+export const activityLogKinds: ActivityLogKind[] = [
+  'read',
+  'search',
+  'command',
+  'edit',
+  'task',
+  'todo',
+  'error',
+  'message',
+  'orchestrator',
+  'supervisor',
+  'other',
+];
 
 export const defaultActivityLogFilters: ActivityLogFilters = {
   read: true,
@@ -30,7 +87,7 @@ export const defaultActivityLogFilters: ActivityLogFilters = {
   message: true,
   orchestrator: true,
   supervisor: true,
-  other: true
+  other: true,
 };
 
 export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
@@ -88,7 +145,7 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
           subtitle: '',
           status: 'neutral',
           lines: [line],
-          collapsedByDefault: false
+          collapsedByDefault: false,
         };
         groups.push(reply);
         current = reply;
@@ -120,7 +177,7 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
         subtitle: '',
         status: 'neutral',
         lines: [line],
-        collapsedByDefault: false
+        collapsedByDefault: false,
       };
       groups.push(current);
       // Reset so any subsequent continuation/blank lines don't fold into
@@ -142,7 +199,7 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
         subtitle: '',
         status: 'neutral',
         lines: [line],
-        collapsedByDefault: false
+        collapsedByDefault: false,
       };
       groups.push(current);
       current = null;
@@ -158,7 +215,7 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
         subtitle: '',
         status: isHigh ? 'error' : 'neutral',
         lines: [line],
-        collapsedByDefault: false
+        collapsedByDefault: false,
       };
       groups.push(supervisorGroup);
       current = null;
@@ -173,7 +230,7 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
         subtitle: line.text.trim(),
         status: 'neutral',
         lines: [line],
-        collapsedByDefault: true
+        collapsedByDefault: true,
       };
       groups.push(transcript);
       current = transcript;
@@ -189,7 +246,7 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
         subtitle: codexTranscriptBanner(line.text) ?? '',
         status: 'neutral',
         lines: [line],
-        collapsedByDefault: true
+        collapsedByDefault: true,
       };
       groups.push(transcript);
       current = transcript;
@@ -217,7 +274,7 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
         subtitle: '',
         status: action.status,
         lines: [line],
-        collapsedByDefault: false
+        collapsedByDefault: false,
       };
       groups.push(current);
       continue;
@@ -246,9 +303,8 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
     // contains source/log text with words such as "ERROR" or "failed".
     // Stream provenance and explicit leading failure frames are reliable;
     // arbitrary message contents are not.
-    const kind: ActivityLogKind = line.stream === 'stderr' || isExplicitFailureFrame(line.text)
-      ? 'error'
-      : 'message';
+    const kind: ActivityLogKind =
+      line.stream === 'stderr' || isExplicitFailureFrame(line.text) ? 'error' : 'message';
     current = {
       id: `${groups.length}-${line.timestamp}-message`,
       kind,
@@ -256,7 +312,7 @@ export function parseActivityLog(lines: CliOutputLine[]): ActivityLogGroup[] {
       subtitle: '',
       status: kind === 'error' ? 'error' : 'neutral',
       lines: [line],
-      collapsedByDefault: false
+      collapsedByDefault: false,
     };
     groups.push(current);
     // A fence opening as its own message line (no preceding prose) also
@@ -271,12 +327,11 @@ function isExplicitFailureFrame(text: string): boolean {
   return /^\s*(?:error(?:\s*:|\b)|failed\b|fatal(?:\s*:|\b)|exited with error\b)/i.test(text);
 }
 
-type CodexJsonlParseResult =
-  | { visible: true; group: ActivityLogGroup }
-  | { visible: false };
+type CodexJsonlParseResult = { visible: true; group: ActivityLogGroup } | { visible: false };
 
 interface CodexJsonObject {
   type?: unknown;
+  message?: unknown;
   item?: {
     id?: unknown;
     type?: unknown;
@@ -285,6 +340,11 @@ interface CodexJsonObject {
     aggregated_output?: unknown;
     exit_code?: unknown;
     status?: unknown;
+    changes?: unknown;
+    items?: unknown;
+    server?: unknown;
+    tool?: unknown;
+    query?: unknown;
   };
 }
 
@@ -309,7 +369,10 @@ function collectCompletedCodexCommandIds(lines: CliOutputLine[]): Set<string> {
   return ids;
 }
 
-function parseCodexJsonlFrame(line: CliOutputLine, completedCommandIds: Set<string>): CodexJsonlParseResult | null {
+function parseCodexJsonlFrame(
+  line: CliOutputLine,
+  completedCommandIds: Set<string>,
+): CodexJsonlParseResult | null {
   const trimmed = line.text.trim();
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
 
@@ -326,7 +389,11 @@ function parseCodexJsonlFrame(line: CliOutputLine, completedCommandIds: Set<stri
   const item = frame.item;
   const itemType = stringValue(item?.type);
   const itemId = stringValue(item?.id) ?? frameType;
-  if ((frameType === 'item.started' || frameType === 'item.completed') && itemType === 'agent_message') {
+  const runtimeFrame = codexRuntimeFrame(frame, frameType, itemType, itemId);
+  if (
+    (frameType === 'item.started' || frameType === 'item.completed') &&
+    itemType === 'agent_message'
+  ) {
     const text = stringValue(item?.text)?.trim();
     if (!text) return { visible: false };
     return {
@@ -338,21 +405,27 @@ function parseCodexJsonlFrame(line: CliOutputLine, completedCommandIds: Set<stri
         subtitle: '',
         status: 'neutral',
         lines: [withText(line, text)],
-        collapsedByDefault: false
-      }
+        sourceLines: [line],
+        runtimeFrame,
+        collapsedByDefault: false,
+      },
     };
   }
 
-  if ((frameType === 'item.started' || frameType === 'item.completed') && itemType === 'command_execution') {
+  if (
+    (frameType === 'item.started' || frameType === 'item.completed') &&
+    itemType === 'command_execution'
+  ) {
     if (frameType === 'item.started' && completedCommandIds.has(itemId)) {
       return { visible: false };
     }
     const command = stringValue(item?.command)?.trim() || 'Command';
     const statusText = stringValue(item?.status);
     const exitCode = numberValue(item?.exit_code);
-    const failed = line.stream === 'stderr'
-      || (exitCode !== null && exitCode !== 0)
-      || /failed|error|cancelled/i.test(statusText ?? '');
+    const failed =
+      line.stream === 'stderr' ||
+      (exitCode !== null && exitCode !== 0) ||
+      /failed|error|cancelled/i.test(statusText ?? '');
     const output = stringValue(item?.aggregated_output)?.trim();
     return {
       visible: true,
@@ -363,20 +436,25 @@ function parseCodexJsonlFrame(line: CliOutputLine, completedCommandIds: Set<stri
         subtitle: commandSubtitle(command, statusText, exitCode, output),
         status: failed ? 'error' : 'ok',
         lines: commandDisplayLines(line, command, statusText, exitCode, output),
-        collapsedByDefault: false
-      }
+        sourceLines: [line],
+        runtimeFrame,
+        collapsedByDefault: false,
+      },
     };
   }
 
-  if (codexJsonFrameTypes.has(frameType)
-    || frameType.startsWith('response.')
-    || frameType.startsWith('turn.')
-    || frameType.startsWith('thread.')
-    || frameType.startsWith('session.')
-    || frameType.startsWith('item.')) {
+  if (
+    codexJsonFrameTypes.has(frameType) ||
+    frameType === 'error' ||
+    frameType.startsWith('response.') ||
+    frameType.startsWith('turn.') ||
+    frameType.startsWith('thread.') ||
+    frameType.startsWith('session.') ||
+    frameType.startsWith('item.')
+  ) {
     return {
       visible: true,
-      group: codexDebugGroup(line, frameType, itemType, itemId)
+      group: codexDebugGroup(line, frameType, itemType, itemId, runtimeFrame),
     };
   }
 
@@ -387,7 +465,8 @@ function codexDebugGroup(
   line: CliOutputLine,
   frameType: string,
   itemType: string | null,
-  itemId: string
+  itemId: string,
+  runtimeFrame: StructuredRuntimeFrame,
 ): ActivityLogGroup {
   const itemLabel = itemType ? ` ${itemType}` : '';
   return {
@@ -397,13 +476,99 @@ function codexDebugGroup(
     subtitle: '',
     status: 'neutral',
     lines: [line],
-    collapsedByDefault: true
+    sourceLines: [line],
+    runtimeFrame,
+    collapsedByDefault: true,
   };
+}
+
+function codexRuntimeFrame(
+  frame: CodexJsonObject,
+  frameType: string,
+  itemType: string | null,
+  itemId: string,
+): StructuredRuntimeFrame {
+  const item = frame.item;
+  const status = stringValue(item?.status) ?? undefined;
+  const semantics = codexRuntimeSemantics(frameType, itemType);
+  return {
+    provider: 'codex',
+    frameType,
+    itemId: itemType ? itemId : undefined,
+    itemType: itemType ?? undefined,
+    status,
+    semantics,
+    label: codexRuntimeLabel(itemType, item),
+    fileChanges: itemType === 'file_change' ? readCodexFileChanges(item?.changes) : undefined,
+    todoItems: itemType === 'todo_list' ? readCodexTodoItems(item?.items) : undefined,
+  };
+}
+
+function codexRuntimeSemantics(
+  frameType: string,
+  itemType: string | null,
+): StructuredRuntimeFrame['semantics'] {
+  if (frameType === 'error' || frameType === 'turn.failed' || itemType === 'error') return 'error';
+  if (itemType === 'agent_message') return 'message';
+  if (itemType === 'file_change' || itemType === 'todo_list') return 'update';
+  if (
+    itemType === 'command_execution' ||
+    itemType === 'mcp_tool_call' ||
+    itemType === 'collab_tool_call' ||
+    itemType === 'web_search'
+  ) {
+    return 'action';
+  }
+  return 'no-action';
+}
+
+function codexRuntimeLabel(
+  itemType: string | null,
+  item: CodexJsonObject['item'],
+): string | undefined {
+  if (itemType === 'command_execution') return stringValue(item?.command) ?? undefined;
+  if (itemType === 'mcp_tool_call') {
+    const server = stringValue(item?.server);
+    const tool = stringValue(item?.tool);
+    return [server, tool].filter(Boolean).join('.') || undefined;
+  }
+  if (itemType === 'collab_tool_call') return stringValue(item?.tool) ?? 'Supporting agent';
+  if (itemType === 'web_search') return stringValue(item?.query) ?? 'Web search';
+  return undefined;
+}
+
+function readCodexFileChanges(value: unknown): StructuredRuntimeFileChange[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const changes: StructuredRuntimeFileChange[] = [];
+  for (const entry of value) {
+    if (!isUnknownRecord(entry)) continue;
+    const path = stringValue(entry['path']);
+    if (!path) continue;
+    changes.push({ path, kind: stringValue(entry['kind']) ?? 'update' });
+  }
+  return changes.length > 0 ? changes : undefined;
+}
+
+function readCodexTodoItems(value: unknown): StructuredRuntimeTodoItem[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items: StructuredRuntimeTodoItem[] = [];
+  for (const entry of value) {
+    if (!isUnknownRecord(entry)) continue;
+    const text = stringValue(entry['text']);
+    if (!text) continue;
+    items.push({ text, completed: entry['completed'] === true });
+  }
+  return items;
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 const CODEX_TEXT_MODE_BANNER_RE = /^OpenAI Codex\b/i;
 const CODEX_EXEC_RUNNER_RE = /^\[runner\]\s+spawning\s+codex\s+exec\b/i;
-const CODEX_TEXT_MODE_TOKEN_RE = /\b(?:(?:final\s+)?token\s+count|tokens?\s+used)\s*[:=]?\s*(?<count>[\d,]+)/i;
+const CODEX_TEXT_MODE_TOKEN_RE =
+  /\b(?:(?:final\s+)?token\s+count|tokens?\s+used)\s*[:=]?\s*(?<count>[\d,]+)/i;
 const CODEX_TEXT_MODE_TOKEN_LABEL_RE = /^tokens?\s+used\s*:?\s*$/i;
 const CODEX_TEXT_MODE_BARE_TOKEN_COUNT_RE = /^(?<count>[\d,]+)\s*$/;
 
@@ -436,10 +601,12 @@ function codexTranscriptTokenCount(lines: readonly CliOutputLine[]): string | nu
 
 export function isCodexTextModeTranscriptFailure(text: string): boolean {
   const trimmed = text.trim();
-  return /^Run failed\b/i.test(trimmed)
-    || /^Failed to start\b/i.test(trimmed)
-    || /^(?:Error:\s*)?codex(?:\s+exec)?\s+failed\b/i.test(trimmed)
-    || /^\[runner\].*\b(?:failed|exited with (?:code )?[1-9]\d*)\b/i.test(trimmed);
+  return (
+    /^Run failed\b/i.test(trimmed) ||
+    /^Failed to start\b/i.test(trimmed) ||
+    /^(?:Error:\s*)?codex(?:\s+exec)?\s+failed\b/i.test(trimmed) ||
+    /^\[runner\].*\b(?:failed|exited with (?:code )?[1-9]\d*)\b/i.test(trimmed)
+  );
 }
 
 function commandDisplayLines(
@@ -447,7 +614,7 @@ function commandDisplayLines(
   command: string,
   status: string | null,
   exitCode: number | null,
-  output: string | undefined
+  output: string | undefined,
 ): CliOutputLine[] {
   const summaryParts = [`$ ${command}`];
   if (status) summaryParts.push(`[${status}]`);
@@ -459,7 +626,12 @@ function commandDisplayLines(
   return displayLines;
 }
 
-function commandSubtitle(command: string, status: string | null, exitCode: number | null, output: string | undefined): string {
+function commandSubtitle(
+  command: string,
+  status: string | null,
+  exitCode: number | null,
+  output: string | undefined,
+): string {
   const parts: string[] = [command];
   if (status) parts.push(status);
   if (exitCode !== null) parts.push(`exit ${exitCode}`);
@@ -530,9 +702,12 @@ export function normalizeVisibleChatBody(lines: readonly CliOutputLine[]): Norma
   }
 
   return {
-    text: outputLines.map((entry) => entry.text).join('\n').trim(),
+    text: outputLines
+      .map((entry) => entry.text)
+      .join('\n')
+      .trim(),
     lines: outputLines,
-    strippedEnvelopes
+    strippedEnvelopes,
   };
 }
 
@@ -544,10 +719,16 @@ function stripTransportEnvelope(text: string): string | null {
   const trimmed = text.trim();
   if (!trimmed) return text;
 
-  const speakerOnly = /^\[(?<role>orchestrator|supervisor|agent|assistant|system|user)\]\s*(?:[:|>—–-]\s*)?$/i.exec(trimmed);
+  const speakerOnly =
+    /^\[(?<role>orchestrator|supervisor|agent|assistant|system|user)\]\s*(?:[:|>—–-]\s*)?$/i.exec(
+      trimmed,
+    );
   if (speakerOnly) return null;
 
-  const bracketSpeaker = /^\[(?<speaker>orchestrator|supervisor|agent|assistant|system|user)\]\s*(?<sep>[:|>—–-]\s*|$)(?<rest>[\s\S]*)$/i.exec(trimmed);
+  const bracketSpeaker =
+    /^\[(?<speaker>orchestrator|supervisor|agent|assistant|system|user)\]\s*(?<sep>[:|>—–-]\s*|$)(?<rest>[\s\S]*)$/i.exec(
+      trimmed,
+    );
   if (bracketSpeaker?.groups) {
     const sep = bracketSpeaker.groups['sep'] ?? '';
     const rest = bracketSpeaker.groups['rest'] ?? '';
@@ -560,14 +741,20 @@ function stripTransportEnvelope(text: string): string | null {
   // A leading known role plus an explicit transport separator is also a
   // speaker frame when no timestamp was emitted. Requiring the separator
   // keeps ordinary prose such as "The Supervisor reviews this" untouched.
-  const plainSpeaker = /^(?<speaker>orchestrator|supervisor|agent|assistant|system|user)\s*(?<sep>[:|>—–-]\s+)(?<rest>[\s\S]*)$/i.exec(trimmed);
+  const plainSpeaker =
+    /^(?<speaker>orchestrator|supervisor|agent|assistant|system|user)\s*(?<sep>[:|>—–-]\s+)(?<rest>[\s\S]*)$/i.exec(
+      trimmed,
+    );
   if (plainSpeaker?.groups) {
     const rest = plainSpeaker.groups['rest'] ?? '';
     if (!rest.trim()) return null;
     return rest.trimStart();
   }
 
-  const timestamped = /^(?:[●•◦◆]\s*)?(?<timestamp>\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?|\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?)\s+(?<rest>[\s\S]*)$/i.exec(trimmed);
+  const timestamped =
+    /^(?:[●•◦◆]\s*)?(?<timestamp>\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?|\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?)\s+(?<rest>[\s\S]*)$/i.exec(
+      trimmed,
+    );
   if (timestamped?.groups) {
     const rest = timestamped.groups['rest'] ?? '';
     const afterTimestamp = stripSpeakerPrefix(rest);
@@ -580,13 +767,20 @@ function stripTransportEnvelope(text: string): string | null {
 
 function isSpeakerEnvelopeOnly(text: string): boolean {
   const trimmed = text.trim();
-  return /^\[(?:orchestrator|supervisor|agent|assistant|system|user)\]\s*(?:[:|>—–-]\s*)?$/i.test(trimmed)
-    || /^(?:orchestrator|supervisor|agent|assistant|system|user)\s*(?:[:|>—–-]\s*)?$/i.test(trimmed);
+  return (
+    /^\[(?:orchestrator|supervisor|agent|assistant|system|user)\]\s*(?:[:|>—–-]\s*)?$/i.test(
+      trimmed,
+    ) ||
+    /^(?:orchestrator|supervisor|agent|assistant|system|user)\s*(?:[:|>—–-]\s*)?$/i.test(trimmed)
+  );
 }
 
 function stripSpeakerPrefix(text: string): string | null {
   const trimmed = text.trimStart();
-  const bracketSpeaker = /^\[(?<speaker>orchestrator|supervisor|agent|assistant|system|user)\]\s*(?<sep>[:|>—–-]\s*|$)(?<rest>[\s\S]*)$/i.exec(trimmed);
+  const bracketSpeaker =
+    /^\[(?<speaker>orchestrator|supervisor|agent|assistant|system|user)\]\s*(?<sep>[:|>—–-]\s*|$)(?<rest>[\s\S]*)$/i.exec(
+      trimmed,
+    );
   if (bracketSpeaker?.groups) {
     const sep = bracketSpeaker.groups['sep'] ?? '';
     const rest = bracketSpeaker.groups['rest'] ?? '';
@@ -596,7 +790,10 @@ function stripSpeakerPrefix(text: string): string | null {
     }
   }
 
-  const plainSpeaker = /^(?<speaker>orchestrator|supervisor|agent|assistant|system|user)\s*(?<sep>[:|>—–-]\s*|$)(?<rest>[\s\S]*)$/i.exec(trimmed);
+  const plainSpeaker =
+    /^(?<speaker>orchestrator|supervisor|agent|assistant|system|user)\s*(?<sep>[:|>—–-]\s*|$)(?<rest>[\s\S]*)$/i.exec(
+      trimmed,
+    );
   if (plainSpeaker?.groups) {
     const sep = plainSpeaker.groups['sep'] ?? '';
     const rest = plainSpeaker.groups['rest'] ?? '';
@@ -609,7 +806,10 @@ function stripSpeakerPrefix(text: string): string | null {
   return null;
 }
 
-export function filterActivityGroups(groups: ActivityLogGroup[], filters: ActivityLogFilters): ActivityLogGroup[] {
+export function filterActivityGroups(
+  groups: ActivityLogGroup[],
+  filters: ActivityLogFilters,
+): ActivityLogGroup[] {
   return groups.filter((group) => filters[group.kind]);
 }
 
@@ -633,7 +833,14 @@ export interface ChatMessage {
   collapsedByDefault: boolean;
 }
 
-const TOOL_KINDS: readonly ActivityLogKind[] = ['read', 'search', 'command', 'edit', 'task', 'todo'];
+const TOOL_KINDS: readonly ActivityLogKind[] = [
+  'read',
+  'search',
+  'command',
+  'edit',
+  'task',
+  'todo',
+];
 
 export function buildChatMessages(groups: ActivityLogGroup[]): ChatMessage[] {
   return groups.map((group, index) => groupToChatMessage(group, index));
@@ -644,17 +851,25 @@ function groupToChatMessage(group: ActivityLogGroup, index: number): ChatMessage
   const isError = group.kind === 'error' || group.status === 'error';
   const isCodexTranscript = isCodexDebugFrame(group);
   const isUser = group.lines.length > 0 && group.lines[0].stream === 'user';
-  const isOrchestrator = group.kind === 'orchestrator'
-    || (group.lines.length > 0 && group.lines[0].stream === 'orchestrator');
-  const isSupervisor = group.kind === 'supervisor'
-    || (group.lines.length > 0 && group.lines[0].stream === 'supervisor');
-  const role: ChatRole = isSupervisor ? 'supervisor'
-    : isOrchestrator ? 'orchestrator'
-    : isUser ? 'user'
-    : isCodexTranscript ? 'system'
-    : isError && !isTool ? 'system'
-    : isTool ? 'tool'
-    : 'agent';
+  const isOrchestrator =
+    group.kind === 'orchestrator' ||
+    (group.lines.length > 0 && group.lines[0].stream === 'orchestrator');
+  const isSupervisor =
+    group.kind === 'supervisor' ||
+    (group.lines.length > 0 && group.lines[0].stream === 'supervisor');
+  const role: ChatRole = isSupervisor
+    ? 'supervisor'
+    : isOrchestrator
+      ? 'orchestrator'
+      : isUser
+        ? 'user'
+        : isCodexTranscript
+          ? 'system'
+          : isError && !isTool
+            ? 'system'
+            : isTool
+              ? 'tool'
+              : 'agent';
 
   const firstLine = group.lines[0];
   const timestamp = firstLine ? firstLine.timestamp : new Date().toISOString();
@@ -662,16 +877,16 @@ function groupToChatMessage(group: ActivityLogGroup, index: number): ChatMessage
   const author = isSupervisor
     ? 'Supervisor'
     : isOrchestrator
-    ? 'Orchestrator'
-    : isUser
-      ? 'You'
-      : isCodexTranscript
-        ? 'System'
-      : isError && !isTool
-        ? 'System'
-        : isTool
-          ? 'Tool call'
-          : 'Agent';
+      ? 'Orchestrator'
+      : isUser
+        ? 'You'
+        : isCodexTranscript
+          ? 'System'
+          : isError && !isTool
+            ? 'System'
+            : isTool
+              ? 'Tool call'
+              : 'Agent';
 
   const avatar = isOrchestrator
     ? '⚙'
@@ -679,17 +894,19 @@ function groupToChatMessage(group: ActivityLogGroup, index: number): ChatMessage
       ? '🧑'
       : isCodexTranscript
         ? '!'
-      : isError && !isTool
-        ? '!'
-        : isTool
-          ? toolAvatarFor(group.kind)
-          : '🤖';
+        : isError && !isTool
+          ? '!'
+          : isTool
+            ? toolAvatarFor(group.kind)
+            : '🤖';
 
   const kindLabel = isCodexTranscript
     ? 'Codex transcript'
     : isTool
       ? activityKindLabel(group.kind)
-      : (isError ? 'Error' : '');
+      : isError
+        ? 'Error'
+        : '';
 
   return {
     id: `chat-${index}-${group.id}`,
@@ -702,11 +919,11 @@ function groupToChatMessage(group: ActivityLogGroup, index: number): ChatMessage
     status: group.status,
     timestamp,
     body: isCodexTranscript
-      ? (firstLine
+      ? firstLine
         ? [{ ...firstLine, text: codexTranscriptSummary(group) }]
-        : [{ timestamp, stream: 'stdout', text: codexTranscriptSummary(group) }])
+        : [{ timestamp, stream: 'stdout', text: codexTranscriptSummary(group) }]
       : normalizeVisibleChatBody(group.lines).lines,
-    collapsedByDefault: isCodexTranscript || isTool || group.collapsedByDefault
+    collapsedByDefault: isCodexTranscript || isTool || group.collapsedByDefault,
   };
 }
 
@@ -726,7 +943,8 @@ function groupToChatMessage(group: ActivityLogGroup, index: number): ChatMessage
 // user explicitly asked for: hide tool noise, keep responses prominent and
 // legible.
 
-export type ConversationTurnKind = 'agent' | 'user' | 'tools' | 'system' | 'orchestrator' | 'supervisor';
+export type ConversationTurnKind =
+  'agent' | 'user' | 'tools' | 'system' | 'orchestrator' | 'supervisor';
 
 export interface ToolBurstSummary {
   total: number;
@@ -835,12 +1053,12 @@ function isCodexDebugFrame(group: ActivityLogGroup): boolean {
  */
 export function buildConversationTurns(groups: ActivityLogGroup[]): ConversationTurn[] {
   const turns: ConversationTurn[] = [];
-  const filtered = groups.filter((g) =>
-    // The model-change marker is a [taskboard] system line but is kept and
-    // rendered as a system turn; every other [taskboard] runtime marker is
-    // dropped (it lives in Trace only).
-    isModelChangeMarker(g) ||
-    (!isTaskboardRuntimeMarker(g) && !isWatchdogMetaLine(g))
+  const filtered = groups.filter(
+    (g) =>
+      // The model-change marker is a [taskboard] system line but is kept and
+      // rendered as a system turn; every other [taskboard] runtime marker is
+      // dropped (it lives in Trace only).
+      isModelChangeMarker(g) || (!isTaskboardRuntimeMarker(g) && !isWatchdogMetaLine(g)),
   );
   let i = 0;
   while (i < filtered.length) {
@@ -865,16 +1083,26 @@ function roleFor(group: ActivityLogGroup): ConversationTurnKind {
   if (isUser) return 'user';
   if (isModelChangeMarker(group)) return 'system';
   if (isCodexDebugFrame(group)) return 'system';
-  if (group.kind === 'supervisor'
-    || (group.lines.length > 0 && group.lines[0].stream === 'supervisor')) return 'supervisor';
-  if (group.kind === 'orchestrator'
-    || (group.lines.length > 0 && group.lines[0].stream === 'orchestrator')) return 'orchestrator';
+  if (
+    group.kind === 'supervisor' ||
+    (group.lines.length > 0 && group.lines[0].stream === 'supervisor')
+  )
+    return 'supervisor';
+  if (
+    group.kind === 'orchestrator' ||
+    (group.lines.length > 0 && group.lines[0].stream === 'orchestrator')
+  )
+    return 'orchestrator';
   if (isToolKind(group.kind)) return 'tools';
   if (group.kind === 'error' || group.status === 'error') return 'system';
   return 'agent';
 }
 
-function turnFromRun(run: ActivityLogGroup[], kind: ConversationTurnKind, index: number): ConversationTurn {
+function turnFromRun(
+  run: ActivityLogGroup[],
+  kind: ConversationTurnKind,
+  index: number,
+): ConversationTurn {
   const firstLine = run[0]?.lines[0];
   const timestamp = firstLine ? firstLine.timestamp : new Date().toISOString();
   const status: 'ok' | 'error' | 'neutral' = run.some((g) => g.status === 'error')
@@ -891,7 +1119,7 @@ function turnFromRun(run: ActivityLogGroup[], kind: ConversationTurnKind, index:
       status,
       groups: run,
       text: '',
-      toolSummary: summarizeToolBurst(run)
+      toolSummary: summarizeToolBurst(run),
     };
   }
 
@@ -901,7 +1129,7 @@ function turnFromRun(run: ActivityLogGroup[], kind: ConversationTurnKind, index:
     timestamp,
     status,
     groups: run,
-    text: turnTextFromGroups(run, kind)
+    text: turnTextFromGroups(run, kind),
   };
 }
 
@@ -968,9 +1196,8 @@ export function summarizeToolBurst(groups: ActivityLogGroup[]): ToolBurstSummary
       if (t > lastMs) lastMs = t;
     }
   }
-  const durationMs = Number.isFinite(firstMs) && Number.isFinite(lastMs) && lastMs > firstMs
-    ? lastMs - firstMs
-    : 0;
+  const durationMs =
+    Number.isFinite(firstMs) && Number.isFinite(lastMs) && lastMs > firstMs ? lastMs - firstMs : 0;
   return { total, counts, samples, durationMs };
 }
 
@@ -986,13 +1213,7 @@ export function summarizeToolBurst(groups: ActivityLogGroup[]): ToolBurstSummary
 // that something is still ticking even when the agent stalls between
 // tool calls.
 
-export type LiveStatusKind =
-  | 'starting'
-  | 'tool'
-  | 'agent'
-  | 'user'
-  | 'orchestrator'
-  | 'recovering';
+export type LiveStatusKind = 'starting' | 'tool' | 'agent' | 'user' | 'orchestrator' | 'recovering';
 
 export interface LiveStatus {
   kind: LiveStatusKind;
@@ -1021,7 +1242,7 @@ export interface LiveStatus {
 export function deriveLiveStatus(
   lines: CliOutputLine[],
   isRunning: boolean,
-  nowMs: number
+  nowMs: number,
 ): LiveStatus | null {
   if (!isRunning) return null;
   if (lines.length === 0) {
@@ -1068,15 +1289,40 @@ export function deriveLiveStatus(
 
   switch (lastGroup.kind) {
     case 'read':
-      return { kind: 'tool', verb: 'Reading', detail: extractTargetLabel(lastGroup, 'file'), sinceMs };
+      return {
+        kind: 'tool',
+        verb: 'Reading',
+        detail: extractTargetLabel(lastGroup, 'file'),
+        sinceMs,
+      };
     case 'search':
-      return { kind: 'tool', verb: 'Searching', detail: extractTargetLabel(lastGroup, 'query'), sinceMs };
+      return {
+        kind: 'tool',
+        verb: 'Searching',
+        detail: extractTargetLabel(lastGroup, 'query'),
+        sinceMs,
+      };
     case 'edit':
-      return { kind: 'tool', verb: 'Editing', detail: extractTargetLabel(lastGroup, 'file'), sinceMs };
+      return {
+        kind: 'tool',
+        verb: 'Editing',
+        detail: extractTargetLabel(lastGroup, 'file'),
+        sinceMs,
+      };
     case 'command':
-      return { kind: 'tool', verb: 'Running', detail: extractTargetLabel(lastGroup, 'command'), sinceMs };
+      return {
+        kind: 'tool',
+        verb: 'Running',
+        detail: extractTargetLabel(lastGroup, 'command'),
+        sinceMs,
+      };
     case 'task':
-      return { kind: 'tool', verb: 'Delegating', detail: extractTargetLabel(lastGroup, 'task'), sinceMs };
+      return {
+        kind: 'tool',
+        verb: 'Delegating',
+        detail: extractTargetLabel(lastGroup, 'task'),
+        sinceMs,
+      };
     case 'todo':
       return { kind: 'tool', verb: 'Updating todos', detail: '', sinceMs };
     case 'message':
@@ -1211,46 +1457,69 @@ function sampleLabelFor(group: ActivityLogGroup): string {
 
 function toolAvatarFor(kind: ActivityLogKind): string {
   switch (kind) {
-    case 'read': return '📖';
-    case 'search': return '🔎';
-    case 'command': return '⚙';
-    case 'edit': return '✎';
-    case 'task': return '◆';
-    case 'todo': return '☐';
-    default: return '⚙';
+    case 'read':
+      return '📖';
+    case 'search':
+      return '🔎';
+    case 'command':
+      return '⚙';
+    case 'edit':
+      return '✎';
+    case 'task':
+      return '◆';
+    case 'todo':
+      return '☐';
+    default:
+      return '⚙';
   }
 }
 
 export function activityKindLabel(kind: ActivityLogKind): string {
   switch (kind) {
-    case 'read': return 'Reading files';
-    case 'search': return 'Searches';
-    case 'command': return 'Commands';
-    case 'edit': return 'Edits';
-    case 'task': return 'Tasks';
-    case 'todo': return 'Todos';
-    case 'error': return 'Errors';
-    case 'message': return 'Messages';
-    case 'orchestrator': return 'Orchestrator';
-    case 'supervisor': return 'Supervisor';
-    case 'other': return 'Other';
+    case 'read':
+      return 'Reading files';
+    case 'search':
+      return 'Searches';
+    case 'command':
+      return 'Commands';
+    case 'edit':
+      return 'Edits';
+    case 'task':
+      return 'Tasks';
+    case 'todo':
+      return 'Todos';
+    case 'error':
+      return 'Errors';
+    case 'message':
+      return 'Messages';
+    case 'orchestrator':
+      return 'Orchestrator';
+    case 'supervisor':
+      return 'Supervisor';
+    case 'other':
+      return 'Other';
   }
 }
 
-function parseActionLine(line: CliOutputLine): { kind: ActivityLogKind; title: string; status: 'ok' | 'error' | 'neutral' } | null {
+function parseActionLine(
+  line: CliOutputLine,
+): { kind: ActivityLogKind; title: string; status: 'ok' | 'error' | 'neutral' } | null {
   const match = actionStartRegex.exec(line.text);
   if (!match?.groups) return null;
 
   const label = match.groups['label'].trim();
   const marker = match.groups['marker'];
-  const status = line.stream === 'stderr' || marker.toLowerCase() === 'x' || /exited with error|failed/i.test(label)
-    ? 'error'
-    : 'ok';
+  const status =
+    line.stream === 'stderr' ||
+    marker.toLowerCase() === 'x' ||
+    /exited with error|failed/i.test(label)
+      ? 'error'
+      : 'ok';
 
   return {
     kind: classifyAction(label, status),
     title: label,
-    status
+    status,
   };
 }
 
@@ -1279,7 +1548,11 @@ function compressActivityGroups(groups: ActivityLogGroup[]): ActivityLogGroup[] 
 
     const batch = [group];
     index += 1;
-    while (index < groups.length && groups[index].kind === group.kind && groups[index].status === group.status) {
+    while (
+      index < groups.length &&
+      groups[index].kind === group.kind &&
+      groups[index].status === group.status
+    ) {
       batch.push(groups[index]);
       index += 1;
     }
@@ -1290,14 +1563,21 @@ function compressActivityGroups(groups: ActivityLogGroup[]): ActivityLogGroup[] 
     }
 
     const lines = batch.flatMap((item) => item.lines);
+    const sourceLines = batch.flatMap((item) => item.sourceLines ?? item.lines);
     output.push({
       id: `${group.id}-batch-${batch.length}`,
       kind: group.kind,
       title: `${activityKindLabel(group.kind)} ×${batch.length}`,
-      subtitle: batch.map((item) => item.subtitle || item.title).filter(Boolean).slice(0, 3).join(', '),
+      subtitle: batch
+        .map((item) => item.subtitle || item.title)
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(', '),
       status: group.status,
       lines,
-      collapsedByDefault: true
+      sourceLines,
+      runtimeFrame: batch.find((item) => item.runtimeFrame)?.runtimeFrame,
+      collapsedByDefault: true,
     });
   }
 
@@ -1394,6 +1674,6 @@ export function parseOrchestratorSteer(text: string): ParsedSteer | null {
     need,
     why,
     options,
-    needsScreenshot: /screenshot|screen\s*shot|image|picture/i.test(need)
+    needsScreenshot: /screenshot|screen\s*shot|image|picture/i.test(need),
   };
 }

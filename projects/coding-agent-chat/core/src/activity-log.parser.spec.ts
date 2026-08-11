@@ -12,7 +12,7 @@ import {
   parseActivityLog,
   parseOrchestratorSteer,
   normalizeVisibleChatBody,
-  summarizeToolBurst
+  summarizeToolBurst,
 } from './activity-log.parser';
 import { CliOutputLine } from './projection-inputs';
 import {
@@ -30,7 +30,7 @@ describe('parseActivityLog', () => {
       line('* Read status.md'),
       line('  | status.md'),
       line('* Read job-detail.ts'),
-      line('  | frontend/src/app/components/job-detail.ts')
+      line('  | frontend/src/app/components/job-detail.ts'),
     ]);
 
     expect(groups).toHaveLength(1);
@@ -52,7 +52,7 @@ describe('parseActivityLog', () => {
       line('* Run npm test (shell)'),
       line('  | running tests'),
       line('* Run npm run lint (shell)'),
-      line('  | linting')
+      line('  | linting'),
     ]);
 
     expect(groups.map((g) => g.kind)).toEqual(['edit', 'command']);
@@ -67,7 +67,7 @@ describe('parseActivityLog', () => {
       line('* Baseline frontend build (shell)'),
       line('  | npm run build'),
       line('x Read prompt.md'),
-      line('  | Path does not exist')
+      line('  | Path does not exist'),
     ]);
 
     expect(groups[0].kind).toBe('command');
@@ -81,7 +81,7 @@ describe('parseActivityLog', () => {
       line('* Read prompt.md'),
       line('  | prompt.md'),
       line('* Edit'),
-      line('  | Edit frontend/src/app/components/job-detail.ts')
+      line('  | Edit frontend/src/app/components/job-detail.ts'),
     ]);
     const filters = { ...defaultActivityLogFilters, read: false };
     const visible = filterActivityGroups(groups, filters);
@@ -89,7 +89,7 @@ describe('parseActivityLog', () => {
     expect(visible.map((group) => group.kind)).toEqual(['edit']);
     expect(flattenActivityLines(visible).map((entry) => entry.text)).toEqual([
       '* Edit',
-      '  | Edit frontend/src/app/components/job-detail.ts'
+      '  | Edit frontend/src/app/components/job-detail.ts',
     ]);
   });
   it('treats [user] stream lines as their own message group, never folded into adjacent agent output', () => {
@@ -98,11 +98,11 @@ describe('parseActivityLog', () => {
       line('  | prompt.md'),
       line('please switch to dark mode', 'user'),
       line('* Edit', 'stdout'),
-      line('  | Edit src/styles.css')
+      line('  | Edit src/styles.css'),
     ]);
 
     // The user line must be its own group sandwiched between the read and the edit.
-    const kinds = groups.map(g => g.kind);
+    const kinds = groups.map((g) => g.kind);
     expect(kinds).toEqual(['read', 'message', 'edit']);
     expect(groups[1].lines).toHaveLength(1);
     expect(groups[1].lines[0].stream).toBe('user');
@@ -110,9 +110,7 @@ describe('parseActivityLog', () => {
   });
 
   it('buildChatMessages assigns role="user" with author "You" for [user]-stream lines', () => {
-    const groups = parseActivityLog([
-      line('please switch to dark mode', 'user')
-    ]);
+    const groups = parseActivityLog([line('please switch to dark mode', 'user')]);
     const messages = buildChatMessages(groups);
 
     expect(messages).toHaveLength(1);
@@ -126,7 +124,8 @@ describe('parseActivityLog', () => {
     //   "[steer] [orchestrator] **Need:** X **Why:** Y **Options:** A) ... | B) ..."
     // The parser strips both bracketed tags and pulls out structured fields
     // so the chat row can render dedicated controls.
-    const text = '[steer] [orchestrator] **Need:** screenshot of the affected column **Why:** the agent referenced an image we cannot see **Options:** A) rerun the build | B) check the dev console';
+    const text =
+      '[steer] [orchestrator] **Need:** screenshot of the affected column **Why:** the agent referenced an image we cannot see **Options:** A) rerun the build | B) check the dev console';
     const parsed = parseOrchestratorSteer(text);
     expect(parsed).not.toBeNull();
     expect(parsed!.need).toBe('screenshot of the affected column');
@@ -150,27 +149,36 @@ describe('parseActivityLog', () => {
   });
 
   it('parseOrchestratorSteer needsScreenshot toggles on screenshot keywords', () => {
-    expect(parseOrchestratorSteer('[steer] **Need:** a screenshot of the modal')!.needsScreenshot).toBe(true);
-    expect(parseOrchestratorSteer('[steer] **Need:** an image of the page')!.needsScreenshot).toBe(true);
-    expect(parseOrchestratorSteer('[steer] **Need:** pick option A or B')!.needsScreenshot).toBe(false);
+    expect(
+      parseOrchestratorSteer('[steer] **Need:** a screenshot of the modal')!.needsScreenshot,
+    ).toBe(true);
+    expect(parseOrchestratorSteer('[steer] **Need:** an image of the page')!.needsScreenshot).toBe(
+      true,
+    );
+    expect(parseOrchestratorSteer('[steer] **Need:** pick option A or B')!.needsScreenshot).toBe(
+      false,
+    );
   });
 
   it('keeps [orchestrator] stream lines as their own group with role "orchestrator"', () => {
     const groups = parseActivityLog([
       line('* Read prompt.md'),
       line('  | prompt.md'),
-      line('[reissue] Session was lost and the agent exited without acting on your follow-up.', 'orchestrator'),
+      line(
+        '[reissue] Session was lost and the agent exited without acting on your follow-up.',
+        'orchestrator',
+      ),
       line('* Edit', 'stdout'),
-      line('  | Edit src/styles.css')
+      line('  | Edit src/styles.css'),
     ]);
 
-    const kinds = groups.map(g => g.kind);
+    const kinds = groups.map((g) => g.kind);
     expect(kinds).toContain('orchestrator');
-    const orchestrator = groups.find(g => g.kind === 'orchestrator');
+    const orchestrator = groups.find((g) => g.kind === 'orchestrator');
     expect(orchestrator?.lines[0].stream).toBe('orchestrator');
 
     const messages = buildChatMessages(groups);
-    const orchMsg = messages.find(m => m.role === 'orchestrator');
+    const orchMsg = messages.find((m) => m.role === 'orchestrator');
     expect(orchMsg).toBeDefined();
     expect(orchMsg?.author).toBe('Orchestrator');
   });
@@ -186,12 +194,16 @@ describe('parseActivityLog', () => {
     expect(groups[2].title).toBe('git status --short');
     expect(groups[2].subtitle).toContain('git status --short');
     expect(groups.some((group) => group.title.includes('"type"'))).toBe(false);
-    expect(flattenActivityLines(groups).filter((entry) => entry.text.includes('{"type"'))).toHaveLength(1);
+    expect(
+      flattenActivityLines(groups).filter((entry) => entry.text.includes('{"type"')),
+    ).toHaveLength(1);
   });
 
   it('marks failed Codex command executions as error-status command groups', () => {
     const groups = parseActivityLog([
-      line('{"type":"item.completed","item":{"id":"item_9","type":"command_execution","command":"npm test","aggregated_output":"FAIL parser spec","exit_code":1,"status":"failed"}}')
+      line(
+        '{"type":"item.completed","item":{"id":"item_9","type":"command_execution","command":"npm test","aggregated_output":"FAIL parser spec","exit_code":1,"status":"failed"}}',
+      ),
     ]);
 
     expect(groups).toHaveLength(1);
@@ -201,13 +213,15 @@ describe('parseActivityLog', () => {
     expect(groups[0].subtitle).toContain('exit 1');
     expect(groups[0].lines.map((entry) => entry.text)).toEqual([
       '$ npm test [failed] [exit 1]',
-      'FAIL parser spec'
+      'FAIL parser spec',
     ]);
   });
 
   it('summarizes in-progress Codex command executions when no completion frame has arrived yet', () => {
     const groups = parseActivityLog([
-      line('{"type":"item.started","item":{"id":"item_2","type":"command_execution","command":"Get-Content frontend\\\\AGENTS.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}')
+      line(
+        '{"type":"item.started","item":{"id":"item_2","type":"command_execution","command":"Get-Content frontend\\\\AGENTS.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}',
+      ),
     ]);
 
     expect(groups).toHaveLength(1);
@@ -215,20 +229,47 @@ describe('parseActivityLog', () => {
     expect(groups[0].status).toBe('ok');
     expect(groups[0].title).toBe('Get-Content frontend\\AGENTS.md');
     expect(groups[0].lines.map((entry) => entry.text)).toEqual([
-      '$ Get-Content frontend\\AGENTS.md [in_progress]'
+      '$ Get-Content frontend\\AGENTS.md [in_progress]',
     ]);
   });
 
   it('keeps unknown Codex JSON frames as collapsed trace-only debug groups', () => {
-    const groups = parseActivityLog([
-      line('{"type":"session.created","session_id":"abc123"}')
-    ]);
+    const groups = parseActivityLog([line('{"type":"session.created","session_id":"abc123"}')]);
 
     expect(groups).toHaveLength(1);
     expect(groups[0].kind).toBe('other');
     expect(groups[0].title).toBe('Codex session.created');
     expect(groups[0].collapsedByDefault).toBe(true);
     expect(groups[0].lines[0].text).toContain('"session.created"');
+  });
+
+  it('retains structured Codex file and todo metadata for projection without exposing raw titles', () => {
+    const groups = parseActivityLog([
+      line(
+        '{"type":"item.completed","item":{"id":"files_1","type":"file_change","changes":[{"path":"src/app.ts","kind":"update"}],"status":"completed"}}',
+      ),
+      line(
+        '{"type":"item.updated","item":{"id":"todo_1","type":"todo_list","items":[{"text":"Add coverage","completed":true}]}}',
+      ),
+    ]);
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].runtimeFrame).toMatchObject({
+      frameType: 'item.completed',
+      itemId: 'files_1',
+      itemType: 'file_change',
+      semantics: 'update',
+      status: 'completed',
+      fileChanges: [{ path: 'src/app.ts', kind: 'update' }],
+    });
+    expect(groups[1].runtimeFrame).toMatchObject({
+      frameType: 'item.updated',
+      itemId: 'todo_1',
+      itemType: 'todo_list',
+      semantics: 'update',
+      todoItems: [{ text: 'Add coverage', completed: true }],
+    });
+    expect(groups.every((group) => group.collapsedByDefault)).toBe(true);
   });
 
   it('collapses Codex text-mode stderr into one trace-only debug group before replay projection', () => {
@@ -242,12 +283,14 @@ describe('parseActivityLog', () => {
     expect(groups[0].collapsedByDefault).toBe(true);
     expect(groups[0].status).toBe('neutral');
     expect(groups[0].lines).toHaveLength(19);
-    expect(groups[0].lines.some((line) => line.text.startsWith('export function projectConversation'))).toBe(true);
+    expect(
+      groups[0].lines.some((line) => line.text.startsWith('export function projectConversation')),
+    ).toBe(true);
     expect(groups[0].lines.some((line) => line.text === 'Process exited with code 1')).toBe(true);
     expect(groups[1].kind).toBe('message');
     expect(groups[1].lines.map((line) => line.text)).toEqual([
       'The stdout reply is still the visible answer, and it appears in the correct turn.',
-      'Its second line is preserved in that same turn.'
+      'Its second line is preserved in that same turn.',
     ]);
 
     const turns = buildConversationTurns(groups);
@@ -255,7 +298,9 @@ describe('parseActivityLog', () => {
     expect(turns[0].text).toContain('Codex captured a text-mode stderr transcript');
     expect(turns[0].text).toContain('Open Trace for the raw technical log.');
     expect(turns[0].text).toContain('OpenAI Codex v0.144.1');
-    expect(turns[1].text).toContain('The stdout reply is still the visible answer, and it appears in the correct turn.');
+    expect(turns[1].text).toContain(
+      'The stdout reply is still the visible answer, and it appears in the correct turn.',
+    );
     expect(turns[1].text).toContain('\nIts second line is preserved in that same turn.');
     expect(turns[1].text).not.toContain('OpenAI Codex v0.144.1');
 
@@ -263,9 +308,13 @@ describe('parseActivityLog', () => {
     expect(messages.map((message) => message.role)).toEqual(['system', 'agent']);
     expect(messages[0].title).toBe('Codex transcript');
     expect(messages[0].collapsedByDefault).toBe(true);
-    expect(messages[0].body.map((entry) => entry.text).join('\n')).toContain('Codex captured a text-mode stderr transcript');
+    expect(messages[0].body.map((entry) => entry.text).join('\n')).toContain(
+      'Codex captured a text-mode stderr transcript',
+    );
     expect(messages[0].body.map((entry) => entry.text).join('\n')).not.toContain('/**');
-    expect(messages[0].body.map((entry) => entry.text).join('\n')).not.toContain('* 10,975 contiguous stderr lines');
+    expect(messages[0].body.map((entry) => entry.text).join('\n')).not.toContain(
+      '* 10,975 contiguous stderr lines',
+    );
   });
 
   it('keeps a failing Codex text-mode stderr run as a single error-marked debug group', () => {
@@ -274,7 +323,9 @@ describe('parseActivityLog', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].kind).toBe('other');
     expect(groups[0].status).toBe('error');
-    expect(groups[0].lines.map((line) => line.text)).toContain('Run failed: process exited with code 1');
+    expect(groups[0].lines.map((line) => line.text)).toContain(
+      'Run failed: process exited with code 1',
+    );
 
     const messages = buildChatMessages(groups);
     expect(messages).toHaveLength(1);
@@ -294,7 +345,7 @@ describe('buildConversationTurns', () => {
       line('* Read job.json'),
       line('  | job.json'),
       line('Looks good — fix is small.'),
-      line('Will adjust spacing.')
+      line('Will adjust spacing.'),
     ]);
     const turns = buildConversationTurns(groups);
 
@@ -312,7 +363,7 @@ describe('buildConversationTurns', () => {
       line('* Read prompt.md'),
       line('  | prompt.md'),
       line('please continue', 'user'),
-      line('Done — committed.', 'stdout')
+      line('Done — committed.', 'stdout'),
     ]);
     const turns = buildConversationTurns(groups);
 
@@ -325,7 +376,7 @@ describe('buildConversationTurns', () => {
     const groups = parseActivityLog([
       line('[taskboard] Started claude CLI (PID 1234), model=claude-opus-4-7', 'system'),
       line('Hello, working on it now.', 'stdout'),
-      line('[taskboard] claude CLI exited: status=completed, exitCode=0, duration=12,3s', 'system')
+      line('[taskboard] claude CLI exited: status=completed, exitCode=0, duration=12,3s', 'system'),
     ]);
     const turns = buildConversationTurns(groups);
 
@@ -342,7 +393,7 @@ describe('buildConversationTurns', () => {
       line('[taskboard] Started claude CLI (PID 1), model=claude-sonnet-4-6', 'system'),
       line('First reply.', 'stdout'),
       line('[taskboard] Model changed from=claude-sonnet-4-6 to=claude-sonnet-5', 'system'),
-      line('Second reply on the new model.', 'stdout')
+      line('Second reply on the new model.', 'stdout'),
     ]);
     const turns = buildConversationTurns(groups);
 
@@ -360,7 +411,7 @@ describe('buildConversationTurns', () => {
     const groups = parseActivityLog([
       line('Build started.'),
       line('x Some failure', 'stderr'),
-      line('Recovered.', 'stdout')
+      line('Recovered.', 'stdout'),
     ]);
     const turns = buildConversationTurns(groups);
 
@@ -391,44 +442,35 @@ describe('buildConversationTurns', () => {
         lines: envelopePrefixedReplyFragment(),
         includes: [
           'Keep the clean prose and hide the transport frame.',
-          'The word Supervisor is part of the answer here, not a prefix.'
+          'The word Supervisor is part of the answer here, not a prefix.',
         ],
-        excludes: [
-          '2026-07-01 09:00 Supervisor:',
-          '2026-07-01 09:00 Orchestrator:'
-        ]
+        excludes: ['2026-07-01 09:00 Supervisor:', '2026-07-01 09:00 Orchestrator:'],
       },
       {
         name: 'plain speaker headers are removed only at the line boundary',
         lines: [
           line('Supervisor: Keep this answer visible.'),
           line('[assistant] > And keep this continuation.'),
-          line('The Supervisor: label in the middle of prose remains intact.')
+          line('The Supervisor: label in the middle of prose remains intact.'),
         ],
         includes: [
           'Keep this answer visible.',
           'And keep this continuation.',
-          'The Supervisor: label in the middle of prose remains intact.'
+          'The Supervisor: label in the middle of prose remains intact.',
         ],
-        excludes: [
-          'Supervisor: Keep this answer visible.',
-          '[assistant] >'
-        ]
+        excludes: ['Supervisor: Keep this answer visible.', '[assistant] >'],
       },
       {
         name: 'plain prose keeps real times and words intact',
         lines: [
           line('The meeting starts at 09:00 and the Supervisor role stays in the prose.'),
-          line('No transport frame should be stripped here.')
+          line('No transport frame should be stripped here.'),
         ],
         includes: [
           'The meeting starts at 09:00 and the Supervisor role stays in the prose.',
-          'No transport frame should be stripped here.'
+          'No transport frame should be stripped here.',
         ],
-        excludes: [
-          'Supervisor:',
-          '09:00 Supervisor:'
-        ]
+        excludes: ['Supervisor:', '09:00 Supervisor:'],
       },
       {
         name: 'markdown code blocks stay verbatim across chunk boundaries',
@@ -437,12 +479,10 @@ describe('buildConversationTurns', () => {
           '```markdown',
           'Supervisor: this is code, so it must stay verbatim.',
           '2026-07-01 09:00 Orchestrator: keep this timestamp in code too.',
-          'Proceed with the parser normalization.'
+          'Proceed with the parser normalization.',
         ],
-        excludes: [
-          '2026-07-01 09:00 Supervisor:'
-        ]
-      }
+        excludes: ['2026-07-01 09:00 Supervisor:'],
+      },
     ] as const;
 
     for (const sample of cases) {
@@ -464,11 +504,16 @@ describe('buildConversationTurns', () => {
     expect(turns).toHaveLength(1);
     expect(turns[0].kind).toBe('agent');
     expect(turns[0].text).toContain('Keep the clean prose and hide the transport frame.');
-    expect(turns[0].text).toContain('The word Supervisor is part of the answer here, not a prefix.');
+    expect(turns[0].text).toContain(
+      'The word Supervisor is part of the answer here, not a prefix.',
+    );
     expect(turns[0].text).not.toContain('2026-07-01 09:00 Supervisor:');
     expect(turns[0].text).not.toContain('2026-07-01 09:00 Orchestrator:');
 
-    const rendered = messages.flatMap((message) => message.body).map((entry) => entry.text).join('\n');
+    const rendered = messages
+      .flatMap((message) => message.body)
+      .map((entry) => entry.text)
+      .join('\n');
     expect(rendered).toContain('Keep the clean prose and hide the transport frame.');
     expect(rendered).toContain('The word Supervisor is part of the answer here, not a prefix.');
     expect(rendered).not.toContain('2026-07-01 09:00 Supervisor:');
@@ -477,10 +522,9 @@ describe('buildConversationTurns', () => {
   it('reports recognized stripped frames separately from semantic text', () => {
     const normalized = normalizeVisibleChatBody(envelopePrefixedReplyFragment());
 
-    expect(normalized.strippedEnvelopes).toEqual(expect.arrayContaining([
-      '2026-07-01 09:00 Supervisor:',
-      '2026-07-01 09:00 Orchestrator:'
-    ]));
+    expect(normalized.strippedEnvelopes).toEqual(
+      expect.arrayContaining(['2026-07-01 09:00 Supervisor:', '2026-07-01 09:00 Orchestrator:']),
+    );
     expect(normalized.text).not.toContain('2026-07-01 09:00 Supervisor:');
   });
 });
@@ -493,7 +537,7 @@ describe('summarizeToolBurst', () => {
       line('* Read status.md'),
       line('  | status.md'),
       line('* Read job.json'),
-      line('  | job.json')
+      line('  | job.json'),
     ]);
     // The parser compresses adjacent reads into one group with title
     // "Reading files ×3"; the summary must recover the original count of 3.
@@ -507,7 +551,7 @@ describe('summarizeToolBurst', () => {
       line('* Read prompt.md', 'stdout', '2026-04-26T12:00:00.000Z'),
       line('  | prompt.md', 'stdout', '2026-04-26T12:00:00.500Z'),
       line('* Search "foo"', 'stdout', '2026-04-26T12:00:04.500Z'),
-      line('  | foo', 'stdout', '2026-04-26T12:00:04.800Z')
+      line('  | foo', 'stdout', '2026-04-26T12:00:04.800Z'),
     ]);
     const summary = summarizeToolBurst(groups);
     // 4.8s span between first and last timestamp
@@ -523,7 +567,7 @@ describe('summarizeToolBurst', () => {
       line('* Search "needle"'),
       line('  | needle'),
       line('* Read c.ts'),
-      line('  | c.ts')
+      line('  | c.ts'),
     ]);
     const bins = binToolBurstByKind(groups);
     const byKind = Object.fromEntries(bins.map((b) => [b.kind, b.count]));
@@ -563,68 +607,77 @@ describe('deriveLiveStatus', () => {
   });
 
   it('names the file when the latest action is a single Read', () => {
-    const status = deriveLiveStatus([
-      line('* Read prompt.md', 'stdout', T),
-      line('  | prompt.md', 'stdout', T)
-    ], true, NOW);
+    const status = deriveLiveStatus(
+      [line('* Read prompt.md', 'stdout', T), line('  | prompt.md', 'stdout', T)],
+      true,
+      NOW,
+    );
     expect(status!.kind).toBe('tool');
     expect(status!.verb).toBe('Reading');
     expect(status!.detail).toBe('prompt.md');
   });
 
   it('aggregates a batched read burst into a count detail', () => {
-    const status = deriveLiveStatus([
-      line('* Read a.ts', 'stdout', T),
-      line('  | a.ts', 'stdout', T),
-      line('* Read b.ts', 'stdout', T),
-      line('  | b.ts', 'stdout', T),
-      line('* Read c.ts', 'stdout', T),
-      line('  | c.ts', 'stdout', T)
-    ], true, NOW);
+    const status = deriveLiveStatus(
+      [
+        line('* Read a.ts', 'stdout', T),
+        line('  | a.ts', 'stdout', T),
+        line('* Read b.ts', 'stdout', T),
+        line('  | b.ts', 'stdout', T),
+        line('* Read c.ts', 'stdout', T),
+        line('  | c.ts', 'stdout', T),
+      ],
+      true,
+      NOW,
+    );
     expect(status!.kind).toBe('tool');
     expect(status!.verb).toBe('Reading');
     expect(status!.detail).toBe('3 files');
   });
 
   it('classifies search, edit, and command actions with their own verbs', () => {
-    const search = deriveLiveStatus(
-      [line('* Search "needle"', 'stdout', T)], true, NOW)!;
+    const search = deriveLiveStatus([line('* Search "needle"', 'stdout', T)], true, NOW)!;
     expect(search.verb).toBe('Searching');
 
-    const edit = deriveLiveStatus(
-      [line('* Edit src/foo.ts', 'stdout', T)], true, NOW)!;
+    const edit = deriveLiveStatus([line('* Edit src/foo.ts', 'stdout', T)], true, NOW)!;
     expect(edit.verb).toBe('Editing');
     expect(edit.detail).toBe('src/foo.ts');
 
-    const cmd = deriveLiveStatus(
-      [line('* Run npm test (shell)', 'stdout', T)], true, NOW)!;
+    const cmd = deriveLiveStatus([line('* Run npm test (shell)', 'stdout', T)], true, NOW)!;
     expect(cmd.verb).toBe('Running');
   });
 
   it('falls back to "Thinking" for free-form agent text', () => {
-    const status = deriveLiveStatus([
-      line('Looking at the activity-log component to understand the chat surface.', 'stdout', T)
-    ], true, NOW)!;
+    const status = deriveLiveStatus(
+      [line('Looking at the activity-log component to understand the chat surface.', 'stdout', T)],
+      true,
+      NOW,
+    )!;
     expect(status.kind).toBe('agent');
     expect(status.verb).toBe('Thinking');
     expect(status.detail).toBe('');
   });
 
   it('reports "Working on your message" right after a user follow-up', () => {
-    const status = deriveLiveStatus([
-      line('* Read prompt.md', 'stdout', T),
-      line('please continue', 'user', T)
-    ], true, NOW)!;
+    const status = deriveLiveStatus(
+      [line('* Read prompt.md', 'stdout', T), line('please continue', 'user', T)],
+      true,
+      NOW,
+    )!;
     expect(status.kind).toBe('user');
     expect(status.verb).toMatch(/your message/i);
   });
 
   it('skips taskboard runtime markers when picking the last meaningful group', () => {
-    const status = deriveLiveStatus([
-      line('* Read prompt.md', 'stdout', T),
-      line('  | prompt.md', 'stdout', T),
-      line('[taskboard] checkpoint', 'system', T)
-    ], true, NOW)!;
+    const status = deriveLiveStatus(
+      [
+        line('* Read prompt.md', 'stdout', T),
+        line('  | prompt.md', 'stdout', T),
+        line('[taskboard] checkpoint', 'system', T),
+      ],
+      true,
+      NOW,
+    )!;
     expect(status.verb).toBe('Reading');
     expect(status.detail).toBe('prompt.md');
   });
@@ -652,19 +705,29 @@ describe('formatLiveSince', () => {
   });
 });
 
-function line(text: string, stream = 'stdout', timestamp = '2026-04-26T12:00:00.000Z'): CliOutputLine {
+function line(
+  text: string,
+  stream = 'stdout',
+  timestamp = '2026-04-26T12:00:00.000Z',
+): CliOutputLine {
   return {
     timestamp,
     stream,
-    text
+    text,
   };
 }
 
 function codexJsonlSample(): CliOutputLine[] {
   return [
     line('{"type":"turn.started"}'),
-    line('{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"I will make the frontend change."}}'),
-    line('{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"git status --short","aggregated_output":"","exit_code":null,"status":"in_progress"}}'),
-    line('{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"git status --short","aggregated_output":"","exit_code":0,"status":"completed"}}')
+    line(
+      '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"I will make the frontend change."}}',
+    ),
+    line(
+      '{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"git status --short","aggregated_output":"","exit_code":null,"status":"in_progress"}}',
+    ),
+    line(
+      '{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"git status --short","aggregated_output":"","exit_code":0,"status":"completed"}}',
+    ),
   ];
 }

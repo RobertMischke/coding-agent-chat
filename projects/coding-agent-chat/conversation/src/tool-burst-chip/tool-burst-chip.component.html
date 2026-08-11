@@ -1,27 +1,44 @@
-<article class="burst"
-         [class.burst--error]="failed()"
-         [class.burst--open]="open()"
-         [attr.data-density]="density()"
-         [attr.data-failed]="failed() ? 'true' : 'false'"
-         data-testid="tool-burst-chip">
-  <button type="button"
-          class="burst__row"
-          [attr.aria-expanded]="open()"
-          data-testid="tool-burst-row"
-          (click)="toggle()">
-    <span class="burst__icon"
-          data-testid="tool-burst-icon"
-          aria-hidden="true"
-          [cacTooltip]="glyphTooltip()"
-          tooltipPosition="right">{{ leadingIcon() }}</span>
+<article
+  class="burst"
+  [class.burst--error]="failed()"
+  [class.burst--open]="open()"
+  [attr.data-density]="density()"
+  [attr.data-failed]="failed() ? 'true' : 'false'"
+  data-testid="tool-burst-chip"
+>
+  <button
+    type="button"
+    class="burst__row"
+    [attr.aria-expanded]="open()"
+    data-testid="tool-burst-row"
+    (click)="toggle()"
+  >
+    <span
+      class="burst__icon"
+      data-testid="tool-burst-icon"
+      aria-hidden="true"
+      [cacTooltip]="glyphTooltip()"
+      tooltipPosition="right"
+      >{{ leadingIcon() }}</span
+    >
     <span class="burst__summary">
-      <strong class="burst__count" data-testid="tool-burst-count">{{ event().count }}</strong>
+      @if (isWorkPhase()) {
+        <span class="burst__phase" data-testid="work-phase-label">Work phase</span>
+      }
+      <strong class="burst__count" data-testid="tool-burst-count">{{ callLabel() }}</strong>
       @if (failed()) {
         <em class="burst__fail" data-testid="tool-burst-failures">{{ event().failures }} failed</em>
       }
+      @if (fileCount() > 0) {
+        <span class="burst__files" data-testid="tool-burst-file-count">
+          {{ fileCount() }} {{ fileCount() === 1 ? 'file' : 'files' }} touched
+        </span>
+      }
     </span>
     @if (event().durationMs && event().durationMs! > 0) {
-      <span class="burst__duration" data-testid="tool-burst-duration">{{ formattedDuration() }}</span>
+      <span class="burst__duration" data-testid="tool-burst-duration">{{
+        formattedDuration()
+      }}</span>
     }
     <span class="burst__caret" aria-hidden="true">{{ open() ? '▾' : '▸' }}</span>
   </button>
@@ -29,12 +46,22 @@
   @if (open()) {
     <section class="burst__details" data-testid="tool-burst-details">
       <header class="burst__details-head">
-        <span class="burst__details-glyph"
-              data-testid="tool-burst-glyph-label">{{ leadingGlyphLabel() || 'Tool details' }}</span>
+        <span class="burst__details-glyph" data-testid="tool-burst-glyph-label">
+          @if (workPhase(); as phase) {
+            {{ phase.segmentCount }} {{ phase.segmentCount === 1 ? 'segment' : 'segments' }} ·
+            {{ phase.runtimeFrameCount }} runtime
+            {{ phase.runtimeFrameCount === 1 ? 'frame' : 'frames' }} folded
+          } @else {
+            {{ leadingGlyphLabel() || 'Tool details' }}
+          }
+        </span>
         @if (event().model) {
-          <code class="burst__details-model"
-                data-testid="tool-burst-model"
-                [cacTooltip]="'Generating model for this tool run'">{{ event().model }}</code>
+          <code
+            class="burst__details-model"
+            data-testid="tool-burst-model"
+            [cacTooltip]="'Generating model for this tool run'"
+            >{{ event().model }}</code
+          >
         }
         <code class="burst__details-range" data-testid="tool-burst-range">
           {{ event().rawRange.source }}:{{ event().rawRange.start }}-{{ event().rawRange.end }}
@@ -43,7 +70,11 @@
 
       <ul class="burst__rows" data-testid="tool-burst-table">
         @for (row of detailRows(); track row.family + row.target) {
-          <li class="burst__detail-row" [attr.data-family]="row.family" [attr.data-status]="row.status">
+          <li
+            class="burst__detail-row"
+            [attr.data-family]="row.family"
+            [attr.data-status]="row.status"
+          >
             <code class="burst__detail-tool">{{ familyLabel(row.family) }}</code>
             <span class="burst__detail-target">{{ row.target }}</span>
             <span class="burst__detail-status">
@@ -74,26 +105,36 @@
         <section class="burst__commands" data-testid="tool-burst-commands">
           <header>Command output</header>
           @for (cmd of commands(); track commandKey($index); let i = $index) {
-            <article class="burst__command"
-                     [attr.data-status]="cmd.status"
-                     [attr.data-exit-code]="cmd.exitCode"
-                     data-testid="tool-burst-command-card">
+            <article
+              class="burst__command"
+              [attr.data-status]="cmd.status"
+              [attr.data-exit-code]="cmd.exitCode"
+              data-testid="tool-burst-command-card"
+            >
               <div class="burst__command-head">
-                <code class="burst__command-text" [cacTooltip]="cmd.command">{{ shortCommand(cmd.command) }}</code>
-                <span class="burst__command-badge" data-testid="tool-burst-command-exit">{{ statusLabel(cmd.status, cmd.exitCode) }}</span>
+                <code class="burst__command-text" [cacTooltip]="cmd.command">{{
+                  shortCommand(cmd.command)
+                }}</code>
+                <span class="burst__command-badge" data-testid="tool-burst-command-exit">{{
+                  statusLabel(cmd.status, cmd.exitCode)
+                }}</span>
                 @if (cmd.outputTruncated) {
-                  <span class="burst__command-truncated" data-testid="tool-burst-command-truncated">truncated</span>
+                  <span class="burst__command-truncated" data-testid="tool-burst-command-truncated"
+                    >truncated</span
+                  >
                 }
               </div>
               @if ((cmd.hits?.length ?? 0) > 0) {
                 <ul class="burst__hits" data-testid="tool-burst-output-hits">
-                  @for (hit of cmd.hits ?? []; track hit.path + ':' + hit.line + ':' + ($index)) {
+                  @for (hit of cmd.hits ?? []; track hit.path + ':' + hit.line + ':' + $index) {
                     <li>
-                      <button type="button"
-                              class="burst__hit-path"
-                              data-testid="tool-burst-hit-path"
-                              [cacTooltip]="hit.path"
-                              (click)="emitSourceLocation($event, hit)">
+                      <button
+                        type="button"
+                        class="burst__hit-path"
+                        data-testid="tool-burst-hit-path"
+                        [cacTooltip]="hit.path"
+                        (click)="emitSourceLocation($event, hit)"
+                      >
                         {{ hit.path }}:{{ hit.line }}{{ hit.column ? ':' + hit.column : '' }}
                       </button>
                       <span class="burst__hit-text">{{ hit.text }}</span>
@@ -102,13 +143,17 @@
                 </ul>
               }
               @if (cmd.output) {
-                <pre class="burst__output" data-testid="tool-burst-command-output">{{ commandOutput(i) }}</pre>
+                <pre class="burst__output" data-testid="tool-burst-command-output">{{
+                  commandOutput(i)
+                }}</pre>
                 @if (hasCommandOverflow(i)) {
-                  <button type="button"
-                          class="burst__output-toggle"
-                          data-testid="tool-burst-output-toggle"
-                          [attr.aria-expanded]="isCommandOutputExpanded(i)"
-                          (click)="toggleCommandOutput(i)">
+                  <button
+                    type="button"
+                    class="burst__output-toggle"
+                    data-testid="tool-burst-output-toggle"
+                    [attr.aria-expanded]="isCommandOutputExpanded(i)"
+                    (click)="toggleCommandOutput(i)"
+                  >
                     {{ commandToggleLabel(i) }}
                   </button>
                 }
@@ -125,7 +170,9 @@
           <header>Files</header>
           <ul>
             @for (file of event().files ?? []; track file) {
-              <li><code>{{ file }}</code></li>
+              <li>
+                <code>{{ file }}</code>
+              </li>
             }
           </ul>
         </section>
@@ -136,7 +183,9 @@
           <header>Artifacts</header>
           <ul>
             @for (artifact of event().artifacts ?? []; track artifact) {
-              <li><code>{{ artifact }}</code></li>
+              <li>
+                <code>{{ artifact }}</code>
+              </li>
             }
           </ul>
         </section>
