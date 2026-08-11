@@ -67,6 +67,7 @@
   --elevation-tooltip: var(--shadow-200);
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --studio-spacing-1: 4px;
   --studio-spacing-2: 8px;
   --studio-spacing-3: 12px;
   --studio-row-gap: 3px;

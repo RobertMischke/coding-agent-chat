@@ -154,14 +154,16 @@ const watchdogWaitLines = script([
   ],
   ['* Read logs/2026-06-30.log'],
   ['  | 48,000 lines'],
-  ['[watchdog] Agent has been quiet for 30s', 'orchestrator'],
+  ['[watchdog] Agent has been quiet for 30s (budget 600s)', 'orchestrator'],
   ['[watchdog] Still silent at 60s', 'orchestrator'],
+  ['[watchdog] Still silent at 90s', 'orchestrator'],
   ['[watchdog] Still silent at 120s', 'orchestrator'],
+  ['[watchdog] Still silent at 150s', 'orchestrator'],
   ['[watchdog] Agent resumed streaming', 'orchestrator'],
   [
     'The long pause came from reading the 48k-line log. Here are the three dominant error categories.',
   ],
-]);
+], 30);
 
 const watchdogKillLines = script([
   ['Start the migration and wait for the result.', 'user'],
@@ -336,7 +338,7 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
     kind: 'replay',
     title: 'Watchdog: Wait-Loop',
     description:
-      'The agent goes quiet, the watchdog reports several times, and then streaming resumes. This is the canonical wait loop from the edge cases.',
+      'Five quiet notices plus the resume event collapse into one default-closed wait group; expanding it reveals all six events.',
     lines: watchdogWaitLines,
   },
   {

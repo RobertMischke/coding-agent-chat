@@ -95,6 +95,19 @@ interface SessionMetaRow {
   data: SessionCardData;
 }
 
+interface SupervisorWaitGroupRow {
+  kind: 'supervisorWaitGroup';
+  id: string;
+  firstTs: string;
+  lastTs: string;
+  items: SupervisorWaitEvent[];
+  quietCount: number;
+  resumedCount: number;
+  longestQuietSeconds: number;
+  /** Known watchdog silence budget; absent when legacy events do not name it. */
+  budgetSeconds?: number;
+}
+
 type RenderRow =
   | MessageGroupRow
   | SessionMetaRow
@@ -103,6 +116,7 @@ type RenderRow =
   | { kind: 'runMarker'; id: string; event: RunMarkerEvent }
   | { kind: 'taskMarker'; id: string; event: TaskMarkerEvent }
   | { kind: 'decision'; id: string; event: OrchestratorDecisionEvent }
+  | SupervisorWaitGroupRow
   | { kind: 'supervisorWait'; id: string; event: SupervisorWaitEvent }
   | { kind: 'needsInput'; id: string; event: AgentNeedsInputEvent }
   | { kind: 'captureFail'; id: string; event: SystemCaptureFailEvent }
@@ -240,6 +254,7 @@ export class ConversationViewComponent {
   readonly openSourceLocation = output<ToolOutputHit & { rawRange: RawLineRange }>();
 
   private readonly expandedItems = signal<ReadonlySet<string>>(readExpandedMessageIds());
+  private readonly expandedWaitGroups = signal<ReadonlySet<string>>(new Set());
 
   /** The stick-to-bottom directive on the scroll root (see the template). */
   private readonly stick = viewChild(StickToBottomDirective);
@@ -290,6 +305,7 @@ export class ConversationViewComponent {
     // mutation in another closure (a TS flow-analysis quirk we hit in a
     // previous revision).
     const cell: { open: MessageGroupRow | null } = { open: null };
+    const waitCell: { open: SupervisorWaitGroupRow | null } = { open: null };
 
     // A run re-emits its whole plan on every change, so the stream carries
     // many `plan.update` snapshots. Render only the LAST per run — a single
@@ -334,6 +350,42 @@ export class ConversationViewComponent {
         out.push(open);
       }
       cell.open = null;
+    };
+
+    const closeWaitGroup = (): void => {
+      const open = waitCell.open;
+      if (!open) return;
+      out.push(open);
+      waitCell.open = null;
+      // A visible supervisor row interrupts the conversational role flow, so
+      // the next message must announce its actor again.
+      lastRole = null;
+    };
+
+    const appendWait = (event: SupervisorWaitEvent): void => {
+      let open = waitCell.open;
+      if (!open) {
+        open = {
+          kind: 'supervisorWaitGroup',
+          id: `wait-group:${event.id}`,
+          firstTs: event.timestamp,
+          lastTs: event.timestamp,
+          items: [],
+          quietCount: 0,
+          resumedCount: 0,
+          longestQuietSeconds: 0,
+          budgetSeconds: event.budgetSeconds,
+        };
+        waitCell.open = open;
+      }
+      open.items.push(event);
+      open.lastTs = event.timestamp;
+      if (event.state === 'quiet') open.quietCount += 1;
+      if (event.state === 'resumed') open.resumedCount += 1;
+      open.longestQuietSeconds = Math.max(open.longestQuietSeconds, event.quietSeconds);
+      if (event.budgetSeconds !== undefined) {
+        open.budgetSeconds = Math.max(open.budgetSeconds ?? 0, event.budgetSeconds);
+      }
     };
 
     /**
@@ -404,6 +456,32 @@ export class ConversationViewComponent {
     };
 
     for (const e of this.events()) {
+      // Wait groups are strictly contiguous in the source stream. Even a
+      // non-rendered workbench event or filtered run marker closes the run so
+      // visually adjacent rows never imply a continuity the protocol did not.
+      if (e.kind !== 'supervisor.wait') closeWaitGroup();
+
+      if (e.kind === 'supervisor.wait') {
+        const wait = e as SupervisorWaitEvent;
+        closeGroup();
+        if (this.supervisorTerminalState(wait) !== null || wait.severity === 'error') {
+          // A terminal wait may be the first place a legacy log reveals the
+          // watchdog budget. Let the preceding quiet group use that denominator
+          // without folding the terminal event into the group itself.
+          const open = waitCell.open;
+          if (open && wait.budgetSeconds !== undefined) {
+            open.budgetSeconds = Math.max(open.budgetSeconds ?? 0, wait.budgetSeconds);
+          }
+          closeWaitGroup();
+          out.push({ kind: 'supervisorWait', id: wait.id, event: wait });
+          lastRole = null;
+        } else {
+          appendWait(wait);
+          lastRole = null;
+        }
+        continue;
+      }
+
       // runMarker.start is filtered: redundant with the bubble head, which
       // already says "agent active at this time". Its session id still seeds
       // the next group's dezent chip / tooltip.
@@ -535,9 +613,6 @@ export class ConversationViewComponent {
         case 'decision.orchestrator':
           out.push({ kind: 'decision', id: e.id, event: e });
           break;
-        case 'supervisor.wait':
-          out.push({ kind: 'supervisorWait', id: e.id, event: e });
-          break;
         case 'agent.needsInput':
           out.push({ kind: 'needsInput', id: e.id, event: e });
           break;
@@ -581,6 +656,7 @@ export class ConversationViewComponent {
     }
 
     closeGroup();
+    closeWaitGroup();
     return out;
   });
 
@@ -846,6 +922,63 @@ export class ConversationViewComponent {
     else next.add(itemId);
     this.expandedItems.set(next);
     persistExpandedMessageIds(next);
+  }
+
+  isWaitGroupExpanded(groupId: string): boolean {
+    return this.expandedWaitGroups().has(groupId);
+  }
+
+  toggleWaitGroup(groupId: string): void {
+    const next = new Set(this.expandedWaitGroups());
+    if (next.has(groupId)) next.delete(groupId);
+    else next.add(groupId);
+    this.expandedWaitGroups.set(next);
+  }
+
+  waitGroupPanelId(group: SupervisorWaitGroupRow): string {
+    return `supervisor-wait-events-${group.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  }
+
+  formatWaitGroupTime(group: SupervisorWaitGroupRow): string {
+    const first = this.formatTime(group.firstTs);
+    const last = this.formatTime(group.lastTs);
+    if (!last || last === first) return first;
+    return `${first}–${last}`;
+  }
+
+  waitGroupTimeTooltip(group: SupervisorWaitGroupRow): string {
+    const first = this.formatDateTime(group.firstTs);
+    const last = this.formatDateTime(group.lastTs);
+    if (!last || last === first) return first;
+    return `${first} – ${last}`;
+  }
+
+  waitBudgetLabel(group: SupervisorWaitGroupRow): string {
+    if (group.budgetSeconds) {
+      return `Longest quiet period ${group.longestQuietSeconds} seconds of a ${group.budgetSeconds} second budget`;
+    }
+    return `Longest quiet period ${group.longestQuietSeconds} seconds; watchdog budget not reported`;
+  }
+
+  waitBudgetPercent(group: SupervisorWaitGroupRow): number {
+    if (!group.budgetSeconds || group.budgetSeconds <= 0) return 0;
+    return Math.min(100, Math.max(0, (group.longestQuietSeconds / group.budgetSeconds) * 100));
+  }
+
+  formatSupervisorReason(reason: string | undefined): string {
+    return reason?.replace(/^\s*\[watchdog[^\]]*\]\s*/i, '').trim() ?? '';
+  }
+
+  supervisorTerminalState(event: SupervisorWaitEvent): 'killed' | 'timeout' | null {
+    if (event.state === 'killed') return 'killed';
+    if (
+      /\[watchdog-timeout\]|\b(?:silence|watchdog)\s+timeout\b|\btimeout\s+(?:after|at)\b/i.test(
+        event.reason ?? ''
+      )
+    ) {
+      return 'timeout';
+    }
+    return null;
   }
 
   // ── Session-meta tooltip ────────────────────────────────────────────
