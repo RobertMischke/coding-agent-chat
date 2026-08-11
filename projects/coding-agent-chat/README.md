@@ -261,6 +261,13 @@ instrumentation.
 The reproducible measurements and rationale for these defaults live in
 [`docs/history-window-benchmark.md`](../../docs/history-window-benchmark.md).
 
+## CLI frame compatibility
+
+Codex, Claude, and Gemini do not share a stable wire protocol. See the
+[CLI frame compatibility matrix](../../docs/cli-frame-compatibility.md) for the
+per-version deviations, typed `system.unknownFrame` host contract, versioned
+fixture corpus, and CLI/library pinning rules.
+
 ## Model selector: the catalog contract
 
 The composer's model selector (`<cac-model-selector>`, surfaced automatically by

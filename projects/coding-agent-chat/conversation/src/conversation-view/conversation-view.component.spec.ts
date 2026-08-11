@@ -18,6 +18,7 @@ import type {
   RawLineRange,
   RunMarkerEvent,
   SupervisorWaitEvent,
+  SystemUnknownFrameEvent,
   ToolBurstEvent,
 } from '../../../core/src/public-api';
 import { codexTextModeStderrTranscriptFragment, projectConversation } from '../../../core/src/public-api';
@@ -164,6 +165,37 @@ describe('ConversationViewComponent', () => {
     expect(agentRows[0].textContent).not.toContain('OpenAI Codex v0.144.1');
     expect(agentRows[0].textContent).not.toContain('export function projectConversation');
     expect(agentRows[0].querySelectorAll('.msg__body li')).toHaveLength(0);
+  });
+
+  it('renders unknown CLI frames as distinct protocol-drift rows with a trace action', async () => {
+    const unknown: SystemUnknownFrameEvent = {
+      id: 'unknown-frame-1',
+      kind: 'system.unknownFrame',
+      timestamp: nextTs(),
+      severity: 'warn',
+      frameKind: 'item.completed/future_tool_payload',
+      cli: 'codex',
+      cliVersion: '0.147.0',
+      transport: 'jsonl',
+      message: 'Unknown frame (kind item.completed/future_tool_payload, cli codex v0.147.0)',
+      rawRange: RANGE,
+    };
+    const fixture = await render([unknown]);
+    const row = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-testid="conversation-unknown-frame"]',
+    );
+    const openedRanges: Array<RawLineRange | null> = [];
+    fixture.componentInstance.openTrace.subscribe((range) => openedRanges.push(range));
+
+    expect(row?.getAttribute('data-frame-kind')).toBe('item.completed/future_tool_payload');
+    expect(row?.getAttribute('data-cli')).toBe('codex');
+    expect(row?.getAttribute('data-cli-version')).toBe('0.147.0');
+    expect(row?.textContent).toContain('Protocol drift');
+    expect(row?.textContent).toContain('cli codex v0.147.0');
+    row
+      ?.querySelector<HTMLButtonElement>('[data-testid="conversation-unknown-frame-open-trace"]')
+      ?.click();
+    expect(openedRanges).toEqual([RANGE]);
   });
 
   it('shows the empty state when there are no events', async () => {

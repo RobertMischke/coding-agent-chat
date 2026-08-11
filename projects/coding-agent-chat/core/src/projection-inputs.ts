@@ -21,6 +21,23 @@ export interface CliOutputLine {
   text: string;
 }
 
+/**
+ * Identifies a raw, structured CLI transport presented to the projection.
+ *
+ * Hosts should set this only when `lines` still contain the CLI's JSON frame
+ * envelopes. Runner-normalized plain text does not need this metadata. The
+ * explicit version is what makes protocol-drift warnings actionable instead
+ * of reporting an unqualified parser failure.
+ */
+export interface CliFrameSource {
+  /** CLI protocol family (`codex`, `claude`, `gemini`, or a host extension). */
+  cli: string;
+  /** Exact CLI version that emitted the frames. */
+  version: string;
+  /** Transport name retained for diagnostics (`jsonl`, `stream-json`, ...). */
+  transport?: string;
+}
+
 /** One changed file in a commit. Mirrors a git numstat row. */
 export interface GitFileChange {
   /** Single-letter git diff status (A/M/D/R/C). */

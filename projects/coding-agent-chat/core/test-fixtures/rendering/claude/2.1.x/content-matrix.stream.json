@@ -5,6 +5,7 @@
   "transport": "stream-json",
   "capturedAt": "2026-07-30T01:29:28.071Z",
   "sanitized": true,
+  "visualScenario": "capture-claude-2-1",
   "frames": [
     {
       "type": "system",

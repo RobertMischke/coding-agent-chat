@@ -29,6 +29,7 @@ interface StreamCapture {
   cliVersion: string;
   transport: string;
   sanitized: boolean;
+  visualScenario: string;
   frames: unknown[];
 }
 
@@ -53,11 +54,15 @@ const FIXTURE_DIRECTORY = resolve(
   process.cwd(),
   'projects/coding-agent-chat/core/test-fixtures/rendering',
 );
+const LAB_SCENARIOS = readFileSync(
+  resolve(process.cwd(), 'projects/conversation-lab/src/app/lab-scenarios.ts'),
+  'utf8',
+);
 
-const captures = readdirSync(FIXTURE_DIRECTORY)
-  .filter((name) => name.endsWith('.stream.json'))
+const captures = fixtureFiles(FIXTURE_DIRECTORY)
+  .filter((name) => name.endsWith('content-matrix.stream.json'))
   .sort()
-  .map((name) => JSON.parse(readFileSync(`${FIXTURE_DIRECTORY}/${name}`, 'utf8')) as StreamCapture);
+  .map((name) => JSON.parse(readFileSync(name, 'utf8')) as StreamCapture);
 
 describe('rendering stream fixtures [MachineBound]', () => {
   it('has a sanitized recorded envelope for every supported CLI', () => {
@@ -67,6 +72,7 @@ describe('rendering stream fixtures [MachineBound]', () => {
       expect(capture.cliVersion).toBeTruthy();
       expect(capture.transport).toBeTruthy();
       expect(capture.sanitized).toBe(true);
+      expect(LAB_SCENARIOS).toContain(`id: '${capture.visualScenario}'`);
     }
   });
 
@@ -214,4 +220,11 @@ function payloadProbe(payload: MessageContentPayload): Record<string, unknown> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function fixtureFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = `${directory}/${entry.name}`;
+    return entry.isDirectory() && entry.name !== '__snapshots__' ? fixtureFiles(path) : [path];
+  });
 }

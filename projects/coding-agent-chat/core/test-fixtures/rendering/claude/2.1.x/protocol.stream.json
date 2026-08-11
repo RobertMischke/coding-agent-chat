@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 2,
+  "fixtureKind": "protocol",
+  "cli": "claude",
+  "cliVersion": "2.1.220",
+  "versionFamily": "2.1.x",
+  "transport": "stream-json",
+  "capturedAt": "2026-07-30T01:29:28.071Z",
+  "captureCommand": "claude -p --output-format stream-json --verbose",
+  "sanitized": true,
+  "visualScenario": "capture-claude-2-1",
+  "frames": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "model": "claude-fable-5",
+      "claude_code_version": "2.1.220"
+    },
+    {
+      "type": "assistant",
+      "message": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "tool-1",
+            "name": "Bash",
+            "input": { "command": "npm test" }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "message": {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "tool-1",
+            "content": "PASS fixture spec",
+            "is_error": false
+          }
+        ]
+      }
+    },
+    { "type": "rate_limit_event", "rate_limit_info": { "status": "allowed" } },
+    { "type": "system", "subtype": "compact_boundary", "compact_metadata": {} },
+    {
+      "type": "assistant",
+      "message": {
+        "role": "assistant",
+        "content": [{ "type": "text", "text": "Claude fixture complete; the tool result passed." }]
+      }
+    },
+    { "type": "result", "subtype": "success", "is_error": false }
+  ],
+  "renderLines": [
+    { "stream": "stdout", "text": "* Run npm test (shell)" },
+    { "stream": "stdout", "text": "  | PASS fixture spec" },
+    {
+      "stream": "stdout",
+      "text": "{\"type\":\"system\",\"subtype\":\"compact_boundary\",\"compact_metadata\":{}}"
+    },
+    { "stream": "stdout", "text": "Claude fixture complete; the tool result passed." }
+  ],
+  "expectedEventKinds": ["toolBurst", "system.status", "message.taskAgent"]
+}

@@ -1,0 +1,158 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`versioned CLI protocol fixtures [MachineBound] > claude 2.1.220 pins frame recognition and rendered events 1`] = `
+[
+  {
+    "collapsedByDefault": true,
+    "commands": [
+      {
+        "command": "Run npm test (shell)",
+        "exitCode": null,
+        "output": "* Run npm test (shell)
+  | PASS fixture spec",
+        "outputTruncated": false,
+        "status": "unknown",
+      },
+    ],
+    "count": 1,
+    "failures": 0,
+    "families": {
+      "command": 1,
+    },
+    "kind": "toolBurst",
+    "severity": "info",
+  },
+  {
+    "category": "cli-truncation",
+    "collapsedByDefault": false,
+    "explanation": "claude 2.1.220 reported system/compact_boundary.",
+    "kind": "system.status",
+    "label": "Output truncated",
+    "severity": "warn",
+  },
+  {
+    "body": "Claude fixture complete; the tool result passed.",
+    "collapsedByDefault": false,
+    "content": [
+      "markdown",
+    ],
+    "kind": "message.taskAgent",
+    "severity": null,
+  },
+]
+`;
+
+exports[`versioned CLI protocol fixtures [MachineBound] > codex 0.146.0 pins frame recognition and rendered events 1`] = `
+[
+  {
+    "category": "codex",
+    "collapsedByDefault": false,
+    "explanation": "Codex emitted session lifecycle metadata.",
+    "kind": "system.status",
+    "label": "Codex thread.started",
+    "severity": "info",
+  },
+  {
+    "category": "codex",
+    "collapsedByDefault": false,
+    "explanation": "Codex started a model turn.",
+    "kind": "system.status",
+    "label": "Codex turn.started",
+    "severity": "info",
+  },
+  {
+    "collapsedByDefault": true,
+    "commands": [
+      {
+        "command": "npm test",
+        "exitCode": 0,
+        "output": "PASS fixture spec",
+        "outputTruncated": false,
+        "status": "completed",
+      },
+    ],
+    "count": 1,
+    "failures": 0,
+    "families": {
+      "command": 1,
+    },
+    "kind": "toolBurst",
+    "severity": "info",
+  },
+  {
+    "category": "codex",
+    "collapsedByDefault": false,
+    "explanation": "Codex emitted a structured runtime frame.",
+    "kind": "system.status",
+    "label": "Codex item.completed reasoning",
+    "severity": "info",
+  },
+  {
+    "category": "cli-truncation",
+    "collapsedByDefault": false,
+    "explanation": "codex 0.146.0 reported output.truncated.",
+    "kind": "system.status",
+    "label": "Output truncated",
+    "severity": "warn",
+  },
+  {
+    "body": "Codex fixture complete; the captured command passed.",
+    "collapsedByDefault": false,
+    "content": [
+      "markdown",
+    ],
+    "kind": "message.taskAgent",
+    "severity": null,
+  },
+  {
+    "category": "codex",
+    "collapsedByDefault": false,
+    "explanation": "Codex completed the model turn.",
+    "kind": "system.status",
+    "label": "Codex turn.completed",
+    "severity": "info",
+  },
+]
+`;
+
+exports[`versioned CLI protocol fixtures [MachineBound] > gemini 0.49.0 pins frame recognition and rendered events 1`] = `
+[
+  {
+    "collapsedByDefault": true,
+    "commands": [
+      {
+        "command": "Run npm test (shell)",
+        "exitCode": null,
+        "output": "* Run npm test (shell)
+  | PASS fixture spec",
+        "outputTruncated": false,
+        "status": "unknown",
+      },
+    ],
+    "count": 1,
+    "failures": 0,
+    "families": {
+      "command": 1,
+    },
+    "kind": "toolBurst",
+    "severity": "info",
+  },
+  {
+    "category": "cli-truncation",
+    "collapsedByDefault": false,
+    "explanation": "gemini 0.49.0 reported truncation.",
+    "kind": "system.status",
+    "label": "Output truncated",
+    "severity": "warn",
+  },
+  {
+    "body": "Gemini fixture complete; normalized tool output passed.",
+    "collapsedByDefault": false,
+    "content": [
+      "markdown",
+    ],
+    "kind": "message.taskAgent",
+    "severity": null,
+  },
+]
+`;

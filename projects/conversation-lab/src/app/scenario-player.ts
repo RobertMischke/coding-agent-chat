@@ -67,6 +67,7 @@ export class ScenarioPlayer {
       lines: [...lines],
       runTimeline: scenario.runTimeline ?? this.stubTimeline(scenario, lines),
       task: this.stubTask(scenario),
+      frameSource: scenario.frameSource ?? null,
     });
   });
 

@@ -1100,7 +1100,66 @@ describe('projectConversation', () => {
     expect(CONVERSATION_EVENT_KINDS).toContain('traceLink');
     expect(CONVERSATION_EVENT_KINDS).toContain('workbench.debug');
     expect(CONVERSATION_EVENT_KINDS).toContain('system.status');
+    expect(CONVERSATION_EVENT_KINDS).toContain('system.unknownFrame');
     expect(CONVERSATION_EVENT_KINDS).toContain('system.schemaDrift');
     expect(CONVERSATION_EVENT_KINDS).toContain('feedback.queued');
+  });
+
+  it('surfaces unknown CLI frame kinds as typed protocol drift events', () => {
+    const events = projectConversation({
+      source: SOURCE,
+      frameSource: { cli: 'codex', version: '0.147.0', transport: 'jsonl' },
+      lines: [
+        line(
+          '{"type":"item.completed","item":{"id":"future-1","type":"future_tool_payload","secret":"raw-only"}}'
+        )
+      ]
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      kind: 'system.unknownFrame',
+      severity: 'warn',
+      collapsedByDefault: true,
+      frameKind: 'item.completed/future_tool_payload',
+      cli: 'codex',
+      cliVersion: '0.147.0',
+      transport: 'jsonl',
+      message: 'Unknown frame (kind item.completed/future_tool_payload, cli codex v0.147.0)',
+      rawRange: { source: SOURCE, start: 1, end: 1 }
+    });
+    expect(JSON.stringify(events[0])).not.toContain('secret');
+  });
+
+  it('never downgrades an inferable unknown Codex frame to a generic internal status', () => {
+    const events = projectConversation({
+      source: SOURCE,
+      lines: [line('{"type":"session.created","session_id":"abc123"}')]
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      kind: 'system.unknownFrame',
+      frameKind: 'session.created',
+      cli: 'codex',
+      cliVersion: 'unknown',
+      message: 'Unknown frame (kind session.created, cli codex vunknown)'
+    });
+  });
+
+  it('keeps known raw Claude frames out of visible assistant JSON', () => {
+    const events = projectConversation({
+      source: SOURCE,
+      frameSource: { cli: 'claude', version: '2.1.220', transport: 'stream-json' },
+      lines: [
+        line('{"type":"system","subtype":"init","claude_code_version":"2.1.220"}'),
+        line('{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Visible answer."}]}}')
+      ]
+    });
+
+    expect(events.map((event) => event.kind)).toEqual(['system.status', 'message.taskAgent']);
+    expect(probe(events[0]).category).toBe('cli-lifecycle');
+    expect(probe(events[1]).body).toBe('Visible answer.');
+    expect(JSON.stringify(events)).not.toContain('claude_code_version');
   });
 });

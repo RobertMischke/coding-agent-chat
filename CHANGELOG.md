@@ -11,6 +11,12 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ### Added
 
+- A versioned Codex/Claude/Gemini frame compatibility corpus, documented
+  deviation matrix, capture-backed rendering regression tier, and Conversation
+  Lab replays now make CLI protocol differences explicit.
+- Raw protocol drift now emits the public typed `system.unknownFrame` event
+  with frame kind, CLI, exact CLI version, transport, and Trace range; the
+  stock renderer surfaces it as a distinct warning row.
 - Consecutive non-terminal `supervisor.wait` events now render as one compact,
   default-collapsed group with quiet/resumed counts, longest-silence budget
   context, a time range, and full per-event disclosure. Watchdog kills and

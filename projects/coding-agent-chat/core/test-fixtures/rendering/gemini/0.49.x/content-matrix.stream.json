@@ -5,6 +5,7 @@
   "transport": "runner-normalized-stream-json",
   "capturedAt": "2026-07-24T15:42:10.000Z",
   "sanitized": true,
+  "visualScenario": "capture-gemini-0-49",
   "frames": [
     {
       "type": "init",

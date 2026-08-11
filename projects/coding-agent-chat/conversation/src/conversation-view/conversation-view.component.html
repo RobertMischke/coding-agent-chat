@@ -375,6 +375,25 @@
           </li>
         }
 
+        @case ('unknownFrame') {
+          <li class="conv__row conv__row--system conv__row--warn"
+              data-testid="conversation-unknown-frame"
+              [attr.data-frame-kind]="row.event.frameKind"
+              [attr.data-cli]="row.event.cli"
+              [attr.data-cli-version]="row.event.cliVersion">
+            <span class="sys__actor"><span aria-hidden="true">⚠</span> Protocol drift</span>
+            <span class="sys__message">{{ row.event.message }}</span>
+            @if (row.event.transport) {
+              <code class="sys__expected">transport: {{ row.event.transport }}</code>
+            }
+            <button type="button"
+                    class="status-row__trace"
+                    data-testid="conversation-unknown-frame-open-trace"
+                    [cacTooltip]="'Open the unknown raw frame in Trace mode'"
+                    (click)="emitOpenTrace(row.event.rawRange)">trace</button>
+          </li>
+        }
+
         @case ('schemaDrift') {
           <li class="conv__row conv__row--system conv__row--warn"
               data-testid="conversation-schema-drift">

@@ -120,6 +120,11 @@ npm run lab          # ng serve conversation-lab → http://localhost:4201
 npm run workbench    # .NET workbench host → http://localhost:5055
 ```
 
+CLI envelopes differ by product and version. The
+[CLI frame compatibility matrix](docs/cli-frame-compatibility.md) documents the
+captured Codex, Claude, and Gemini deviations, fixture regression tier,
+typed unknown-frame signal, and the version-pinning contract for hosts.
+
 ## Website
 
 The public site for the library — animated live replay rendered by

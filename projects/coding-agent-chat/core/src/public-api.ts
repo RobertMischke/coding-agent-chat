@@ -18,6 +18,7 @@ export * from './attachment-contract';
 export * from './composer-controls';
 export * from './model-level-indicator';
 export * from './projection-inputs';
+export * from './cli-frame';
 export * from './conversation-projection';
 export * from './conversation-projection.fixtures';
 

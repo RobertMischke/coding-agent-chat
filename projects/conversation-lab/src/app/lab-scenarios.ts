@@ -22,6 +22,7 @@
 
 import type {
   ChatMessage,
+  CliFrameSource,
   CliOutputLine,
   ConversationEvent,
   RunInfoLite,
@@ -59,6 +60,8 @@ export interface ReplayScenario extends LabScenarioBase {
   lines: readonly CliOutputLine[];
   /** Optional real run timeline so the projection emits run markers. */
   runTimeline?: RunTimelineLite;
+  /** Exact raw-frame source for versioned protocol compatibility replays. */
+  frameSource?: CliFrameSource;
 }
 
 /** Preset prompt for a real CLI session via the workbench host. */
@@ -212,6 +215,36 @@ const stderrCrashLines = script([
 ]);
 
 const codexTextModeStderrLines = codexTextModeStderrTranscriptFragment();
+
+const capturedCodexProtocolLines = script([
+  ['{"type":"thread.started","thread_id":"<redacted>"}'],
+  ['{"type":"turn.started"}'],
+  [
+    '{"type":"item.completed","item":{"id":"item-command","type":"command_execution","command":"npm test","aggregated_output":"PASS fixture spec","exit_code":0,"status":"completed"}}',
+  ],
+  [
+    '{"type":"item.completed","item":{"id":"item-reasoning","type":"reasoning","text":"<sanitized>"}}',
+  ],
+  ['{"type":"output.truncated","reason":"capture_limit"}'],
+  [
+    '{"type":"item.completed","item":{"id":"item-message","type":"agent_message","text":"Codex fixture complete; the captured command passed."}}',
+  ],
+  ['{"type":"turn.completed"}'],
+]);
+
+const capturedClaudeProtocolLines = script([
+  ['* Run npm test (shell)'],
+  ['  | PASS fixture spec'],
+  ['{"type":"system","subtype":"compact_boundary","compact_metadata":{}}'],
+  ['Claude fixture complete; the tool result passed.'],
+]);
+
+const capturedGeminiProtocolLines = script([
+  ['* Run npm test (shell)'],
+  ['  | PASS fixture spec'],
+  ['{"type":"truncation","reason":"output_limit"}'],
+  ['Gemini fixture complete; normalized tool output passed.'],
+]);
 
 /** ~120 lines: 10 work blocks for scroll, fold, and performance checks. */
 function longRunLines(): CliOutputLine[] {
@@ -402,6 +435,37 @@ export const LAB_SCENARIOS: readonly LabScenario[] = [
     description:
       'AGT-2176-shape: [runner]-Preface + Codex text-mode stderr transcript collapse into one trace row while the final stdout reply stays visible.',
     lines: codexTextModeStderrLines,
+  },
+  {
+    id: 'capture-codex-0-146',
+    kind: 'replay',
+    title: 'Capture: Codex 0.146.x frames',
+    description:
+      'Versioned codex exec --json capture: lifecycle, command, reasoning, truncation, and agent-message frames rendered through the compatibility projection.',
+    lines: capturedCodexProtocolLines,
+    frameSource: { cli: 'codex', version: '0.146.0', transport: 'jsonl' },
+  },
+  {
+    id: 'capture-claude-2-1',
+    kind: 'replay',
+    title: 'Capture: Claude 2.1.x frames',
+    description:
+      'Versioned stream-json capture after runner normalization, including tool output and a raw compact-boundary truncation marker.',
+    lines: capturedClaudeProtocolLines,
+    frameSource: { cli: 'claude', version: '2.1.220', transport: 'stream-json' },
+  },
+  {
+    id: 'capture-gemini-0-49',
+    kind: 'replay',
+    title: 'Capture: Gemini 0.49.x frames',
+    description:
+      'Versioned runner-normalized Gemini capture with tool output, truncation evidence, and the visible assistant result.',
+    lines: capturedGeminiProtocolLines,
+    frameSource: {
+      cli: 'gemini',
+      version: '0.49.0',
+      transport: 'runner-normalized-stream-json',
+    },
   },
   {
     id: 'long-run',

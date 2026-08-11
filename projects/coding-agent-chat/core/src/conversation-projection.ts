@@ -15,6 +15,7 @@
  */
 
 import type {
+  CliFrameSource,
   CliOutputLine,
   GitFileChange,
   RunInfoLite,
@@ -22,6 +23,7 @@ import type {
   TaskInfoLite,
   TokenSummaryLite
 } from './projection-inputs';
+import { inspectCliFrame, type CliFrameInspection } from './cli-frame';
 import {
   parseActivityLog,
   isCodexTextModeTranscriptFailure,
@@ -71,6 +73,12 @@ export interface ConversationProjectionContext {
   source: string;
   /** Raw activity log lines. The projection numbers them 1-based for ranges. */
   lines: readonly CliOutputLine[];
+  /**
+   * Exact source for raw structured CLI frames. Set this when `lines` contain
+   * JSONL / stream-json envelopes so unknown frame kinds become typed drift
+   * events. Omit it for runner-normalized plain-text streams.
+   */
+  frameSource?: CliFrameSource | null;
   task?: TaskInfoLite | null;
   runTimeline?: RunTimelineLite | null;
   tokenSummary?: TokenSummaryLite | null;
@@ -213,7 +221,15 @@ export function projectConversation(
       continue;
     }
 
-    const ev = projectGroup(group, range, currentRun, seenParserDedupeKeys, currentModel, currentThinking);
+    const ev = projectGroup(
+      group,
+      range,
+      currentRun,
+      seenParserDedupeKeys,
+      currentModel,
+      currentThinking,
+      ctx.frameSource ?? null
+    );
     if (ev) events.push(...ev);
   }
 
@@ -262,7 +278,8 @@ function projectGroup(
   currentRun: RunContext,
   seenParserDedupeKeys: Set<string>,
   model: string | null,
-  thinkingLevel: string | null
+  thinkingLevel: string | null,
+  frameSource: CliFrameSource | null
 ): ConversationEvent[] | null {
   const firstLine = group.lines[0];
   if (!firstLine) return null;
@@ -277,6 +294,51 @@ function projectGroup(
         strippedEnvelopes: normalizedBody.strippedEnvelopes
       }
     : undefined;
+
+  // Protocol drift must never fall through to the generic Codex status row or
+  // become visible assistant JSON. The raw frame stays in Trace via rawRange;
+  // the semantic event carries only stable, non-sensitive identifiers.
+  for (const line of group.lines) {
+    const frame = inspectCliFrame(line.text, frameSource);
+    if (frame?.known && frame.family === 'truncation') {
+      return [
+        {
+          id: `${baseId}:cli-truncation:${frame.kind}`,
+          kind: 'system.status',
+          timestamp: ts,
+          runId,
+          rawRange: range,
+          severity: 'warn',
+          category: 'cli-truncation',
+          label: 'Output truncated',
+          explanation: `${frame.cli} ${frame.cliVersion} reported ${frame.kind}.`,
+          nextStep: 'Open the raw frame in Trace and treat the visible output as incomplete.'
+        }
+      ];
+    }
+    if (frame?.known && frame.cli !== 'codex') {
+      return projectKnownNonCodexFrame(frame, line.text, baseId, ts, runId, range);
+    }
+    if (frame && !frame.known) {
+      const message = `Unknown frame (kind ${frame.kind}, cli ${frame.cli} v${frame.cliVersion})`;
+      return [
+        {
+          id: `${baseId}:unknown-frame:${frame.kind}`,
+          kind: 'system.unknownFrame',
+          timestamp: ts,
+          runId,
+          rawRange: range,
+          severity: 'warn',
+          collapsedByDefault: true,
+          frameKind: frame.kind,
+          cli: frame.cli,
+          cliVersion: frame.cliVersion,
+          transport: frameSource?.transport,
+          message
+        }
+      ];
+    }
+  }
 
   // User messages are always their own turn.
   if (firstLine.stream === 'user') {
@@ -594,6 +656,90 @@ function projectGroup(
       diagnostics
     }
   ];
+}
+
+function projectKnownNonCodexFrame(
+  frame: CliFrameInspection,
+  raw: string,
+  baseId: string,
+  timestamp: string,
+  runId: number | undefined,
+  rawRange: RawLineRange
+): ConversationEvent[] {
+  const message = extractKnownFrameMessage(frame.cli, raw);
+  if (message) {
+    return [
+      {
+        id: `${baseId}:protocol-message`,
+        kind: message.role === 'user' ? 'message.user' : 'message.taskAgent',
+        timestamp,
+        runId,
+        rawRange,
+        actor: message.role === 'user' ? 'You' : 'Agent',
+        body: message.body,
+        content: classifyMessageContent(message.body)
+      }
+    ];
+  }
+
+  let label = 'CLI runtime';
+  if (frame.family === 'tool-call') label = 'CLI tool frame';
+  if (frame.family === 'lifecycle') label = 'CLI lifecycle';
+  return [
+    {
+      id: `${baseId}:protocol-${frame.family}`,
+      kind: 'system.status',
+      timestamp,
+      runId,
+      rawRange,
+      severity: /error/i.test(frame.kind) ? 'error' : 'info',
+      category: `cli-${frame.family}`,
+      label,
+      explanation: `${frame.cli} ${frame.cliVersion} emitted ${frame.kind}.`,
+      nextStep: 'Raw frame is available in Trace.'
+    }
+  ];
+}
+
+function extractKnownFrameMessage(
+  cli: string,
+  raw: string
+): { role: 'user' | 'assistant'; body: string } | null {
+  let frame: Record<string, unknown>;
+  try {
+    frame = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  if (cli === 'claude' && frame['type'] === 'assistant') {
+    const message = frame['message'] as Record<string, unknown> | undefined;
+    const content = message?.['content'];
+    if (!Array.isArray(content)) return null;
+    const body = content
+      .filter(
+        (block): block is Record<string, unknown> =>
+          typeof block === 'object' && block !== null
+      )
+      .filter((block) => block['type'] === 'text' && typeof block['text'] === 'string')
+      .map((block) => block['text'] as string)
+      .join('\n')
+      .trim();
+    return body ? { role: 'assistant', body } : null;
+  }
+
+  if (cli === 'gemini' && frame['type'] === 'message') {
+    const role = frame['role'];
+    const content = frame['content'];
+    if (
+      (role === 'assistant' || role === 'user') &&
+      typeof content === 'string' &&
+      content.trim()
+    ) {
+      return { role, body: content.trim() };
+    }
+  }
+  return null;
 }
 
 // ──────────────────────────────────────────────────────────────────────────

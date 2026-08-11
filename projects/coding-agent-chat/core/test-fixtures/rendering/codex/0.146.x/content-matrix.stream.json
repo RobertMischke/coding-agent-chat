@@ -5,6 +5,7 @@
   "transport": "jsonl",
   "capturedAt": "2026-07-30T01:31:00.000Z",
   "sanitized": true,
+  "visualScenario": "capture-codex-0-146",
   "frames": [
     {
       "type": "thread.started",

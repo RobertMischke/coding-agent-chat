@@ -112,6 +112,7 @@ export type ConversationEventKind =
   | 'traceLink'
   // System / parser edge cases beyond the v6 baseline
   | 'system.schemaDrift'
+  | 'system.unknownFrame'
   // Queued feedback on a closed / under-review task
   // (see feedback-queued-from-chat.md)
   | 'feedback.queued';
@@ -292,6 +293,25 @@ export interface SystemStatusEvent extends ConversationEventBase {
   label: string;
   explanation: string;
   nextStep?: string;
+}
+
+/**
+ * A syntactically valid CLI protocol frame whose kind is not in the captured
+ * compatibility manifest. This is intentionally distinct from a generic
+ * parser warning: hosts can alert on protocol drift without text matching.
+ */
+export interface SystemUnknownFrameEvent extends ConversationEventBase {
+  kind: 'system.unknownFrame';
+  /** Unknown top-level or nested frame kind (`item.completed/new_payload`). */
+  frameKind: string;
+  /** CLI protocol family that emitted the frame. */
+  cli: string;
+  /** Exact emitting CLI version, or `unknown` when legacy input omitted it. */
+  cliVersion: string;
+  /** Transport name supplied by the host (`jsonl`, `stream-json`, ...). */
+  transport?: string;
+  /** Stable host-facing summary; raw payload remains available through rawRange. */
+  message: string;
 }
 
 export interface ArtifactImageEvent extends ConversationEventBase {
@@ -545,6 +565,7 @@ export type ConversationEvent =
   | SystemCaptureFailEvent
   | SystemParserWarningEvent
   | SystemStatusEvent
+  | SystemUnknownFrameEvent
   | SystemSchemaDriftEvent
   | FeedbackQueuedEvent
   | ArtifactImageEvent
@@ -572,6 +593,7 @@ export const CONVERSATION_EVENT_KINDS: readonly ConversationEventKind[] = [
   'system.captureFail',
   'system.parserWarning',
   'system.status',
+  'system.unknownFrame',
   'system.schemaDrift',
   'feedback.queued',
   'artifact.image',

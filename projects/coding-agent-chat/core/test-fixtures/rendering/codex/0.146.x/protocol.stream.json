@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 2,
+  "fixtureKind": "protocol",
+  "cli": "codex",
+  "cliVersion": "0.146.0",
+  "versionFamily": "0.146.x",
+  "transport": "jsonl",
+  "capturedAt": "2026-07-30T01:31:00.000Z",
+  "captureCommand": "codex exec --json",
+  "sanitized": true,
+  "visualScenario": "capture-codex-0-146",
+  "frames": [
+    { "type": "thread.started", "thread_id": "<redacted>" },
+    { "type": "turn.started" },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item-command",
+        "type": "command_execution",
+        "command": "npm test",
+        "aggregated_output": "PASS fixture spec",
+        "exit_code": 0,
+        "status": "completed"
+      }
+    },
+    {
+      "type": "item.completed",
+      "item": { "id": "item-reasoning", "type": "reasoning", "text": "<sanitized>" }
+    },
+    { "type": "output.truncated", "reason": "capture_limit" },
+    {
+      "type": "item.completed",
+      "item": {
+        "id": "item-message",
+        "type": "agent_message",
+        "text": "Codex fixture complete; the captured command passed."
+      }
+    },
+    { "type": "turn.completed" }
+  ],
+  "renderLines": "raw-frames",
+  "expectedEventKinds": [
+    "system.status",
+    "system.status",
+    "toolBurst",
+    "system.status",
+    "system.status",
+    "message.taskAgent",
+    "system.status"
+  ]
+}

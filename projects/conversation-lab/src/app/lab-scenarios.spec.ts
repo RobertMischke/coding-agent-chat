@@ -30,12 +30,21 @@ describe('lab scenario catalog', () => {
         lines: [...scenario.lines],
         runTimeline: scenario.runTimeline ?? null,
         task: { id: scenario.id, title: scenario.title, state: '3-progress' },
+        frameSource: scenario.frameSource ?? null,
       });
       expect(events.length).toBeGreaterThan(0);
       // `[taskboard]` markers are run bookkeeping and must never surface as text.
       const bodies = events.map((e) => JSON.stringify(e));
       expect(bodies.some((b) => b.includes('[taskboard]'))).toBe(false);
     });
+  });
+
+  it('keeps every versioned protocol capture available in the visual suite', () => {
+    expect(
+      replayScenarios
+        .filter((scenario) => scenario.id.startsWith('capture-'))
+        .map((scenario) => `${scenario.frameSource?.cli}@${scenario.frameSource?.version}`),
+    ).toEqual(['codex@0.146.0', 'claude@2.1.220', 'gemini@0.49.0']);
   });
 
   it('gives every live scenario a non-empty preset prompt', () => {
