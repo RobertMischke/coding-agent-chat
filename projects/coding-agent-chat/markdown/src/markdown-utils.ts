@@ -275,6 +275,49 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed conversation payload with the same registered grammars,
+ * size guard, balanced-line serializer and LRU cache as fenced Markdown code.
+ *
+ * The returned string contains only escaped source text and class-based
+ * `hljs-*` spans, so callers can pass it through their framework sanitizer.
+ * `null` means the caller must render the original source as plain text (an
+ * unknown/missing code language, an oversized payload, or a tokenizer error).
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string,
+): string | null {
+  const lang =
+    payloadType === 'diff'
+      ? 'diff'
+      : payloadType === 'json'
+        ? 'json'
+        : payloadType === 'html-file'
+          ? 'xml'
+          : language?.trim().toLowerCase() || null;
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  if (payloadType === 'diff') {
+    // highlight.js 11 tags +/- rows but leaves @@ hunk headers unclassified.
+    // Preserve the engine output and add its standard meta class so the
+    // renderer can distinguish all three visual diff line roles.
+    return highlighted
+      .map((line, index) =>
+        /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      )
+      .join('\n');
+  }
+  return highlighted.join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
