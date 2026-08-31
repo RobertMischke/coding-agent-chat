@@ -252,20 +252,66 @@ describe('ConversationViewComponent', () => {
     expect(agentRow.textContent).toContain('Flag added, wiring the projection next.');
   });
 
-  it('renders typed raw file payloads without passing them through Markdown', async () => {
+  it('renders typed HTML and JSON as highlighted source without passing them through Markdown', async () => {
     const html = '<!doctype html><html><body><ul><li>literal source</li></ul></body></html>';
+    const json = '{"ok":true}';
     const fixture = await render([
       msg('message.taskAgent', html, {
         content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
       }),
+      msg('message.taskAgent', json, {
+        content: [{ type: 'json', text: json }],
+      }),
     ]);
     const host = fixture.nativeElement as HTMLElement;
     const raw = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+    const renderedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+    expect(renderedJson?.textContent).toBe(json);
+    expect(renderedJson?.querySelector('.hljs-attr')).toBeTruthy();
+  });
+
+  it('renders typed diffs and C# code with class-based syntax highlighting', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = 'public class Foo { public int X { get; set; } }';
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', '<literal>', {
+        content: [{ type: 'code-block', text: '<literal>', language: 'unknown-grammar' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const renderedDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const renderedCode = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const plainFallback = host.querySelectorAll<HTMLElement>('[data-payload-type="code-block"]')[1];
+
+    expect(renderedDiff?.classList.contains('md-code--hl')).toBe(true);
+    expect(renderedDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(renderedDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(renderedDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(renderedCode?.classList.contains('md-code--hl')).toBe(true);
+    expect(renderedCode?.querySelector('.hljs-keyword')?.textContent).toBe('public');
+    expect(renderedCode?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(plainFallback.classList.contains('md-code--hl')).toBe(false);
+    expect(plainFallback.textContent).toBe('<literal>');
+    expect(plainFallback.querySelector('literal')).toBeNull();
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

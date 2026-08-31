@@ -356,6 +356,88 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Highlighted payload HTML is inserted dynamically, so `::ng-deep` keeps the
+ * component-scoped selectors attached to the payload host. The colors reuse
+ * the central Markdown palette and therefore switch with the light/dark theme. */
+.msg__payload--raw ::ng-deep :is(.hljs-keyword, .hljs-literal, .hljs-selector-tag, .hljs-doctag) {
+  color: var(--md-hl-keyword);
+}
+.msg__payload--raw ::ng-deep :is(.hljs-string, .hljs-regexp) {
+  color: var(--md-hl-string);
+}
+.msg__payload--raw ::ng-deep .hljs-number {
+  color: var(--md-hl-number);
+}
+.msg__payload--raw ::ng-deep :is(.hljs-comment, .hljs-quote) {
+  color: var(--md-hl-comment);
+  font-style: italic;
+}
+.msg__payload--raw ::ng-deep :is(.hljs-title, .hljs-title.function_, .hljs-section) {
+  color: var(--md-hl-function);
+}
+.msg__payload--raw
+  ::ng-deep
+  :is(
+    .hljs-title.class_,
+    .hljs-type,
+    .hljs-selector-class,
+    .hljs-selector-id,
+    .hljs-selector-pseudo
+  ) {
+  color: var(--md-hl-type);
+}
+.msg__payload--raw ::ng-deep .hljs-built_in {
+  color: var(--md-hl-builtin);
+}
+.msg__payload--raw
+  ::ng-deep
+  :is(.hljs-variable, .hljs-template-variable, .hljs-params, .hljs-subst) {
+  color: var(--md-hl-variable);
+}
+.msg__payload--raw ::ng-deep :is(.hljs-attr, .hljs-attribute, .hljs-property) {
+  color: var(--md-hl-attr);
+}
+.msg__payload--raw ::ng-deep :is(.hljs-tag, .hljs-name) {
+  color: var(--md-hl-tag);
+}
+.msg__payload--raw ::ng-deep :is(.hljs-meta, .hljs-symbol, .hljs-bullet, .hljs-link) {
+  color: var(--md-hl-meta);
+}
+.msg__payload--raw ::ng-deep :is(.hljs-punctuation, .hljs-operator) {
+  color: var(--md-hl-punct);
+}
+.msg__payload--raw ::ng-deep .hljs-addition {
+  color: var(--md-hl-addition);
+}
+.msg__payload--raw ::ng-deep .hljs-deletion {
+  color: var(--md-hl-deletion);
+}
+.msg__payload--raw ::ng-deep .hljs-emphasis {
+  font-style: italic;
+}
+.msg__payload--raw ::ng-deep .hljs-strong {
+  font-weight: 600;
+}
+
+/* Diff grammar tokens wrap complete lines. Make their semantic class visible
+ * across the full code width while preserving the source text and spacing. */
+.msg__payload--raw[data-payload-type='diff']
+  ::ng-deep
+  :is(.hljs-addition, .hljs-deletion, .hljs-meta) {
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 100%;
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-addition {
+  background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-deletion {
+  background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  background: color-mix(in srgb, var(--md-hl-meta) 9%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }
