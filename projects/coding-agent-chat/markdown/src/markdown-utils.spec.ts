@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -392,6 +397,49 @@ describe('markdownToHtml', () => {
         linkTaskReferencesInHtml(input, [{ label: '   ', taskKey: 'agent-taskboard::blank' }]),
       ).toBe(input);
     });
+  });
+});
+
+describe('highlightPayload', () => {
+  it('maps typed payloads to the shared grammars', () => {
+    const csharp = highlightPayload('public class Foo {}', 'code-block', 'csharp');
+    const json = highlightPayload('{"ok":true}', 'json');
+    const html = highlightPayload('<main>ok</main>', 'html-file');
+
+    expect(csharp.highlighted).toBe(true);
+    expect(csharp.html).toContain('hljs-keyword');
+    expect(json.highlighted).toBe(true);
+    expect(json.html).toContain('hljs-attr');
+    expect(html.highlighted).toBe(true);
+    expect(html.html).toContain('hljs-tag');
+  });
+
+  it('tags compact Codex diff hunks and changed lines', () => {
+    const source = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const result = highlightPayload(source, 'diff');
+
+    expect(result.highlighted).toBe(true);
+    expect(result.html).toContain('<span class="hljs-meta">@@ -1 +1 @@</span>');
+    expect(result.html).toContain('hljs-deletion');
+    expect(result.html).toContain('hljs-addition');
+  });
+
+  it('returns escaped readable text for unknown grammars and oversized payloads', () => {
+    const unknown = highlightPayload('<not-markup>', 'code-block', 'unknown-grammar');
+    const oversizedSource = `<main>${'x'.repeat(60_000)}</main>`;
+    const oversized = highlightPayload(oversizedSource, 'html-file');
+
+    expect(unknown).toEqual({ html: '&lt;not-markup&gt;', highlighted: false });
+    expect(oversized.highlighted).toBe(false);
+    expect(oversized.html).toBe(`&lt;main&gt;${'x'.repeat(60_000)}&lt;/main&gt;`);
+    expect(oversized.html).not.toContain('hljs-');
   });
 });
 

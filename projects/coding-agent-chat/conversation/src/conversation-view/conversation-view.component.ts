@@ -11,7 +11,12 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload,
+  MarkdownViewComponent,
+  type HighlightPayloadType,
+  type HighlightPayloadResult,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -149,6 +154,11 @@ type RenderRow =
   | { kind: 'tokenMetric'; id: string; event: MetricTokenEvent }
   | { kind: 'traceLink'; id: string; event: TraceLinkEvent };
 
+type HighlightableMessagePayload = Extract<
+  MessageContentPayload,
+  { type: HighlightPayloadType }
+>;
+
 /** Glyph + leading verb for the compact `feedback.queued` marker, keyed by composer mode. */
 const FEEDBACK_MODE_META: Record<FeedbackQueuedEvent['mode'], { glyph: string; verb: string }> = {
   ask: { glyph: '💬', verb: 'asked' },
@@ -249,6 +259,18 @@ export class ConversationViewComponent {
   readonly variant = input<'framed' | 'embedded'>('embedded');
   readonly showHeader = input<boolean>(true);
   readonly toolsVisible = input<boolean | null>(null);
+
+  /** Highlight typed source payloads through the shared Markdown engine. */
+  renderHighlightedPayload(payload: HighlightableMessagePayload): HighlightPayloadResult {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightPayload(payload.text, payload.type);
+    }
+  }
 
   /**
    * When true the feed windows itself — only the rows near the viewport are

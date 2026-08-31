@@ -275,6 +275,74 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads that have a dedicated highlight grammar. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/** Sanitizer-safe HTML plus whether grammar highlighting was applied. */
+export interface HighlightPayloadResult {
+  readonly html: string;
+  readonly highlighted: boolean;
+}
+
+/**
+ * Highlight a renderer-safe, typed payload with the same grammar registry,
+ * size guard, line balancing, and LRU cache used by fenced Markdown code.
+ *
+ * The returned HTML contains only escaped source text and class-based
+ * `hljs-*` spans. Unsupported languages and oversized payloads return escaped
+ * plain text, so consumers can use one sanitized `[innerHTML]` path without
+ * ever interpreting raw file contents as markup.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): HighlightPayloadResult {
+  const lang = payloadHighlightLanguage(payloadType, language);
+  const sourceLines = source.split('\n');
+  let highlighted = highlightLines(source, lang);
+  if (highlighted && highlighted.length !== sourceLines.length) highlighted = null;
+  if (highlighted && payloadType === 'diff') {
+    highlighted = highlightDiffHunkHeaders(sourceLines, highlighted);
+  }
+  return {
+    html: highlighted ? highlighted.join('\n') : escapeHtml(source),
+    highlighted: highlighted !== null,
+  };
+}
+
+function payloadHighlightLanguage(
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  switch (payloadType) {
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+    case 'code-block':
+      return language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
+  }
+}
+
+/**
+ * highlight.js 11 does not tag the compact `@@ -1 +1 @@` form emitted by the
+ * captured Codex fixture, although it tags ranged hunk headers. Keep both
+ * forms visually consistent without introducing a second diff tokenizer.
+ */
+function highlightDiffHunkHeaders(
+  sourceLines: readonly string[],
+  highlightedLines: readonly string[],
+): readonly string[] {
+  return highlightedLines.map((line, index) =>
+    sourceLines[index]?.startsWith('@@') && !line.includes('class="hljs-meta"')
+      ? `<span class="hljs-meta">${line}</span>`
+      : line,
+  );
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
