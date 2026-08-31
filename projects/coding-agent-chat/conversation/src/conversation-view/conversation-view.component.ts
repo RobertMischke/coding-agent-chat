@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -276,6 +276,7 @@ export class ConversationViewComponent {
 
   private readonly expandedItems = signal<ReadonlySet<string>>(readExpandedMessageIds());
   private readonly expandedWaitGroups = signal<ReadonlySet<string>>(new Set());
+  private readonly payloadHighlightCache = new WeakMap<MessageContentPayload, string | null>();
 
   /** The stick-to-bottom directive on the scroll root (see the template). */
   private readonly stick = viewChild(StickToBottomDirective);
@@ -309,6 +310,29 @@ export class ConversationViewComponent {
         if (userId !== null) untracked(() => this.stick()?.scrollToBottom());
       }
     });
+  }
+
+  /** Sanitizer-safe syntax spans for typed source payloads; null keeps the raw-text fallback. */
+  highlightedPayloadHtml(payload: MessageContentPayload): string | null {
+    if (
+      payload.type !== 'code-block' &&
+      payload.type !== 'diff' &&
+      payload.type !== 'json' &&
+      payload.type !== 'html-file'
+    ) {
+      return null;
+    }
+    const cached = this.payloadHighlightCache.get(payload);
+    if (cached !== undefined) return cached;
+
+    const lines = highlightPayload(
+      payload.text,
+      payload.type,
+      payload.type === 'code-block' ? payload.language : null,
+    );
+    const html = lines?.join('\n') ?? null;
+    this.payloadHighlightCache.set(payload, html);
+    return html;
   }
 
   /**

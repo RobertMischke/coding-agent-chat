@@ -70,7 +70,10 @@ const HLJS_LANG: Record<string, string> = {
  * synchronous tokenization of a very large paste would jank the UI, and the
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
-const MAX_HIGHLIGHT_CHARS = 60_000;
+export const MAX_HIGHLIGHT_CHARS = 60_000;
+
+/** Typed non-Markdown payloads that can use the shared syntax highlighter. */
+export type HighlightablePayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -273,6 +276,41 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe typed payload with the same grammars, cache, size
+ * guard, and balanced per-line spans used by fenced Markdown code. The output
+ * contains escaped source text plus class-only `hljs-*` spans, so consumers
+ * may pass individual lines or their newline-joined form through their normal
+ * HTML sanitizer. `null` means the caller must render readable plain text.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightablePayloadType,
+  language?: string | null,
+): readonly string[] | null {
+  const lang = payloadType === 'code-block'
+    ? language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null
+    : payloadType === 'diff'
+      ? 'diff'
+      : payloadType === 'json'
+        ? 'json'
+        : 'xml';
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== source.split('\n').length) return null;
+  if (payloadType !== 'diff') return highlighted;
+
+  // highlight.js' diff grammar marks additions/deletions but leaves unified
+  // `@@` hunk headers as plain text. Give those complete lines the standard
+  // metadata token used by the existing palette so visual diffs can distinguish
+  // navigation context without introducing a second parser or grammar.
+  const sourceLines = source.split('\n');
+  return highlighted.map((line, index) =>
+    /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+      ? `<span class="hljs-meta">${line}</span>`
+      : line,
+  );
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
