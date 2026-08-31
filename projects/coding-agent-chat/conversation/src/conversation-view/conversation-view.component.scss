@@ -356,6 +356,110 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+.msg__payload--highlighted code {
+  display: block;
+  min-width: max-content;
+  color: var(--md-fg, inherit);
+}
+
+/* `[innerHTML]` token nodes do not receive Angular's emulated-encapsulation
+ * attribute. Keep these selectors host-scoped while applying the same shared
+ * light/dark token palette used by fenced Markdown code. */
+:host ::ng-deep .msg__payload--highlighted {
+  .hljs-keyword,
+  .hljs-literal,
+  .hljs-selector-tag,
+  .hljs-doctag {
+    color: var(--md-hl-keyword, currentColor);
+  }
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-meta .hljs-string {
+    color: var(--md-hl-string, currentColor);
+  }
+  .hljs-number {
+    color: var(--md-hl-number, currentColor);
+  }
+  .hljs-comment,
+  .hljs-quote {
+    color: var(--md-hl-comment, currentColor);
+    font-style: italic;
+  }
+  .hljs-title,
+  .hljs-title.function_,
+  .hljs-section {
+    color: var(--md-hl-function, currentColor);
+  }
+  .hljs-title.class_,
+  .hljs-type,
+  .hljs-selector-class,
+  .hljs-selector-id,
+  .hljs-selector-pseudo {
+    color: var(--md-hl-type, currentColor);
+  }
+  .hljs-built_in {
+    color: var(--md-hl-builtin, currentColor);
+  }
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-params,
+  .hljs-subst {
+    color: var(--md-hl-variable, currentColor);
+  }
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-property {
+    color: var(--md-hl-attr, currentColor);
+  }
+  .hljs-tag,
+  .hljs-name {
+    color: var(--md-hl-tag, currentColor);
+  }
+  .hljs-meta,
+  .hljs-meta .hljs-keyword,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-link {
+    color: var(--md-hl-meta, currentColor);
+  }
+  .hljs-punctuation,
+  .hljs-operator {
+    color: var(--md-hl-punct, currentColor);
+  }
+  .hljs-addition {
+    color: var(--md-hl-addition, currentColor);
+  }
+  .hljs-deletion {
+    color: var(--md-hl-deletion, currentColor);
+  }
+  .hljs-emphasis {
+    font-style: italic;
+  }
+  .hljs-strong {
+    font-weight: 600;
+  }
+}
+
+/* Unified-diff token spans cover complete source lines. Stretch their tint
+ * across the code width so additions, deletions, and hunk headers remain
+ * visually distinct beyond the leading +/-/@@ glyphs. */
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] {
+  .hljs-addition,
+  .hljs-deletion,
+  .hljs-meta {
+    display: inline-block;
+    min-width: 100%;
+  }
+  .hljs-addition {
+    background: color-mix(in srgb, var(--md-hl-addition, currentColor) 12%, transparent);
+  }
+  .hljs-deletion {
+    background: color-mix(in srgb, var(--md-hl-deletion, currentColor) 12%, transparent);
+  }
+  .hljs-meta {
+    background: color-mix(in srgb, var(--md-hl-meta, currentColor) 8%, transparent);
+  }
+}
 .msg__payload--image {
   width: fit-content;
 }

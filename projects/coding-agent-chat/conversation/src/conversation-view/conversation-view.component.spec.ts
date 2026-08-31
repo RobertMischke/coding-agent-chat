@@ -264,8 +264,67 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.classList).toContain('md-code--hl');
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('syntax-highlights typed diffs, C# source, and JSON in the rendered DOM', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', '{"ok":true}', {
+        content: [{ type: 'json', text: '{"ok":true}' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+
+    expect(diffPayload?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(diffPayload?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(diffPayload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(codePayload?.classList).toContain('md-code--hl');
+    expect(codePayload?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(codePayload?.querySelector('.hljs-keyword')?.textContent).toBe('public');
+    expect(jsonPayload?.querySelector('.hljs-attr')?.textContent).toBe('"ok"');
+  });
+
+  it('keeps unknown code grammars and raw logs on the readable plain-text path', async () => {
+    const unknown = '<not-markup>literal</not-markup>';
+    const log = '2026-07-30T10:00:00Z INFO Started\n2026-07-30T10:00:01Z ERROR Failed';
+    const fixture = await render([
+      msg('message.taskAgent', unknown, {
+        content: [{ type: 'code-block', text: unknown, language: 'unknown-language' }],
+      }),
+      msg('message.taskAgent', log, {
+        content: [{ type: 'raw-log', text: log, ansi: false }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const logPayload = host.querySelector<HTMLElement>('[data-payload-type="raw-log"]');
+
+    expect(codePayload?.textContent).toBe(unknown);
+    expect(codePayload?.querySelector('not-markup')).toBeNull();
+    expect(codePayload?.classList).not.toContain('md-code--hl');
+    expect(logPayload?.textContent).toBe(log);
+    expect(logPayload?.classList).not.toContain('md-code--hl');
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -309,6 +309,25 @@ export class ConversationViewComponent {
         if (userId !== null) untracked(() => this.stick()?.scrollToBottom());
       }
     });
+  }
+
+  /** Sanitizer-safe syntax spans for typed source payloads; null keeps the plain-text path. */
+  highlightedPayloadHtml(payload: MessageContentPayload): string | null {
+    if (
+      payload.type !== 'code-block' &&
+      payload.type !== 'diff' &&
+      payload.type !== 'json' &&
+      payload.type !== 'html-file'
+    ) {
+      return null;
+    }
+
+    const lines = highlightPayload(
+      payload.text,
+      payload.type,
+      payload.type === 'code-block' ? payload.language : null,
+    );
+    return lines?.join('\n') ?? null;
   }
 
   /**

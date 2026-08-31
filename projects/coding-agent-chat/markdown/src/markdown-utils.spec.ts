@@ -2,7 +2,34 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+  MAX_HIGHLIGHT_CHARS,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('maps typed payloads to the existing registered grammars', () => {
+    const csharp = highlightPayload('public class Foo {}', 'code-block', 'csharp')?.join('\n');
+    const diff = highlightPayload('@@ -1 +1 @@\n-old\n+new', 'diff')?.join('\n');
+    const json = highlightPayload('{"ok":true}', 'json')?.join('\n');
+    const html = highlightPayload('<main class="app">Hello</main>', 'html-file')?.join('\n');
+
+    expect(csharp).toContain('hljs-keyword');
+    expect(diff).toContain('hljs-meta');
+    expect(diff).toContain('hljs-deletion');
+    expect(diff).toContain('hljs-addition');
+    expect(json).toContain('hljs-attr');
+    expect(html).toContain('hljs-tag');
+  });
+
+  it('returns null for unknown grammars and payloads over the shared size guard', () => {
+    expect(highlightPayload('plain text', 'code-block', 'unknown-language')).toBeNull();
+    expect(highlightPayload('x'.repeat(MAX_HIGHLIGHT_CHARS + 1), 'json')).toBeNull();
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
