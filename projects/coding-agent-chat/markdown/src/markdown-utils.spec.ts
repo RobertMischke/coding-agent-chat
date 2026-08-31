@@ -2,7 +2,45 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the registered grammar for every typed source payload', () => {
+    expect(highlightPayload('public class Foo {}', 'code-block', 'csharp')).toMatchObject({
+      highlighted: true,
+      html: expect.stringContaining('hljs-keyword'),
+    });
+    expect(highlightPayload('@@ -1 +1 @@\n+new\n-old', 'diff')).toMatchObject({
+      highlighted: true,
+      html: expect.stringContaining('hljs-addition'),
+    });
+    expect(highlightPayload('@@ -1 +1 @@\n+new\n-old', 'diff').html).toContain('hljs-meta');
+    expect(highlightPayload('{"ok":true}', 'json')).toMatchObject({
+      highlighted: true,
+      html: expect.stringContaining('hljs-attr'),
+    });
+    expect(highlightPayload('<main>ok</main>', 'html-file')).toMatchObject({
+      highlighted: true,
+      html: expect.stringContaining('hljs-tag'),
+    });
+  });
+
+  it('returns escaped plain text for unknown grammars and oversized payloads', () => {
+    expect(highlightPayload('<unsafe>', 'code-block', 'unknown')).toEqual({
+      highlighted: false,
+      html: '&lt;unsafe&gt;',
+    });
+    expect(highlightPayload(`<unsafe>${'x'.repeat(60_001)}`, 'code-block', 'html')).toEqual({
+      highlighted: false,
+      html: `&lt;unsafe&gt;${'x'.repeat(60_001)}`,
+    });
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {

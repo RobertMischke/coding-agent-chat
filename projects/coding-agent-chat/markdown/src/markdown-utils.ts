@@ -275,6 +275,50 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads that share the fenced-code highlight engine. */
+export type HighlightablePayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Sanitizer-safe highlighted payload markup. `html` contains only escaped
+ * source text and lowlight's class-based `hljs-*` spans. When highlighting is
+ * unavailable, the escaped source is returned unchanged for a readable plain
+ * monospace fallback.
+ */
+export interface HighlightedPayload {
+  readonly html: string;
+  readonly highlighted: boolean;
+}
+
+/**
+ * Highlight a typed non-Markdown payload with the same registered grammars,
+ * per-line span balancing, LRU cache, and size guard used by fenced Markdown.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightablePayloadType,
+  language?: string | null,
+): HighlightedPayload {
+  let lang = language?.trim().toLowerCase() || null;
+  if (payloadType === 'diff') lang = 'diff';
+  if (payloadType === 'json') lang = 'json';
+  if (payloadType === 'html-file') lang = 'xml';
+  const sourceLines = source.split('\n');
+  let highlighted = highlightLines(source, lang);
+  if (highlighted && highlighted.length !== sourceLines.length) highlighted = null;
+  if (highlighted && payloadType === 'diff') {
+    highlighted = highlighted.map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+
+  return {
+    html: highlighted ? highlighted.join('\n') : escapeHtml(source),
+    highlighted: highlighted !== null,
+  };
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
