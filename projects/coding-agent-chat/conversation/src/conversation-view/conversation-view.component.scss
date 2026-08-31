@@ -350,6 +350,98 @@
   word-break: normal;
   font: 11.5px/1.45 var(--font-mono, ui-monospace, SFMono-Regular, monospace);
 }
+.msg__payload--raw.md-code--hl > code {
+  display: block;
+  color: var(--md-fg);
+}
+
+/* Highlighted payload markup is inserted through [innerHTML], so the generated
+ * lowlight spans do not receive Angular's emulated-encapsulation attribute.
+ * Scope the shared markdown palette through the static payload wrapper. */
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-keyword,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-literal,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-selector-tag,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-doctag {
+  color: var(--md-hl-keyword);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-string,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-regexp,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-meta .hljs-string {
+  color: var(--md-hl-string);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-number {
+  color: var(--md-hl-number);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-comment,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-quote {
+  color: var(--md-hl-comment);
+  font-style: italic;
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-title,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-title.function_,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-section {
+  color: var(--md-hl-function);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-title.class_,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-type,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-selector-class,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-selector-id,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-selector-pseudo {
+  color: var(--md-hl-type);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-built_in {
+  color: var(--md-hl-builtin);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-variable,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-template-variable,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-params,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-subst {
+  color: var(--md-hl-variable);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-attr,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-attribute,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-property {
+  color: var(--md-hl-attr);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-tag,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-name {
+  color: var(--md-hl-tag);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-meta,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-meta .hljs-keyword,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-symbol,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-bullet,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-link {
+  color: var(--md-hl-meta);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-punctuation,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-operator {
+  color: var(--md-hl-punct);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-emphasis {
+  font-style: italic;
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-strong {
+  font-weight: 600;
+}
+
+/* Diff grammars classify whole lines. Block display turns those token classes
+ * into subtle line tints while retaining the shared light/dark token colors. */
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] .hljs-addition {
+  display: block;
+  color: var(--md-hl-addition);
+  background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+}
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] .hljs-deletion {
+  display: block;
+  color: var(--md-hl-deletion);
+  background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+}
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] > code > .hljs-meta {
+  display: block;
+  color: var(--md-hl-meta);
+  background: color-mix(in srgb, var(--md-hl-meta) 10%, transparent);
+}
 .msg__payload--raw[data-payload-type='diff'] {
   border-left-color: color-mix(in srgb, var(--studio-accent-success, #22c55e) 70%, transparent);
 }

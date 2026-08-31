@@ -268,6 +268,88 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('renders typed git diffs with addition, deletion, and hunk line classes', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const payload = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-payload-type="diff"]',
+    );
+
+    expect(payload?.classList.contains('md-code--hl')).toBe(true);
+    expect(payload?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(payload?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(payload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+  });
+
+  it('syntax-highlights typed C#, JSON, and HTML payloads with their registered grammars', async () => {
+    const csharp = 'public sealed class Worker\n{\n    public void Run() { }\n}';
+    const json = '{"ok": true, "count": 2}';
+    const html = '<!doctype html><html><body><p>Safe source</p></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', json, { content: [{ type: 'json', text: json }] }),
+      msg('message.taskAgent', html, {
+        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(code?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(htmlPayload?.textContent).toBe(html);
+    expect(htmlPayload?.querySelector('p')).toBeNull();
+  });
+
+  it('keeps unknown and oversized typed code payloads as plain readable text', async () => {
+    const unknown = '<script>alert("plain source")</script>';
+    const oversized = `public class TooLarge {}\n${'x'.repeat(60_000)}`;
+    const log = '[info] starting\n[error] failed';
+    const fixture = await render([
+      msg('message.taskAgent', unknown, {
+        content: [{ type: 'code-block', text: unknown, language: 'not-registered' }],
+      }),
+      msg('message.taskAgent', oversized, {
+        content: [{ type: 'code-block', text: oversized, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', log, {
+        content: [{ type: 'raw-log', text: log, ansi: false }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const unknownPayload = host.querySelector<HTMLElement>('[data-language="not-registered"]');
+    const oversizedPayload = host.querySelector<HTMLElement>('[data-language="csharp"]');
+    const rawLog = host.querySelector<HTMLElement>('[data-payload-type="raw-log"]');
+
+    expect(unknownPayload?.classList.contains('md-code--hl')).toBe(false);
+    expect(unknownPayload?.querySelector('[class*="hljs-"]')).toBeNull();
+    expect(unknownPayload?.querySelector('script')).toBeNull();
+    expect(unknownPayload?.textContent).toBe(unknown);
+    expect(oversizedPayload?.classList.contains('md-code--hl')).toBe(false);
+    expect(oversizedPayload?.querySelector('[class*="hljs-"]')).toBeNull();
+    expect(oversizedPayload?.textContent).toBe(oversized);
+    expect(rawLog?.classList.contains('md-code--hl')).toBe(false);
+    expect(rawLog?.querySelector('[class*="hljs-"]')).toBeNull();
+    expect(rawLog?.textContent).toBe(log);
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',
