@@ -170,13 +170,43 @@
                                 }
                               </figure>
                             }
+                            @case ('code-block') {
+                              @let highlighted = highlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw msg__payload--highlighted"
+                                [class.md-code--hl]="highlighted !== null"
+                                [attr.data-payload-type]="payload.type"
+                                [attr.data-language]="payload.language ?? null"
+                              >@if (highlighted !== null) {<code [innerHTML]="highlighted"></code>} @else {<code>{{ payload.text }}</code>}</pre>
+                            }
+                            @case ('diff') {
+                              @let highlighted = highlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw msg__payload--highlighted msg__payload--diff"
+                                [class.md-code--hl]="highlighted !== null"
+                                data-payload-type="diff"
+                              >@if (highlighted !== null) {<code [innerHTML]="highlighted"></code>} @else {<code>{{ payload.text }}</code>}</pre>
+                            }
+                            @case ('json') {
+                              @let highlighted = highlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw msg__payload--highlighted"
+                                [class.md-code--hl]="highlighted !== null"
+                                data-payload-type="json"
+                              >@if (highlighted !== null) {<code [innerHTML]="highlighted"></code>} @else {<code>{{ payload.text }}</code>}</pre>
+                            }
+                            @case ('html-file') {
+                              @let highlighted = highlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw msg__payload--highlighted"
+                                [class.md-code--hl]="highlighted !== null"
+                                data-payload-type="html-file"
+                              >@if (highlighted !== null) {<code [innerHTML]="highlighted"></code>} @else {<code>{{ payload.text }}</code>}</pre>
+                            }
                             @default {
                               <pre
                                 class="msg__payload msg__payload--raw"
                                 [attr.data-payload-type]="payload.type"
-                                [attr.data-language]="
-                                  payload.type === 'code-block' ? (payload.language ?? null) : null
-                                "
                               ><code>{{ payload.text }}</code></pre>
                             }
                           }
