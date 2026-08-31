@@ -2,7 +2,43 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the shared grammars and returns escaped, line-balanced token markup', () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const highlightedDiff = highlightPayload(diff, 'diff');
+    const highlightedCode = highlightPayload('public class Foo {}', 'code-block', 'csharp');
+    const highlightedHtml = highlightPayload('<script>alert(1)</script>', 'html-file');
+
+    expect(highlightedDiff).toContain('hljs-meta');
+    expect(highlightedDiff).toContain('hljs-deletion');
+    expect(highlightedDiff).toContain('hljs-addition');
+    expect(highlightedCode).toContain('hljs-keyword');
+    expect(highlightedHtml).toContain('hljs-tag');
+    expect(highlightedHtml).not.toContain('<script>');
+    expect((highlightedDiff?.match(/<span/g) ?? []).length).toBe(
+      (highlightedDiff?.match(/<\/span>/g) ?? []).length,
+    );
+  });
+
+  it('returns null for unknown grammars and payloads over the shared size guard', () => {
+    expect(highlightPayload('plain', 'code-block', 'not-a-grammar')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'code-block', 'csharp')).toBeNull();
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
