@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightSource, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -273,6 +273,31 @@ export class ConversationViewComponent {
   readonly openFollowUp = output<string>();
   /** Raised when a rendered tool output hit is clicked. The host may open a richer file viewer later. */
   readonly openSourceLocation = output<ToolOutputHit & { rawRange: RawLineRange }>();
+
+  /**
+   * Highlight renderer-safe technical payloads without routing their source
+   * through Markdown. `null` preserves the plain-text fallback for raw logs,
+   * unknown code languages, and inputs rejected by the shared size guard.
+   */
+  highlightPayload(payload: MessageContentPayload): string | null {
+    const language = this.payloadLanguage(payload);
+    return language && 'text' in payload ? highlightSource(payload.text, language) : null;
+  }
+
+  payloadLanguage(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return payload.language?.trim().toLowerCase() || null;
+      case 'diff':
+        return 'diff';
+      case 'json':
+        return 'json';
+      case 'html-file':
+        return 'xml';
+      default:
+        return null;
+    }
+  }
 
   private readonly expandedItems = signal<ReadonlySet<string>>(readExpandedMessageIds());
   private readonly expandedWaitGroups = signal<ReadonlySet<string>>(new Set());

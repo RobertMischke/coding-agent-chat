@@ -275,6 +275,36 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/**
+ * Highlight source text with a registered fence language and return safe HTML
+ * containing only escaped text plus class-based `hljs-*` spans. Consumers may
+ * bind the result through Angular's normal `[innerHTML]` sanitiser. A missing
+ * or unknown language, oversized input, tokenisation failure, or inconsistent
+ * line count returns `null`, signalling that the caller should render the
+ * original source as plain text.
+ */
+export function highlightSource(source: string, language: string | null): string | null {
+  const lang = language?.trim().toLowerCase() || null;
+  const highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11 classifies +/- lines but leaves git hunk headers bare.
+  // Give those already-escaped lines the conventional meta token so every
+  // consumer can distinguish @@ ranges without maintaining its own parser.
+  if (lang === 'diff') {
+    return highlighted
+      .map((line, index) =>
+        /^@@(?:@)?\s.*\s@@(?:@)?(?:\s.*)?$/.test(sourceLines[index])
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      )
+      .join('\n');
+  }
+
+  return highlighted.join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
@@ -325,15 +355,15 @@ function renderCodeBlock(source: string, lang: string | null, options: MarkdownI
 
   // Syntax-highlight when possible; require one highlighted line per source
   // line so it lines up with either shape (else fall back to plain text).
-  let highlighted = highlightLines(source, lang);
-  if (highlighted && highlighted.length !== codeLines.length) highlighted = null;
-  const hlClass = highlighted ? ' md-code--hl' : '';
+  const highlightedHtml = highlightSource(source, lang);
+  const highlighted = highlightedHtml?.split('\n') ?? null;
+  const hlClass = highlightedHtml !== null ? ' md-code--hl' : '';
 
   // Only attach md-code* classes when a language is present, otherwise
   // keep the historical `<pre><code>` shape (pinned by spec tests +
   // any downstream consumer that grep'd on the literal markup).
   if (!options.codeLineNumbers || codeLines.length <= threshold) {
-    const inner = highlighted ? highlighted.join('\n') : escapeHtml(source);
+    const inner = highlightedHtml ?? escapeHtml(source);
     if (!hasLang) {
       return `<pre><code>${inner}</code></pre>`;
     }
