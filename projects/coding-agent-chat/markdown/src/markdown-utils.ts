@@ -275,6 +275,44 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads that have a registered highlight grammar. */
+export type HighlightablePayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed message payload with the same cached, size-bounded engine
+ * used for Markdown fences. The returned fragment contains only escaped source
+ * text and class-based `hljs-*` spans, so consumers can pass it through their
+ * normal HTML sanitizer. `null` preserves the plain-text fallback for unknown
+ * code languages, oversized payloads, or a highlighting failure.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightablePayloadType,
+  language?: string | null,
+): string | null {
+  const lang =
+    payloadType === 'code-block'
+      ? (language?.trim().toLowerCase() ?? null)
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  if (payloadType === 'diff') {
+    return highlighted
+      .map((line, index) =>
+        /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      )
+      .join('\n');
+  }
+  return highlighted.join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];

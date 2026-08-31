@@ -356,6 +356,100 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Typed payloads share the Markdown renderer's lowlight token palette. The
+ * spans come from sanitized innerHTML, so ::ng-deep is required for Angular's
+ * emulated encapsulation to reach them. */
+.msg__payload--highlighted ::ng-deep .hljs-keyword,
+.msg__payload--highlighted ::ng-deep .hljs-literal,
+.msg__payload--highlighted ::ng-deep .hljs-selector-tag,
+.msg__payload--highlighted ::ng-deep .hljs-doctag {
+  color: var(--md-hl-keyword, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-string,
+.msg__payload--highlighted ::ng-deep .hljs-regexp,
+.msg__payload--highlighted ::ng-deep .hljs-meta .hljs-string {
+  color: var(--md-hl-string, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-number {
+  color: var(--md-hl-number, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-comment,
+.msg__payload--highlighted ::ng-deep .hljs-quote {
+  color: var(--md-hl-comment, currentColor);
+  font-style: italic;
+}
+.msg__payload--highlighted ::ng-deep .hljs-title,
+.msg__payload--highlighted ::ng-deep .hljs-title.function_,
+.msg__payload--highlighted ::ng-deep .hljs-section {
+  color: var(--md-hl-function, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-title.class_,
+.msg__payload--highlighted ::ng-deep .hljs-type,
+.msg__payload--highlighted ::ng-deep .hljs-selector-class,
+.msg__payload--highlighted ::ng-deep .hljs-selector-id,
+.msg__payload--highlighted ::ng-deep .hljs-selector-pseudo {
+  color: var(--md-hl-type, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-built_in {
+  color: var(--md-hl-builtin, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-variable,
+.msg__payload--highlighted ::ng-deep .hljs-template-variable,
+.msg__payload--highlighted ::ng-deep .hljs-params,
+.msg__payload--highlighted ::ng-deep .hljs-subst {
+  color: var(--md-hl-variable, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-attr,
+.msg__payload--highlighted ::ng-deep .hljs-attribute,
+.msg__payload--highlighted ::ng-deep .hljs-property {
+  color: var(--md-hl-attr, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-tag,
+.msg__payload--highlighted ::ng-deep .hljs-name {
+  color: var(--md-hl-tag, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-meta,
+.msg__payload--highlighted ::ng-deep .hljs-meta .hljs-keyword,
+.msg__payload--highlighted ::ng-deep .hljs-symbol,
+.msg__payload--highlighted ::ng-deep .hljs-bullet,
+.msg__payload--highlighted ::ng-deep .hljs-link {
+  color: var(--md-hl-meta, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-punctuation,
+.msg__payload--highlighted ::ng-deep .hljs-operator {
+  color: var(--md-hl-punct, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-addition {
+  color: var(--md-hl-addition, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-deletion {
+  color: var(--md-hl-deletion, currentColor);
+}
+.msg__payload--highlighted ::ng-deep .hljs-emphasis {
+  font-style: italic;
+}
+.msg__payload--highlighted ::ng-deep .hljs-strong {
+  font-weight: 600;
+}
+
+/* Diff grammar tokens wrap complete lines. Inline-block keeps source newlines
+ * intact while extending the subtle semantic tint across the readable row. */
+.msg__payload--diff ::ng-deep .hljs-addition,
+.msg__payload--diff ::ng-deep .hljs-deletion,
+.msg__payload--diff ::ng-deep .hljs-meta {
+  display: inline-block;
+  min-width: 100%;
+}
+.msg__payload--diff ::ng-deep .hljs-addition {
+  background: color-mix(in srgb, var(--studio-accent-success, currentColor) 12%, transparent);
+}
+.msg__payload--diff ::ng-deep .hljs-deletion {
+  background: color-mix(in srgb, var(--studio-accent-6, currentColor) 12%, transparent);
+}
+.msg__payload--diff ::ng-deep .hljs-meta {
+  background: color-mix(in srgb, var(--severity-info, currentColor) 9%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }
