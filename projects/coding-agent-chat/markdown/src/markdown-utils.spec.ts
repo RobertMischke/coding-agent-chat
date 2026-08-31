@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -392,6 +397,32 @@ describe('markdownToHtml', () => {
         linkTaskReferencesInHtml(input, [{ label: '   ', taskKey: 'agent-taskboard::blank' }]),
       ).toBe(input);
     });
+  });
+});
+
+describe('highlightPayload', () => {
+  it('selects the typed payload grammar and returns balanced class markup', () => {
+    const diff = highlightPayload(
+      [
+        'diff --git a/a.txt b/a.txt',
+        '--- a/a.txt',
+        '+++ b/a.txt',
+        '@@ -1 +1 @@',
+        '-old',
+        '+new',
+      ].join('\n'),
+      'diff',
+    );
+
+    expect(diff).toContain('hljs-deletion');
+    expect(diff).toContain('hljs-addition');
+    expect(diff).toContain('hljs-meta');
+    expect((diff?.match(/<span/g) ?? []).length).toBe((diff?.match(/<\/span>/g) ?? []).length);
+  });
+
+  it('falls back for unknown grammars and payloads over the shared size guard', () => {
+    expect(highlightPayload('mystery()', 'code-block', 'unknown-language')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'json')).toBeNull();
   });
 });
 

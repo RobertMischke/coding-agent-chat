@@ -11,7 +11,10 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload as highlightTypedPayload,
+  MarkdownViewComponent,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -249,6 +252,23 @@ export class ConversationViewComponent {
   readonly variant = input<'framed' | 'embedded'>('embedded');
   readonly showHeader = input<boolean>(true);
   readonly toolsVisible = input<boolean | null>(null);
+
+  /**
+   * Returns escaped, class-based syntax markup for the four highlightable
+   * payload types. All other payloads retain their existing render paths.
+   */
+  highlightPayload(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightTypedPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightTypedPayload(payload.text, payload.type);
+      default:
+        return null;
+    }
+  }
 
   /**
    * When true the feed windows itself — only the rows near the viewport are
