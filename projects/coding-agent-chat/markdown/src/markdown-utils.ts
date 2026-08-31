@@ -40,7 +40,7 @@ const lowlight = createLowlight({
 });
 
 /** Fence label → registered highlight.js grammar name. */
-const HLJS_LANG: Record<string, string> = {
+export const HLJS_LANG: Readonly<Record<string, string>> = {
   ts: 'typescript', typescript: 'typescript', tsx: 'typescript',
   js: 'javascript', javascript: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
   py: 'python', python: 'python',
@@ -70,7 +70,9 @@ const HLJS_LANG: Record<string, string> = {
  * synchronous tokenization of a very large paste would jank the UI, and the
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
-const MAX_HIGHLIGHT_CHARS = 60_000;
+export const MAX_HIGHLIGHT_CHARS = 60_000;
+
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -247,7 +249,7 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
-function highlightLines(source: string, lang: string | null): readonly string[] | null {
+export function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];
   if (!grammar || !lowlight.registered(grammar)) return null;
@@ -273,6 +275,44 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a typed, non-Markdown message payload with the same grammar,
+ * cache, size guard, and balanced-per-line output used by fenced Markdown
+ * code. The returned HTML contains only escaped source text and class-based
+ * `<span>` elements, making it suitable for a framework-sanitized
+ * `[innerHTML]` binding. `null` keeps callers on their plain-text fallback.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const requestedLanguage =
+    payloadType === 'code-block'
+      ? (language?.trim().split(/\s+/, 1)[0]?.toLowerCase() ?? null)
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, requestedLanguage);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  if (payloadType !== 'diff') return highlighted.join('\n');
+
+  // highlight.js 11.11 leaves unified-diff hunk headers unclassified. Keep
+  // the grammar output for every other line and supply its conventional
+  // `hljs-meta` class so `@@` ranges receive the same visual treatment as
+  // meta lines from other grammars.
+  return highlighted
+    .map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+        ? `<span class="hljs-meta">${escapeHtml(sourceLines[index] ?? '')}</span>`
+        : line,
+    )
+    .join('\n');
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
