@@ -264,8 +264,75 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.classList.contains('md-code--hl')).toBe(true);
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(raw?.querySelector('.hljs-name')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('renders typed C# source and git diffs with class-based syntax highlighting', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const renderedDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+
+    expect(code?.getAttribute('data-language')).toBe('csharp');
+    expect(code?.classList.contains('md-code--hl')).toBe(true);
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(code?.textContent).toBe(csharp);
+
+    expect(renderedDiff?.classList.contains('md-code--hl')).toBe(true);
+    expect(renderedDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(renderedDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(renderedDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(renderedDiff?.textContent).toBe(diff);
+  });
+
+  it('highlights typed JSON and leaves raw logs and unsupported code as plain text', async () => {
+    const json = '{"ok": true, "count": 2}';
+    const rawLog = '2026-08-31T12:00:00Z INFO Started\n2026-08-31T12:00:01Z ERROR Failed';
+    const unsupported = 'custom syntax <stays readable>';
+    const fixture = await render([
+      msg('message.taskAgent', json, { content: [{ type: 'json', text: json }] }),
+      msg('message.taskAgent', rawLog, {
+        content: [{ type: 'raw-log', text: rawLog, ansi: false }],
+      }),
+      msg('message.taskAgent', unsupported, {
+        content: [{ type: 'code-block', text: unsupported, language: 'unknown' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const renderedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const renderedLog = host.querySelector<HTMLElement>('[data-payload-type="raw-log"]');
+    const renderedUnsupported = host.querySelector<HTMLElement>(
+      '[data-payload-type="code-block"][data-language="unknown"]',
+    );
+
+    expect(renderedJson?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(renderedJson?.querySelector('.hljs-literal')).toBeTruthy();
+    expect(renderedLog?.classList.contains('md-code--hl')).toBe(false);
+    expect(renderedLog?.querySelector('[class^="hljs-"]')).toBeNull();
+    expect(renderedLog?.textContent).toBe(rawLog);
+    expect(renderedUnsupported?.classList.contains('md-code--hl')).toBe(false);
+    expect(renderedUnsupported?.querySelector('[class^="hljs-"]')).toBeNull();
+    expect(renderedUnsupported?.textContent).toBe(unsupported);
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

@@ -2,7 +2,48 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('maps typed payloads to the shared diff, JSON, and XML grammars', () => {
+    const diff = highlightPayload('-old\n+new\n@@ -1 +1 @@', 'diff');
+    const json = highlightPayload('{"ok": true}', 'json');
+    const html = highlightPayload('<main class="fixture">Hello</main>', 'html-file');
+
+    expect(diff).toContain('hljs-deletion');
+    expect(diff).toContain('hljs-addition');
+    expect(diff).toContain('hljs-meta');
+    expect(json).toContain('hljs-attr');
+    expect(json).toContain('hljs-literal');
+    expect(html).toContain('hljs-tag');
+    expect(html).toContain('hljs-name');
+  });
+
+  it('returns escaped, balanced class markup for a known source language', () => {
+    const highlighted = highlightPayload(
+      'public class Foo\n{\n    public string Value => "<script>";\n}',
+      'code-block',
+      'csharp',
+    );
+
+    expect(highlighted).toContain('hljs-keyword');
+    expect(highlighted).toContain('&lt;script&gt;');
+    expect(highlighted).not.toContain('<script>');
+    expect((highlighted?.match(/<span/g) ?? []).length).toBe(
+      (highlighted?.match(/<\/span>/g) ?? []).length,
+    );
+  });
+
+  it('falls back for unknown languages and payloads over the shared size guard', () => {
+    expect(highlightPayload('plain text', 'code-block', 'not-a-grammar')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'code-block', 'csharp')).toBeNull();
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
