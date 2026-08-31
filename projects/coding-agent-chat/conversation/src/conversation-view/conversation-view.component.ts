@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightLines, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -802,6 +802,35 @@ export class ConversationViewComponent {
   /** Short, human model label (e.g. "sonnet 5") — matches the composer chip;
    *  the full id sits on the badge's tooltip. */
   trackByEvent = (_: number, row: RenderRow): string => row.id;
+
+  /**
+   * Highlight renderer-safe payload text with the markdown package's shared
+   * lowlight instance. A null result deliberately keeps the template on its
+   * text-interpolation fallback for unknown grammars and oversized payloads.
+   */
+  highlightedPayloadHtml(payload: MessageContentPayload): string | null {
+    let language: string | null;
+    switch (payload.type) {
+      case 'code-block':
+        language = payload.language?.trim().toLowerCase() || null;
+        break;
+      case 'diff':
+        language = 'diff';
+        break;
+      case 'json':
+        language = 'json';
+        break;
+      case 'html-file':
+        language = 'xml';
+        break;
+      default:
+        return null;
+    }
+
+    const lines = highlightLines(payload.text, language);
+    if (!lines || lines.length !== payload.text.split('\n').length) return null;
+    return lines.join('\n');
+  }
 
   actorLabel(kind: MessageEvent['kind']): string {
     switch (kind) {

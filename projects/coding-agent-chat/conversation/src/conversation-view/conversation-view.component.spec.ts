@@ -252,20 +252,91 @@ describe('ConversationViewComponent', () => {
     expect(agentRow.textContent).toContain('Flag added, wiring the projection next.');
   });
 
-  it('renders typed raw file payloads without passing them through Markdown', async () => {
+  it('syntax-highlights typed HTML and JSON payloads without parsing them as Markdown', async () => {
     const html = '<!doctype html><html><body><ul><li>literal source</li></ul></body></html>';
     const fixture = await render([
       msg('message.taskAgent', html, {
         content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
       }),
+      msg('message.taskAgent', '{"ok":true}', {
+        content: [{ type: 'json', text: '{"ok":true}' }],
+      }),
     ]);
     const host = fixture.nativeElement as HTMLElement;
     const raw = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+    const json = host.querySelector<HTMLElement>('[data-payload-type="json"]');
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(json?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(json?.querySelector('.hljs-literal')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('renders typed diffs with addition, deletion, and hunk token classes', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const payload = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-payload-type="diff"]',
+    );
+
+    expect(payload?.classList.contains('md-code--hl')).toBe(true);
+    expect(payload?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(payload?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(payload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+  });
+
+  it('renders typed C# source with the shared syntax token classes', async () => {
+    const source = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const fixture = await render([
+      msg('message.taskAgent', source, {
+        content: [{ type: 'code-block', text: source, language: 'csharp' }],
+      }),
+    ]);
+    const payload = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-payload-type="code-block"]',
+    );
+
+    expect(payload?.getAttribute('data-language')).toBe('csharp');
+    expect(payload?.classList.contains('md-code--hl')).toBe(true);
+    expect(payload?.querySelector('.hljs-keyword')?.textContent).toBe('public');
+    expect(payload?.querySelector('[class*="hljs-"]')).toBeTruthy();
+  });
+
+  it('keeps unknown and oversized typed code payloads on the plain-text fallback', async () => {
+    const oversized = `public class Large { /* ${'x'.repeat(60_000)} */ }`;
+    const fixture = await render([
+      msg('message.taskAgent', 'literal <source>', {
+        content: [{ type: 'code-block', text: 'literal <source>', language: 'unknown' }],
+      }),
+      msg('message.taskAgent', oversized, {
+        content: [{ type: 'code-block', text: oversized, language: 'csharp' }],
+      }),
+    ]);
+    const payloads = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+      '[data-payload-type="code-block"]',
+    );
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].classList.contains('md-code--hl')).toBe(false);
+    expect(payloads[0].querySelector('[class*="hljs-"]')).toBeNull();
+    expect(payloads[0].textContent).toBe('literal <source>');
+    expect(payloads[1].classList.contains('md-code--hl')).toBe(false);
+    expect(payloads[1].querySelector('[class*="hljs-"]')).toBeNull();
+    expect(payloads[1].textContent).toBe(oversized);
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

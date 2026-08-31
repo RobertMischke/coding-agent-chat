@@ -317,6 +317,13 @@ describe('markdownToHtml', () => {
       expect(html).not.toContain('hljs-');
       expect(html).toContain('<code>noop</code>');
     });
+
+    it('marks compact git hunk headers as diff metadata', () => {
+      const html = markdownToHtml(
+        ['```diff', 'diff --git a/a.txt b/a.txt', '@@ -1 +1 @@', '-old', '+new', '```'].join('\n'),
+      );
+      expect(html).toContain('<span class="hljs-meta">@@ -1 +1 @@</span>');
+    });
   });
 
   describe('task references', () => {

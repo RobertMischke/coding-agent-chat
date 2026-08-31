@@ -40,7 +40,7 @@ const lowlight = createLowlight({
 });
 
 /** Fence label → registered highlight.js grammar name. */
-const HLJS_LANG: Record<string, string> = {
+export const HLJS_LANG: Readonly<Record<string, string>> = {
   ts: 'typescript', typescript: 'typescript', tsx: 'typescript',
   js: 'javascript', javascript: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
   py: 'python', python: 'python',
@@ -70,7 +70,7 @@ const HLJS_LANG: Record<string, string> = {
  * synchronous tokenization of a very large paste would jank the UI, and the
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
-const MAX_HIGHLIGHT_CHARS = 60_000;
+export const MAX_HIGHLIGHT_CHARS = 60_000;
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -247,7 +247,7 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
-function highlightLines(source: string, lang: string | null): readonly string[] | null {
+export function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];
   if (!grammar || !lowlight.registered(grammar)) return null;
@@ -264,6 +264,7 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   let result: readonly string[] | null;
   try {
     result = hastToLines(lowlight.highlight(grammar, source));
+    if (grammar === 'diff') result = completeDiffHunkClasses(source, result);
   } catch {
     result = null;
   }
@@ -273,6 +274,21 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * highlight.js' diff grammar only recognises hunk ranges that include an
+ * explicit count (`@@ -1,1 +1,1 @@`). Git omits a count of one in its common
+ * compact form (`@@ -1 +1 @@`), so add the same class to those escaped lines.
+ */
+function completeDiffHunkClasses(source: string, highlighted: readonly string[]): readonly string[] {
+  const sourceLines = source.split('\n');
+  return highlighted.map((line, index) => {
+    if (!/^@@ .* @@/.test(sourceLines[index] ?? '') || line.includes('class="hljs-meta"')) {
+      return line;
+    }
+    return `<span class="hljs-meta">${line}</span>`;
+  });
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
