@@ -275,6 +275,46 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Non-Markdown payloads that have a registered syntax grammar. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed, non-Markdown payload with the same guarded lowlight path
+ * used by fenced Markdown code. The returned fragment contains only escaped
+ * text and classed `span` elements, so callers may pass it through their HTML
+ * sanitizer. `null` selects the caller's plain-text fallback for unknown code
+ * languages, oversized payloads, or a tokenizer failure.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'html-file'
+        ? 'xml'
+        : payloadType;
+  const highlighted = highlightLines(source, lang);
+
+  // Keep the same one-output-line-per-source-line invariant as fenced code.
+  if (!highlighted || highlighted.length !== source.split('\n').length) return null;
+  if (payloadType !== 'diff') return highlighted.join('\n');
+
+  // highlight.js 11.11 leaves unified-diff hunk ranges unclassified. Give
+  // those already-escaped lines the conventional meta token so every grammar
+  // version exposes the visual hunk marker promised by this public helper.
+  const sourceLines = source.split('\n');
+  return highlighted
+    .map((line, index) =>
+      /^@@[^\n]*@@/.test(sourceLines[index] ?? '')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    )
+    .join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
