@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Non-Markdown payloads that have a registered, deterministic grammar. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,38 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a typed non-Markdown payload with the same registry, cache, size
+ * guard, and line balancing used by fenced Markdown code. The returned HTML
+ * contains only escaped source text and lowlight's class-based `hljs-*` spans,
+ * so consumers can pass it through their framework sanitizer. `null` tells a
+ * renderer to keep its plain-text interpolation path.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang = payloadType === 'code-block'
+    ? language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null
+    : payloadType === 'html-file'
+      ? 'xml'
+      : payloadType;
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== source.split('\n').length) return null;
+  if (payloadType !== 'diff') return highlighted.join('\n');
+
+  // highlight.js 11 marks +/- lines but leaves git hunk headers unclassified.
+  // Give those already-escaped lines the conventional meta token expected by
+  // the visual-diff theme without registering or duplicating a grammar.
+  const sourceLines = source.split('\n');
+  return highlighted
+    .map((line, index) =>
+      sourceLines[index]?.startsWith('@@') ? `<span class="hljs-meta">${line}</span>` : line,
+    )
+    .join('\n');
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
