@@ -72,6 +72,50 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed, non-Markdown payload with the same registered grammars,
+ * size guard, line balancing and LRU cache used by fenced Markdown code.
+ *
+ * The returned HTML contains only escaped source text and classed `span`
+ * elements. Consumers should still render it through their framework's normal
+ * sanitising HTML binding. `null` means the payload must be rendered as plain
+ * text (unknown language, oversized source, or a highlighting failure).
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11's diff grammar leaves @@ hunk headers unclassified even
+  // though they are structural metadata. Keep the grammar output intact and
+  // add the standard class at the already-balanced per-line boundary.
+  if (payloadType === 'diff') {
+    return highlighted
+      .map((line, index) =>
+        /^@@(?:\s|$)/.test(sourceLines[index])
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      )
+      .join('\n');
+  }
+
+  return highlighted.join('\n');
+}
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
