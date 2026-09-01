@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -273,6 +273,46 @@ export class ConversationViewComponent {
   readonly openFollowUp = output<string>();
   /** Raised when a rendered tool output hit is clicked. The host may open a richer file viewer later. */
   readonly openSourceLocation = output<ToolOutputHit & { rawRange: RawLineRange }>();
+
+  /**
+   * Build line wrappers around the shared Markdown highlighter output. The
+   * wrappers preserve source newlines for copying and let diff lines receive
+   * full-width semantic tints; Angular sanitizes the returned class-only HTML
+   * at the template binding. A null result keeps the raw text interpolation.
+   */
+  protected highlightedPayload(payload: MessageContentPayload): string | null {
+    if (
+      payload.type !== 'code-block' &&
+      payload.type !== 'diff' &&
+      payload.type !== 'json' &&
+      payload.type !== 'html-file'
+    ) {
+      return null;
+    }
+
+    const lines = highlightPayload(
+      payload.text,
+      payload.type,
+      payload.type === 'code-block' ? payload.language : null,
+    );
+    if (!lines || lines.length !== payload.text.split('\n').length) return null;
+
+    return lines
+      .map((line) => {
+        const diffClass =
+          payload.type !== 'diff'
+            ? ''
+            : /\bhljs-addition\b/.test(line)
+              ? ' msg__payload-line--addition'
+              : /\bhljs-deletion\b/.test(line)
+                ? ' msg__payload-line--deletion'
+                : /\bhljs-meta\b/.test(line)
+                  ? ' msg__payload-line--meta'
+                  : '';
+        return `<span class="msg__payload-line${diffClass}">${line}</span>`;
+      })
+      .join('\n');
+  }
 
   private readonly expandedItems = signal<ReadonlySet<string>>(readExpandedMessageIds());
   private readonly expandedWaitGroups = signal<ReadonlySet<string>>(new Set());

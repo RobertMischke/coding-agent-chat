@@ -247,6 +247,42 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a renderer-safe typed payload with the same grammar registry,
+ * size guard, line balancing and cache used by fenced Markdown code. Returned
+ * strings contain escaped source text plus class-only `hljs-*` spans and are
+ * intended for a framework-sanitized `[innerHTML]` binding. `null` preserves
+ * the caller's plain-text fallback for unknown grammars and oversized input.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): readonly string[] | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || payloadType !== 'diff') return highlighted;
+
+  // highlight.js 11.11 leaves `@@` hunk headers unclassified. Preserve the
+  // grammar output and add the conventional meta token expected by renderers.
+  const sourceLines = source.split('\n');
+  return highlighted.map((line, index) =>
+    /^@@/.test(sourceLines[index] ?? '') && !/\bhljs-meta\b/.test(line)
+      ? `<span class="hljs-meta">${line}</span>`
+      : line,
+  );
+}
+
 function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];

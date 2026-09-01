@@ -356,6 +356,116 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+.msg__payload--highlighted {
+  padding-inline: 0;
+  color: var(--md-fg, currentColor);
+}
+.msg__payload--highlighted code {
+  display: block;
+  min-width: max-content;
+}
+
+/* Highlighted payload markup is inserted through a sanitized innerHTML
+ * binding, so the deep selector is intentionally scoped beneath this
+ * component-owned pre. Colors reuse the shared light/dark Markdown palette. */
+:host ::ng-deep .msg__payload--highlighted .msg__payload-line {
+  display: block;
+  min-height: 1lh;
+  padding-inline: var(--studio-spacing-2, 8px);
+}
+:host ::ng-deep .msg__payload--highlighted .msg__payload-line--addition {
+  background: color-mix(
+    in srgb,
+    var(--md-hl-addition, var(--studio-accent-success, currentColor)) 12%,
+    transparent
+  );
+}
+:host ::ng-deep .msg__payload--highlighted .msg__payload-line--deletion {
+  background: color-mix(
+    in srgb,
+    var(--md-hl-deletion, var(--studio-accent-6, currentColor)) 12%,
+    transparent
+  );
+}
+:host ::ng-deep .msg__payload--highlighted .msg__payload-line--meta {
+  background: color-mix(
+    in srgb,
+    var(--md-hl-meta, var(--studio-accent-4, currentColor)) 7%,
+    transparent
+  );
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-keyword,
+:host ::ng-deep .msg__payload--highlighted .hljs-literal,
+:host ::ng-deep .msg__payload--highlighted .hljs-selector-tag,
+:host ::ng-deep .msg__payload--highlighted .hljs-doctag {
+  color: var(--md-hl-keyword, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-string,
+:host ::ng-deep .msg__payload--highlighted .hljs-regexp,
+:host ::ng-deep .msg__payload--highlighted .hljs-meta .hljs-string {
+  color: var(--md-hl-string, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-number {
+  color: var(--md-hl-number, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-comment,
+:host ::ng-deep .msg__payload--highlighted .hljs-quote {
+  color: var(--md-hl-comment, currentColor);
+  font-style: italic;
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-title,
+:host ::ng-deep .msg__payload--highlighted .hljs-title.function_,
+:host ::ng-deep .msg__payload--highlighted .hljs-section {
+  color: var(--md-hl-function, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-title.class_,
+:host ::ng-deep .msg__payload--highlighted .hljs-type,
+:host ::ng-deep .msg__payload--highlighted .hljs-selector-class,
+:host ::ng-deep .msg__payload--highlighted .hljs-selector-id,
+:host ::ng-deep .msg__payload--highlighted .hljs-selector-pseudo {
+  color: var(--md-hl-type, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-built_in {
+  color: var(--md-hl-builtin, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-variable,
+:host ::ng-deep .msg__payload--highlighted .hljs-template-variable,
+:host ::ng-deep .msg__payload--highlighted .hljs-params,
+:host ::ng-deep .msg__payload--highlighted .hljs-subst {
+  color: var(--md-hl-variable, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-attr,
+:host ::ng-deep .msg__payload--highlighted .hljs-attribute,
+:host ::ng-deep .msg__payload--highlighted .hljs-property {
+  color: var(--md-hl-attr, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-tag,
+:host ::ng-deep .msg__payload--highlighted .hljs-name {
+  color: var(--md-hl-tag, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-meta,
+:host ::ng-deep .msg__payload--highlighted .hljs-meta .hljs-keyword,
+:host ::ng-deep .msg__payload--highlighted .hljs-symbol,
+:host ::ng-deep .msg__payload--highlighted .hljs-bullet,
+:host ::ng-deep .msg__payload--highlighted .hljs-link {
+  color: var(--md-hl-meta, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-punctuation,
+:host ::ng-deep .msg__payload--highlighted .hljs-operator {
+  color: var(--md-hl-punct, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-addition {
+  color: var(--md-hl-addition, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-deletion {
+  color: var(--md-hl-deletion, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-emphasis {
+  font-style: italic;
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-strong {
+  font-weight: 600;
+}
 .msg__payload--image {
   width: fit-content;
 }
