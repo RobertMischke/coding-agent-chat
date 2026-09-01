@@ -170,14 +170,20 @@
                                 }
                               </figure>
                             }
-                            @default {
+                            @case ('raw-log') {
                               <pre
                                 class="msg__payload msg__payload--raw"
-                                [attr.data-payload-type]="payload.type"
-                                [attr.data-language]="
-                                  payload.type === 'code-block' ? (payload.language ?? null) : null
-                                "
+                                data-payload-type="raw-log"
                               ><code>{{ payload.text }}</code></pre>
+                            }
+                            @default {
+                              @let rendered = renderHighlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw md-code"
+                                [class.md-code--hl]="rendered.highlighted"
+                                [attr.data-payload-type]="payload.type"
+                                [attr.data-language]="rendered.language"
+                              ><code [innerHTML]="rendered.html"></code></pre>
                             }
                           }
                         }

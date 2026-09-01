@@ -72,6 +72,20 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Sanitizer-safe highlighted payload output. `html` contains only escaped
+ * source text and class-based `hljs-*` spans emitted by the registered
+ * lowlight grammars.
+ */
+export interface HighlightedPayload {
+  html: string;
+  language: string | null;
+  highlighted: boolean;
+}
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -315,6 +329,52 @@ function classOf(node: Element): string {
   const cn = node.properties?.['className'];
   const raw = Array.isArray(cn) ? cn.join(' ') : typeof cn === 'string' ? cn : '';
   return escapeAttribute(raw);
+}
+
+/**
+ * Highlight a typed, non-Markdown conversation payload with the same engine,
+ * grammar registry, LRU cache, and size guard used by fenced Markdown code.
+ * Unknown languages and oversized payloads remain readable as escaped plain
+ * text instead of being passed through a Markdown or HTML parser.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string,
+): HighlightedPayload {
+  const lang = payloadLanguage(payloadType, language);
+  const sourceLines = source.split('\n');
+  let highlightedLines = highlightLines(source, lang);
+  if (highlightedLines && highlightedLines.length !== sourceLines.length) {
+    highlightedLines = null;
+  }
+  if (highlightedLines && payloadType === 'diff') {
+    highlightedLines = highlightedLines.map((line, index) => {
+      const isHunkHeader = /^\s*@@/.test(sourceLines[index] ?? '');
+      return isHunkHeader && !line.includes('hljs-meta')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line;
+    });
+  }
+
+  return {
+    html: highlightedLines ? highlightedLines.join('\n') : escapeHtml(source),
+    language: lang,
+    highlighted: highlightedLines !== null,
+  };
+}
+
+function payloadLanguage(payloadType: HighlightPayloadType, language?: string): string | null {
+  switch (payloadType) {
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+    case 'code-block':
+      return language?.trim().toLowerCase() || null;
+  }
 }
 
 function renderCodeBlock(source: string, lang: string | null, options: MarkdownImageOptions): string {

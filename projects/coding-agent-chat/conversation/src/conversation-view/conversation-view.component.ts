@@ -11,7 +11,11 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload,
+  MarkdownViewComponent,
+  type HighlightedPayload,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -69,6 +73,11 @@ interface MessageGroupItem {
   /** True only for transcript-sized non-user messages. */
   collapsible: boolean;
 }
+
+type HighlightableMessageContentPayload = Extract<
+  MessageContentPayload,
+  { type: 'code-block' | 'diff' | 'json' | 'html-file' }
+>;
 
 interface SessionMeta {
   /** Short form (8 chars) displayed in the chip. */
@@ -249,6 +258,16 @@ export class ConversationViewComponent {
   readonly variant = input<'framed' | 'embedded'>('embedded');
   readonly showHeader = input<boolean>(true);
   readonly toolsVisible = input<boolean | null>(null);
+
+  /** Render typed source payloads without ever interpreting them as Markdown. */
+  readonly renderHighlightedPayload = (
+    payload: HighlightableMessageContentPayload,
+  ): HighlightedPayload =>
+    highlightPayload(
+      payload.text,
+      payload.type,
+      payload.type === 'code-block' ? payload.language : undefined,
+    );
 
   /**
    * When true the feed windows itself — only the rows near the viewport are

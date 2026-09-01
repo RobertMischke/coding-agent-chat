@@ -266,6 +266,55 @@ describe('ConversationViewComponent', () => {
     expect(raw?.textContent).toBe(html);
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+    expect(raw?.classList.contains('md-code--hl')).toBe(true);
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
+  });
+
+  it('syntax-highlights typed code and renders diff additions and deletions as tagged lines', async () => {
+    const csharp = 'public sealed class Foo { public int X { get; set; } }';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const json = '{"ok":true}';
+    const html = '<!doctype html><html><body><p>Fixture</p></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', 'Typed payload matrix', {
+        content: [
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'json', text: json },
+          { type: 'html-file', text: html, mediaType: 'text/html' },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const visualDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const renderedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const renderedHtml = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(code?.getAttribute('data-language')).toBe('csharp');
+    expect(code?.classList.contains('md-code--hl')).toBe(true);
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(code?.textContent).toBe(csharp);
+
+    expect(visualDiff?.getAttribute('data-language')).toBe('diff');
+    expect(visualDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(visualDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(visualDiff?.querySelectorAll('.hljs-meta').length).toBeGreaterThan(0);
+    expect(visualDiff?.textContent).toBe(diff);
+
+    expect(renderedJson?.getAttribute('data-language')).toBe('json');
+    expect(renderedJson?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(renderedJson?.textContent).toBe(json);
+    expect(renderedHtml?.getAttribute('data-language')).toBe('xml');
+    expect(renderedHtml?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(renderedHtml?.textContent).toBe(html);
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

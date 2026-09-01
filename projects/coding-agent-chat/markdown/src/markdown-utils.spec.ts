@@ -2,7 +2,57 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('routes typed payloads through their registered grammars', () => {
+    const csharp = highlightPayload('public sealed class Foo { }', 'code-block', 'csharp');
+    const diff = highlightPayload(
+      [
+        'diff --git a/a.txt b/a.txt',
+        '--- a/a.txt',
+        '+++ b/a.txt',
+        '@@ -1 +1 @@',
+        '-old',
+        '+new',
+      ].join('\n'),
+      'diff',
+    );
+    const json = highlightPayload('{"ok":true}', 'json');
+    const html = highlightPayload('<main><p>Safe source</p></main>', 'html-file');
+
+    expect(csharp).toMatchObject({ language: 'csharp', highlighted: true });
+    expect(csharp.html).toContain('hljs-keyword');
+    expect(diff).toMatchObject({ language: 'diff', highlighted: true });
+    expect(diff.html).toContain('hljs-addition');
+    expect(diff.html).toContain('hljs-deletion');
+    expect(diff.html).toContain('hljs-meta');
+    expect(json).toMatchObject({ language: 'json', highlighted: true });
+    expect(json.html).toContain('hljs-attr');
+    expect(html).toMatchObject({ language: 'xml', highlighted: true });
+    expect(html.html).toContain('hljs-tag');
+  });
+
+  it('returns escaped readable text for unknown grammars and oversized payloads', () => {
+    const unknown = highlightPayload('<widget>literal</widget>', 'code-block', 'wat');
+    const oversizedSource = `public class Huge { /* ${'x'.repeat(60_000)} */ }`;
+    const oversized = highlightPayload(oversizedSource, 'code-block', 'csharp');
+
+    expect(unknown).toEqual({
+      html: '&lt;widget&gt;literal&lt;/widget&gt;',
+      language: 'wat',
+      highlighted: false,
+    });
+    expect(oversized.highlighted).toBe(false);
+    expect(oversized.html).toBe(oversizedSource);
+    expect(oversized.html).not.toContain('hljs-');
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
