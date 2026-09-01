@@ -268,6 +268,73 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed code, diff, JSON, and HTML payloads', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const json = '{"ok": true}';
+    const html = '<!doctype html><html><body><main>Fixture</main></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', json, {
+        content: [{ type: 'json', text: json }],
+      }),
+      msg('message.taskAgent', html, {
+        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(codePayload?.classList).toContain('md-code--hl');
+    expect(codePayload?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(diffPayload?.querySelector('.hljs-addition')).toBeTruthy();
+    expect(diffPayload?.querySelector('.hljs-deletion')).toBeTruthy();
+    expect(diffPayload?.querySelector('.hljs-meta')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
+  });
+
+  it('keeps unknown, oversized, and raw-log payloads on the plain-text path', async () => {
+    const oversized = 'x'.repeat(60_001);
+    const log = '[INFO] plain log';
+    const fixture = await render([
+      msg('message.taskAgent', 'readable', {
+        content: [{ type: 'code-block', text: 'readable', language: 'unknown-language' }],
+      }),
+      msg('message.taskAgent', oversized, {
+        content: [{ type: 'json', text: oversized }],
+      }),
+      msg('message.taskAgent', log, {
+        content: [{ type: 'raw-log', text: log, ansi: false }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const payloads = host.querySelectorAll<HTMLElement>('[data-payload-type]');
+
+    expect(payloads[0].classList).not.toContain('md-code--hl');
+    expect(payloads[0].textContent).toBe('readable');
+    expect(payloads[1].classList).not.toContain('md-code--hl');
+    expect(payloads[1].textContent).toBe(oversized);
+    expect(payloads[2].getAttribute('data-payload-type')).toBe('raw-log');
+    expect(payloads[2].classList).not.toContain('md-code--hl');
+    expect(payloads[2].textContent).toBe(log);
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',

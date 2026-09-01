@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -956,6 +956,16 @@ export class ConversationViewComponent {
     else next.add(itemId);
     this.expandedItems.set(next);
     persistExpandedMessageIds(next);
+  }
+
+  highlightedPayloadHtml(payload: MessageContentPayload): string | null {
+    const lines =
+      payload.type === 'code-block'
+        ? highlightPayload(payload.text, payload.type, payload.language)
+        : payload.type === 'diff' || payload.type === 'json' || payload.type === 'html-file'
+          ? highlightPayload(payload.text, payload.type)
+          : null;
+    return lines?.join('\n') ?? null;
   }
 
   isWaitGroupExpanded(groupId: string): boolean {

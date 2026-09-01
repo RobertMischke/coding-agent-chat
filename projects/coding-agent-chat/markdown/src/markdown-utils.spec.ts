@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -316,6 +321,45 @@ describe('markdownToHtml', () => {
       expect(html).not.toContain('md-code--hl');
       expect(html).not.toContain('hljs-');
       expect(html).toContain('<code>noop</code>');
+    });
+  });
+
+  describe('typed payload highlighting', () => {
+    it('maps typed payloads to the existing code, diff, JSON, and XML grammars', () => {
+      const csharp = highlightPayload('public class Foo {}', 'code-block', 'csharp');
+      const diff = highlightPayload(
+        [
+          'diff --git a/a.txt b/a.txt',
+          '--- a/a.txt',
+          '+++ b/a.txt',
+          '@@ -1 +1 @@',
+          '-old',
+          '+new',
+        ].join('\n'),
+        'diff',
+      );
+      const json = highlightPayload('{"ok": true}', 'json');
+      const html = highlightPayload('<main class="fixture">Hello</main>', 'html-file');
+
+      expect(csharp?.join('\n')).toContain('hljs-keyword');
+      expect(diff?.join('\n')).toContain('hljs-deletion');
+      expect(diff?.join('\n')).toContain('hljs-addition');
+      expect(diff?.join('\n')).toContain('hljs-meta');
+      expect(json?.join('\n')).toContain('hljs-attr');
+      expect(html?.join('\n')).toContain('hljs-tag');
+    });
+
+    it('returns sanitizer-safe escaped fragments', () => {
+      const highlighted = highlightPayload('<script>alert("x")</script>', 'html-file');
+
+      expect(highlighted?.join('\n')).not.toContain('<script>');
+      expect(highlighted?.join('\n')).toContain('&lt;');
+      expect(highlighted?.join('\n')).toContain('class="hljs-');
+    });
+
+    it('falls back for unknown code grammars and payloads over the shared size guard', () => {
+      expect(highlightPayload('readable', 'code-block', 'unknown-language')).toBeNull();
+      expect(highlightPayload('x'.repeat(60_001), 'json')).toBeNull();
     });
   });
 

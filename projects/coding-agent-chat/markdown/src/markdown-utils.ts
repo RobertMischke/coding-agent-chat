@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,40 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a typed, non-Markdown message payload with the same lowlight
+ * instance used for fenced Markdown code. The returned per-line fragments
+ * contain only escaped source text and class-based `hljs-*` spans, making them
+ * safe to pass through Angular's `[innerHTML]` sanitizer. `null` preserves the
+ * readable plain-text fallback for unknown code languages and oversized input.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string,
+): readonly string[] | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || payloadType !== 'diff') return highlighted;
+
+  // highlight.js 11's diff grammar only tags hunk headers containing explicit
+  // `,count` ranges. Git's valid short form (`@@ -1 +1 @@`) is what the Codex
+  // capture emits, so supply the same class without changing or reparsing text.
+  const sourceLines = source.split('\n');
+  return highlighted.map((line, index) =>
+    /^@@(?:\s|$)/.test(sourceLines[index]) && !line.includes('hljs-meta')
+      ? `<span class="hljs-meta">${line}</span>`
+      : line,
+  );
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
