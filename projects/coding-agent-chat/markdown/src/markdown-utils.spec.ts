@@ -2,7 +2,46 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the typed grammar and returns balanced per-line diff markup', () => {
+    const source = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const result = highlightPayload(source, 'diff');
+
+    expect(result.highlighted).toBe(true);
+    expect(result.html).toContain('hljs-addition');
+    expect(result.html).toContain('hljs-deletion');
+    expect(result.html).toContain('hljs-meta');
+    expect((result.html.match(/<span/g) ?? []).length).toBe(
+      (result.html.match(/<\/span>/g) ?? []).length,
+    );
+  });
+
+  it('escapes plain fallback text for unknown grammars and oversized payloads', () => {
+    const unknown = highlightPayload('<script>alert(1)</script>', 'code-block', 'wat');
+    const oversized = highlightPayload('x'.repeat(60_001), 'json');
+
+    expect(unknown).toEqual({
+      html: '&lt;script&gt;alert(1)&lt;/script&gt;',
+      highlighted: false,
+    });
+    expect(oversized.highlighted).toBe(false);
+    expect(oversized.html).toHaveLength(60_001);
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {

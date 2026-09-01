@@ -252,18 +252,46 @@ describe('ConversationViewComponent', () => {
     expect(agentRow.textContent).toContain('Flag added, wiring the projection next.');
   });
 
-  it('renders typed raw file payloads without passing them through Markdown', async () => {
+  it('highlights typed source payloads without passing them through Markdown', async () => {
     const html = '<!doctype html><html><body><ul><li>literal source</li></ul></body></html>';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = 'public sealed class Worker { public void Run() { } }';
+    const json = '{"ok":true}';
     const fixture = await render([
       msg('message.taskAgent', html, {
-        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+        content: [
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'json', text: json },
+          { type: 'html-file', text: html, mediaType: 'text/html' },
+        ],
       }),
     ]);
     const host = fixture.nativeElement as HTMLElement;
-    const raw = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
 
-    expect(raw?.tagName).toBe('PRE');
-    expect(raw?.textContent).toBe(html);
+    expect(diffPayload?.textContent).toBe(diff);
+    expect(diffPayload?.querySelector('.hljs-addition')).toBeTruthy();
+    expect(diffPayload?.querySelector('.hljs-deletion')).toBeTruthy();
+    expect(diffPayload?.querySelector('.hljs-meta')).toBeTruthy();
+    expect(codePayload?.getAttribute('data-language')).toBe('csharp');
+    expect(codePayload?.textContent).toBe(csharp);
+    expect(codePayload?.querySelector('[class^="hljs-"]')).toBeTruthy();
+    expect(codePayload?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(htmlPayload?.tagName).toBe('PRE');
+    expect(htmlPayload?.textContent).toBe(html);
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });

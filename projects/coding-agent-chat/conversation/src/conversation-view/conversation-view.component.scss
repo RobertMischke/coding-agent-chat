@@ -356,6 +356,100 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Highlighted payload markup is injected through Angular's HTML sanitizer, so
+ * its descendants do not receive the component scope attribute. Keep these
+ * selectors rooted at the payload element while reaching the generated spans. */
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-keyword,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-literal,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-selector-tag,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-doctag {
+  color: var(--md-hl-keyword);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-string,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-regexp,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-meta .hljs-string {
+  color: var(--md-hl-string);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-number {
+  color: var(--md-hl-number);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-comment,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-quote {
+  color: var(--md-hl-comment);
+  font-style: italic;
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-title,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-title.function_,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-section {
+  color: var(--md-hl-function);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-title.class_,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-type,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-selector-class,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-selector-id,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-selector-pseudo {
+  color: var(--md-hl-type);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-built_in {
+  color: var(--md-hl-builtin);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-variable,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-template-variable,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-params,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-subst {
+  color: var(--md-hl-variable);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-attr,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-attribute,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-property {
+  color: var(--md-hl-attr);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-tag,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-name {
+  color: var(--md-hl-tag);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-meta,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-meta .hljs-keyword,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-symbol,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-bullet,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-link {
+  color: var(--md-hl-meta);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-punctuation,
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-operator {
+  color: var(--md-hl-punct);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-addition {
+  color: var(--md-hl-addition);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-deletion {
+  color: var(--md-hl-deletion);
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-emphasis {
+  font-style: italic;
+}
+.msg__payload--raw.md-code--hl ::ng-deep .hljs-strong {
+  font-weight: 600;
+}
+
+/* The diff grammar wraps complete lines, allowing a visual diff without
+ * re-parsing source text in the conversation component. */
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-addition,
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-deletion,
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  display: inline-block;
+  min-width: 100%;
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-addition {
+  background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-deletion {
+  background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  background: color-mix(in srgb, var(--md-hl-meta) 8%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }
