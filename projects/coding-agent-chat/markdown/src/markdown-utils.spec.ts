@@ -2,7 +2,48 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('maps typed payloads to the shared grammars and returns sanitizer-safe spans', () => {
+    expect(highlightPayload('public class Foo {}', 'code-block', 'csharp')).toContain(
+      'hljs-keyword',
+    );
+    expect(highlightPayload('{"ok": true}', 'json')).toContain('hljs-attr');
+
+    const html = highlightPayload('<script>alert("x")</script>', 'html-file');
+    expect(html).toContain('hljs-tag');
+    expect(html).toContain('&lt;');
+    expect(html).not.toContain('<script>');
+  });
+
+  it('uses the diff grammar and preserves class-tagged line boundaries', () => {
+    const source = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const html = highlightPayload(source, 'diff');
+
+    expect(html).toContain('hljs-meta');
+    expect(html).toContain('hljs-deletion');
+    expect(html).toContain('hljs-addition');
+    expect((html?.match(/\n/g) ?? []).length).toBe(5);
+  });
+
+  it('returns null for unknown grammars and payloads over the shared size guard', () => {
+    expect(highlightPayload('plain text', 'code-block', 'unknown-grammar')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'code-block', 'csharp')).toBeNull();
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {

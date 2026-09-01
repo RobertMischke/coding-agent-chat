@@ -356,6 +356,119 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Typed payloads use the same lowlight token palette as fenced Markdown code.
+ * ::ng-deep is limited to this host because innerHTML-inserted token spans do
+ * not receive Angular's emulated-encapsulation attribute. */
+:host ::ng-deep .msg__payload--raw.md-code--hl code {
+  color: var(--md-fg, var(--studio-fg, inherit));
+}
+:host
+  ::ng-deep
+  .msg__payload--raw.md-code--hl
+  :is(.hljs-keyword, .hljs-literal, .hljs-selector-tag, .hljs-doctag) {
+  color: var(--md-hl-keyword, var(--studio-accent-4, #c586c0));
+}
+:host
+  ::ng-deep
+  .msg__payload--raw.md-code--hl
+  :is(.hljs-string, .hljs-regexp, .hljs-meta .hljs-string) {
+  color: var(--md-hl-string, var(--studio-accent-success, #16a34a));
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-number {
+  color: var(--md-hl-number, var(--studio-accent, #d97757));
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl :is(.hljs-comment, .hljs-quote) {
+  color: var(--md-hl-comment, var(--studio-fg-muted, #64748b));
+  font-style: italic;
+}
+:host
+  ::ng-deep
+  .msg__payload--raw.md-code--hl
+  :is(.hljs-title, .hljs-title.function_, .hljs-section) {
+  color: var(--md-hl-function, var(--severity-info, #569cd6));
+}
+:host
+  ::ng-deep
+  .msg__payload--raw.md-code--hl
+  :is(
+    .hljs-title.class_,
+    .hljs-type,
+    .hljs-selector-class,
+    .hljs-selector-id,
+    .hljs-selector-pseudo
+  ) {
+  color: var(--md-hl-type, var(--studio-accent-warn, #cca700));
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-built_in {
+  color: var(--md-hl-builtin, var(--studio-accent-6, #ef4444));
+}
+:host
+  ::ng-deep
+  .msg__payload--raw.md-code--hl
+  :is(.hljs-variable, .hljs-template-variable, .hljs-params, .hljs-subst) {
+  color: var(--md-hl-variable, var(--studio-fg, #e2e8f0));
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl :is(.hljs-attr, .hljs-attribute, .hljs-property) {
+  color: var(--md-hl-attr, var(--studio-accent-warn, #cca700));
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl :is(.hljs-tag, .hljs-name) {
+  color: var(--md-hl-tag, var(--severity-info, #569cd6));
+}
+:host
+  ::ng-deep
+  .msg__payload--raw.md-code--hl
+  :is(.hljs-meta, .hljs-meta .hljs-keyword, .hljs-symbol, .hljs-bullet, .hljs-link) {
+  color: var(--md-hl-meta, var(--studio-accent-4, #c586c0));
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl :is(.hljs-punctuation, .hljs-operator) {
+  color: var(--md-hl-punct, var(--studio-fg-dim, #94a3b8));
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-emphasis {
+  font-style: italic;
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-strong {
+  font-weight: 600;
+}
+
+/* The diff grammar marks complete lines. Stretch each marked span across the
+ * code width so additions, deletions and hunk metadata read as a visual diff. */
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+:host
+  ::ng-deep
+  .msg__payload--raw[data-payload-type='diff']
+  :is(.hljs-addition, .hljs-deletion, .hljs-meta) {
+  display: inline-block;
+  min-width: 100%;
+}
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] .hljs-addition {
+  color: var(--md-hl-addition, var(--studio-accent-success, #16a34a));
+  background: color-mix(
+    in srgb,
+    var(--md-hl-addition, var(--studio-accent-success, #16a34a)) 12%,
+    transparent
+  );
+}
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] .hljs-deletion {
+  color: var(--md-hl-deletion, var(--studio-accent-6, #ef4444));
+  background: color-mix(
+    in srgb,
+    var(--md-hl-deletion, var(--studio-accent-6, #ef4444)) 12%,
+    transparent
+  );
+}
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] .hljs-meta {
+  color: var(--md-hl-meta, var(--studio-accent-4, #c586c0));
+  background: color-mix(
+    in srgb,
+    var(--md-hl-meta, var(--studio-accent-4, #c586c0)) 8%,
+    transparent
+  );
+}
 .msg__payload--image {
   width: fit-content;
 }
