@@ -356,6 +356,88 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Highlighted typed payloads use the same semantic token palette as fenced
+ * Markdown code. `::ng-deep` is limited to this namespaced container because
+ * Angular-created innerHTML spans do not receive the component scope attr. */
+.msg__payload--raw ::ng-deep .hljs-keyword,
+.msg__payload--raw ::ng-deep .hljs-literal,
+.msg__payload--raw ::ng-deep .hljs-selector-tag,
+.msg__payload--raw ::ng-deep .hljs-doctag {
+  color: var(--md-hl-keyword, var(--studio-accent-4, #c586c0));
+}
+.msg__payload--raw ::ng-deep .hljs-string,
+.msg__payload--raw ::ng-deep .hljs-regexp,
+.msg__payload--raw ::ng-deep .hljs-meta .hljs-string {
+  color: var(--md-hl-string, var(--studio-accent-success, #16a34a));
+}
+.msg__payload--raw ::ng-deep .hljs-number {
+  color: var(--md-hl-number, var(--studio-accent, #d97757));
+}
+.msg__payload--raw ::ng-deep .hljs-comment,
+.msg__payload--raw ::ng-deep .hljs-quote {
+  color: var(--md-hl-comment, color-mix(in srgb, currentColor 62%, transparent));
+  font-style: italic;
+}
+.msg__payload--raw ::ng-deep .hljs-title,
+.msg__payload--raw ::ng-deep .hljs-section {
+  color: var(--md-hl-function, var(--studio-accent-3, #569cd6));
+}
+.msg__payload--raw ::ng-deep .hljs-title.class_,
+.msg__payload--raw ::ng-deep .hljs-type,
+.msg__payload--raw ::ng-deep .hljs-selector-class,
+.msg__payload--raw ::ng-deep .hljs-selector-id,
+.msg__payload--raw ::ng-deep .hljs-selector-pseudo {
+  color: var(--md-hl-type, var(--studio-accent-warn, #cca700));
+}
+.msg__payload--raw ::ng-deep .hljs-attr,
+.msg__payload--raw ::ng-deep .hljs-attribute,
+.msg__payload--raw ::ng-deep .hljs-property {
+  color: var(--md-hl-attr, var(--studio-accent-warn, #cca700));
+}
+.msg__payload--raw ::ng-deep .hljs-built_in {
+  color: var(--md-hl-builtin, var(--studio-accent-6, #ef4444));
+}
+.msg__payload--raw ::ng-deep .hljs-variable,
+.msg__payload--raw ::ng-deep .hljs-template-variable,
+.msg__payload--raw ::ng-deep .hljs-params,
+.msg__payload--raw ::ng-deep .hljs-subst {
+  color: var(--md-hl-variable, currentColor);
+}
+.msg__payload--raw ::ng-deep .hljs-tag,
+.msg__payload--raw ::ng-deep .hljs-name {
+  color: var(--md-hl-tag, var(--studio-accent-3, #569cd6));
+}
+.msg__payload--raw ::ng-deep .hljs-meta,
+.msg__payload--raw ::ng-deep .hljs-symbol,
+.msg__payload--raw ::ng-deep .hljs-bullet,
+.msg__payload--raw ::ng-deep .hljs-link {
+  color: var(--md-hl-meta, var(--studio-accent-4, #c586c0));
+}
+.msg__payload--raw ::ng-deep .hljs-punctuation,
+.msg__payload--raw ::ng-deep .hljs-operator {
+  color: var(--md-hl-punct, color-mix(in srgb, currentColor 72%, transparent));
+}
+.msg__payload--raw ::ng-deep .hljs-emphasis {
+  font-style: italic;
+}
+.msg__payload--raw ::ng-deep .hljs-strong {
+  font-weight: 600;
+}
+
+/* Diff grammars wrap complete source lines, so these subtle semantic tints
+ * make additions, deletions, and hunk/file metadata distinct at a glance. */
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-addition {
+  color: var(--md-hl-addition, var(--studio-accent-success, #16a34a));
+  background: color-mix(in srgb, var(--studio-accent-success, #16a34a) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-deletion {
+  color: var(--md-hl-deletion, var(--studio-accent-6, #ef4444));
+  background: color-mix(in srgb, var(--studio-accent-6, #ef4444) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  background: color-mix(in srgb, var(--severity-info, #38bdf8) 9%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }
