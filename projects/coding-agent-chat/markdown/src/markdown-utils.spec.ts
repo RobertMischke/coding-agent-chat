@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -392,6 +397,25 @@ describe('markdownToHtml', () => {
         linkTaskReferencesInHtml(input, [{ label: '   ', taskKey: 'agent-taskboard::blank' }]),
       ).toBe(input);
     });
+  });
+});
+
+describe('highlightPayload', () => {
+  it('maps typed payloads to the shared grammars and escapes source markup', () => {
+    expect(highlightPayload('public class Foo {}', 'code-block', 'csharp')).toContain(
+      'hljs-keyword',
+    );
+    expect(highlightPayload('{"ok":true}', 'json')).toContain('hljs-literal');
+    expect(highlightPayload('<main>safe</main>', 'html-file')).toContain('hljs-tag');
+    expect(highlightPayload('<script>alert(1)</script>', 'html-file')).not.toContain('<script>');
+    expect(highlightPayload('@@ -1 +1 @@\n-old\n+new', 'diff')).toContain('hljs-meta');
+  });
+
+  it('returns null for unknown grammars and input over the shared size guard', () => {
+    expect(highlightPayload('plain text', 'code-block', 'unknown-language')).toBeNull();
+    expect(
+      highlightPayload(`public class Foo {}${' '.repeat(60_000)}`, 'code-block', 'csharp'),
+    ).toBeNull();
   });
 });
 
