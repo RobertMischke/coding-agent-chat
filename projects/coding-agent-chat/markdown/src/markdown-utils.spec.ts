@@ -2,7 +2,42 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the typed payload grammar and emits balanced, class-based lines', () => {
+    const result = highlightPayload(
+      'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new',
+      'diff',
+    );
+
+    expect(result.highlighted).toBe(true);
+    expect(result.html).toContain('hljs-addition');
+    expect(result.html).toContain('hljs-deletion');
+    expect(result.html).toContain('hljs-meta');
+    expect((result.html.match(/<span/g) ?? []).length).toBe(
+      (result.html.match(/<\/span>/g) ?? []).length,
+    );
+  });
+
+  it('escapes plain fallback text for unknown and oversized code payloads', () => {
+    const unknown = highlightPayload('<widget>plain</widget>', 'code-block', 'unknown-grammar');
+    const oversized = highlightPayload(`<tag>${'x'.repeat(60_000)}</tag>`, 'html-file');
+
+    expect(unknown).toEqual({
+      html: '&lt;widget&gt;plain&lt;/widget&gt;',
+      highlighted: false,
+    });
+    expect(oversized.highlighted).toBe(false);
+    expect(oversized.html).toContain('&lt;tag&gt;');
+    expect(oversized.html).not.toContain('<tag>');
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {

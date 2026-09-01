@@ -72,6 +72,51 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/** Sanitizer-safe highlighted HTML, or escaped text when highlighting is unavailable. */
+export interface HighlightPayloadResult {
+  readonly html: string;
+  readonly highlighted: boolean;
+}
+
+/**
+ * Highlight a typed payload with the same grammars, line balancing, LRU cache,
+ * and size guard used by fenced Markdown. The returned HTML contains only
+ * escaped source and class-based `hljs-*` spans.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): HighlightPayloadResult {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const sourceLines = source.split('\n');
+  const grammarLines = highlightLines(source, lang);
+  // highlight.js 11 marks +/- lines but leaves git hunk headers unclassified.
+  // Apply its standard metadata class without introducing another grammar.
+  const highlightedLines =
+    payloadType === 'diff' && grammarLines
+      ? grammarLines.map((line, index) =>
+          sourceLines[index]?.startsWith('@@') ? `<span class="hljs-meta">${line}</span>` : line,
+        )
+      : grammarLines;
+  const highlighted = highlightedLines?.length === sourceLines.length;
+
+  return {
+    html: highlighted && highlightedLines ? highlightedLines.join('\n') : escapeHtml(source),
+    highlighted,
+  };
+}
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
