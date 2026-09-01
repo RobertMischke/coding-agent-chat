@@ -2,7 +2,42 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the shared payload grammars and emits balanced per-line tokens', () => {
+    const diff = highlightPayload('@@ -1 +1 @@\n-old\n+new', 'diff');
+    const csharp = highlightPayload('public class Foo {}', 'code-block', 'csharp');
+    const json = highlightPayload('{"ok": true}', 'json');
+    const html = highlightPayload('<main>safe</main>', 'html-file');
+
+    expect(diff.highlighted).toBe(true);
+    expect(diff.html).toContain('hljs-deletion');
+    expect(diff.html).toContain('hljs-addition');
+    expect(diff.html).toContain('hljs-meta');
+    expect(csharp.html).toContain('hljs-keyword');
+    expect(json.html).toContain('hljs-attr');
+    expect(html.html).toContain('hljs-tag');
+    expect((diff.html.match(/<span/g) ?? []).length).toBe(
+      (diff.html.match(/<\/span>/g) ?? []).length,
+    );
+  });
+
+  it('returns escaped plain text for unknown or oversized code', () => {
+    const unknown = highlightPayload('<unsafe>', 'code-block', 'unknown-language');
+    const oversized = highlightPayload(`<tag>${'x'.repeat(60_001)}`, 'html-file');
+
+    expect(unknown).toEqual({ html: '&lt;unsafe&gt;', highlighted: false });
+    expect(oversized.highlighted).toBe(false);
+    expect(oversized.html).toContain('&lt;tag&gt;');
+    expect(oversized.html).not.toContain('<tag>');
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {

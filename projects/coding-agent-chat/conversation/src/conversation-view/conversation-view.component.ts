@@ -11,7 +11,11 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload,
+  MarkdownViewComponent,
+  type HighlightPayloadResult,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -69,6 +73,11 @@ interface MessageGroupItem {
   /** True only for transcript-sized non-user messages. */
   collapsible: boolean;
 }
+
+type HighlightableMessagePayload = Extract<
+  MessageContentPayload,
+  { type: 'code-block' | 'diff' | 'json' | 'html-file' }
+>;
 
 interface SessionMeta {
   /** Short form (8 chars) displayed in the chip. */
@@ -273,6 +282,15 @@ export class ConversationViewComponent {
   readonly openFollowUp = output<string>();
   /** Raised when a rendered tool output hit is clicked. The host may open a richer file viewer later. */
   readonly openSourceLocation = output<ToolOutputHit & { rawRange: RawLineRange }>();
+
+  /** Render typed source payloads through the Markdown package's shared highlighter. */
+  highlightedPayload(payload: HighlightableMessagePayload): HighlightPayloadResult {
+    return highlightPayload(
+      payload.text,
+      payload.type,
+      payload.type === 'code-block' ? payload.language : null,
+    );
+  }
 
   private readonly expandedItems = signal<ReadonlySet<string>>(readExpandedMessageIds());
   private readonly expandedWaitGroups = signal<ReadonlySet<string>>(new Set());
