@@ -11,7 +11,11 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload,
+  MarkdownViewComponent,
+  type HighlightedPayload,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -249,6 +253,31 @@ export class ConversationViewComponent {
   readonly variant = input<'framed' | 'embedded'>('embedded');
   readonly showHeader = input<boolean>(true);
   readonly toolsVisible = input<boolean | null>(null);
+
+  isHighlightablePayload(
+    payload: MessageContentPayload,
+  ): payload is Extract<
+    MessageContentPayload,
+    { type: 'code-block' | 'diff' | 'json' | 'html-file' }
+  > {
+    return (
+      payload.type === 'code-block' ||
+      payload.type === 'diff' ||
+      payload.type === 'json' ||
+      payload.type === 'html-file'
+    );
+  }
+
+  highlightedPayload(payload: MessageContentPayload): HighlightedPayload {
+    if (!this.isHighlightablePayload(payload)) {
+      return { html: '', highlighted: false };
+    }
+    return highlightPayload(
+      payload.text,
+      payload.type,
+      payload.type === 'code-block' ? payload.language : null,
+    );
+  }
 
   /**
    * When true the feed windows itself — only the rows near the viewport are

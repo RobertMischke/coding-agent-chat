@@ -70,7 +70,19 @@ const HLJS_LANG: Record<string, string> = {
  * synchronous tokenization of a very large paste would jank the UI, and the
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
-const MAX_HIGHLIGHT_CHARS = 60_000;
+export const MAX_HIGHLIGHT_CHARS = 60_000;
+
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Sanitizer-safe highlighted markup, or escaped plain text when
+ * highlighting is unavailable.
+ */
+export interface HighlightedPayload {
+  readonly html: string;
+  readonly highlighted: boolean;
+}
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -273,6 +285,42 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe non-Markdown payload with the same grammar set,
+ * per-line balancing, size guard and LRU cache used by fenced Markdown code.
+ * The fallback is HTML-escaped, so consumers can bind `html` through their
+ * framework sanitizer without ever interpreting raw file contents as markup.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): HighlightedPayload {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const sourceLines = source.split('\n');
+  let highlightedLines = highlightLines(source, lang);
+  if (highlightedLines && highlightedLines.length !== sourceLines.length) {
+    highlightedLines = null;
+  }
+  if (highlightedLines && payloadType === 'diff') {
+    highlightedLines = highlightedLines.map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+  return highlightedLines
+    ? { html: highlightedLines.join('\n'), highlighted: true }
+    : { html: escapeHtml(source), highlighted: false };
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
