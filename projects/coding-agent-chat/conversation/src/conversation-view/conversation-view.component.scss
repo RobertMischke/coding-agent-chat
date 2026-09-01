@@ -350,6 +350,121 @@
   word-break: normal;
   font: 11.5px/1.45 var(--font-mono, ui-monospace, SFMono-Regular, monospace);
 }
+.msg__payload--highlighted {
+  padding-inline: 0;
+  background: var(--md-code-bg, color-mix(in srgb, currentColor 5%, transparent));
+  color: var(--md-fg, currentColor);
+}
+.msg__payload--highlighted code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+:host ::ng-deep .msg__payload-line {
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 100%;
+  min-height: 1lh;
+  padding-inline: var(--studio-spacing-2, 8px);
+}
+
+/* Highlighted fragments are inserted with `[innerHTML]`, so they do not carry
+ * Angular's emulated-encapsulation attribute. Keep the deep scope anchored to
+ * this component and reuse the shared Markdown light/dark token palette. */
+:host ::ng-deep .msg__payload--highlighted .hljs-keyword,
+:host ::ng-deep .msg__payload--highlighted .hljs-literal,
+:host ::ng-deep .msg__payload--highlighted .hljs-selector-tag,
+:host ::ng-deep .msg__payload--highlighted .hljs-doctag {
+  color: var(--md-hl-keyword, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-string,
+:host ::ng-deep .msg__payload--highlighted .hljs-regexp,
+:host ::ng-deep .msg__payload--highlighted .hljs-meta .hljs-string {
+  color: var(--md-hl-string, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-number {
+  color: var(--md-hl-number, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-comment,
+:host ::ng-deep .msg__payload--highlighted .hljs-quote {
+  color: var(--md-hl-comment, currentColor);
+  font-style: italic;
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-title,
+:host ::ng-deep .msg__payload--highlighted .hljs-title.function_,
+:host ::ng-deep .msg__payload--highlighted .hljs-section {
+  color: var(--md-hl-function, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-title.class_,
+:host ::ng-deep .msg__payload--highlighted .hljs-type,
+:host ::ng-deep .msg__payload--highlighted .hljs-selector-class,
+:host ::ng-deep .msg__payload--highlighted .hljs-selector-id,
+:host ::ng-deep .msg__payload--highlighted .hljs-selector-pseudo {
+  color: var(--md-hl-type, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-built_in {
+  color: var(--md-hl-builtin, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-variable,
+:host ::ng-deep .msg__payload--highlighted .hljs-template-variable,
+:host ::ng-deep .msg__payload--highlighted .hljs-params,
+:host ::ng-deep .msg__payload--highlighted .hljs-subst {
+  color: var(--md-hl-variable, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-attr,
+:host ::ng-deep .msg__payload--highlighted .hljs-attribute,
+:host ::ng-deep .msg__payload--highlighted .hljs-property {
+  color: var(--md-hl-attr, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-tag,
+:host ::ng-deep .msg__payload--highlighted .hljs-name {
+  color: var(--md-hl-tag, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-meta,
+:host ::ng-deep .msg__payload--highlighted .hljs-symbol,
+:host ::ng-deep .msg__payload--highlighted .hljs-bullet,
+:host ::ng-deep .msg__payload--highlighted .hljs-link {
+  color: var(--md-hl-meta, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-punctuation,
+:host ::ng-deep .msg__payload--highlighted .hljs-operator {
+  color: var(--md-hl-punct, currentColor);
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-addition {
+  color: var(--md-hl-addition, var(--studio-accent-success, currentColor));
+}
+:host ::ng-deep .msg__payload--highlighted .hljs-deletion {
+  color: var(--md-hl-deletion, var(--studio-accent-6, currentColor));
+}
+
+/* Diff grammars wrap each changed/header line in one root token span. Tint its
+ * line wrapper so the visual distinction reaches the full scrollable width. */
+:host
+  ::ng-deep
+  .msg__payload--highlighted[data-payload-type='diff']
+  .msg__payload-line:has(> .hljs-addition) {
+  background: color-mix(
+    in srgb,
+    var(--md-hl-addition, var(--studio-accent-success, currentColor)) 12%,
+    transparent
+  );
+}
+:host
+  ::ng-deep
+  .msg__payload--highlighted[data-payload-type='diff']
+  .msg__payload-line:has(> .hljs-deletion) {
+  background: color-mix(
+    in srgb,
+    var(--md-hl-deletion, var(--studio-accent-6, currentColor)) 12%,
+    transparent
+  );
+}
+:host
+  ::ng-deep
+  .msg__payload--highlighted[data-payload-type='diff']
+  .msg__payload-line:has(> .hljs-meta) {
+  background: color-mix(in srgb, var(--severity-info, currentColor) 8%, transparent);
+}
 .msg__payload--raw[data-payload-type='diff'] {
   border-left-color: color-mix(in srgb, var(--studio-accent-success, #22c55e) 70%, transparent);
 }
