@@ -275,6 +275,52 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads supported by the shared highlight entry point. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a renderer-safe typed payload with the same engine used for
+ * fenced Markdown code. The returned HTML contains escaped source text and
+ * class-only `hljs-*` spans, so callers may pass it through their framework's
+ * HTML sanitizer. `null` preserves a plain-text fallback for unknown
+ * languages, oversized payloads, or a tokenizer failure.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, lang);
+
+  // Keep the same one-output-line-per-source-line invariant as fenced code.
+  // If a grammar ever violates it, rendering falls back to readable text.
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11 marks +/- lines but leaves git hunk ranges unclassified.
+  // Give those already-escaped lines the conventional metadata token so the
+  // visual diff can distinguish @@ headers without parsing or re-tokenizing
+  // the source independently of the shared engine.
+  if (payloadType === 'diff') {
+    return highlighted
+      .map((line, index) =>
+        /^@@/.test(sourceLines[index]) && !line.includes('hljs-meta')
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      )
+      .join('\n');
+  }
+  return highlighted.join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
