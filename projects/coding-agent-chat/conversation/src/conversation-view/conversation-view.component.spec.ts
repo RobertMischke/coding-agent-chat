@@ -268,6 +268,50 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed code, diff, JSON, and HTML payloads', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = ['public class Foo', '{', '    public int X { get; set; }', '}'].join('\n');
+    const json = '{"ok":true}';
+    const html = '<!doctype html><html><body><p>Fixture</p></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', json, {
+        content: [{ type: 'json', text: json }],
+      }),
+      msg('message.taskAgent', html, {
+        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const renderedDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const renderedCode = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const renderedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const renderedHtml = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(renderedDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(renderedDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(renderedDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@');
+    expect(renderedCode?.classList).toContain('md-code--hl');
+    expect(renderedCode?.querySelector('[class^="hljs-"]')).toBeTruthy();
+    expect(renderedCode?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(renderedJson?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(renderedHtml?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(renderedHtml?.querySelector('p')).toBeNull();
+    expect(renderedHtml?.textContent).toBe(html);
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',
