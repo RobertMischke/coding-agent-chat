@@ -11,7 +11,11 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload as highlightTypedPayload,
+  MarkdownViewComponent,
+  type HighlightedPayload,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -830,6 +834,27 @@ export class ConversationViewComponent {
         return '🛡';
       case 'message.supportingAgent':
         return '🧰';
+    }
+  }
+
+  /**
+   * Route typed source payloads through the Markdown package's shared,
+   * bounded highlighter. A null result keeps the template on its readable
+   * plain-text fallback (unknown grammar, oversized source, or tokenizer
+   * failure). Raw logs deliberately never enter this path.
+   */
+  highlightPayload(payload: MessageContentPayload): HighlightedPayload | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightTypedPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightTypedPayload(payload.text, payload.type);
+      case 'markdown':
+      case 'image-reference':
+      case 'raw-log':
+        return null;
     }
   }
 

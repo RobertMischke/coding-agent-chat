@@ -356,6 +356,43 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+.msg__payload-highlight {
+  min-width: 0;
+}
+
+/* `.markdown-body` intentionally wraps the generated spans so every standard
+ * hljs token reuses the central light/dark palette from cac-theme.scss. */
+
+/* The diff grammar wraps each full source line. Inline blocks preserve the
+ * preformatted line breaks while extending the tint across the code viewport. */
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] {
+  .hljs-addition,
+  .hljs-deletion,
+  .hljs-meta {
+    display: inline-block;
+    min-width: 100%;
+  }
+  .hljs-addition {
+    color: var(--md-hl-addition, #a6e3a1);
+    background: color-mix(
+      in srgb,
+      var(--studio-accent-success, var(--md-hl-addition, #a6e3a1)) 12%,
+      transparent
+    );
+  }
+  .hljs-deletion {
+    color: var(--md-hl-deletion, #f38ba8);
+    background: color-mix(
+      in srgb,
+      var(--studio-accent-6, var(--md-hl-deletion, #f38ba8)) 12%,
+      transparent
+    );
+  }
+  .hljs-meta {
+    color: var(--md-hl-meta, #f5c2e7);
+    background: color-mix(in srgb, var(--severity-info, #89b4fa) 8%, transparent);
+  }
+}
 .msg__payload--image {
   width: fit-content;
 }

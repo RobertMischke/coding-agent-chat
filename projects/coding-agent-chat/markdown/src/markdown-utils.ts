@@ -72,6 +72,17 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads that can use the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/** Sanitizer-safe, class-based highlight output for one typed payload. */
+export interface HighlightedPayload {
+  /** Canonical highlight.js grammar used for the payload. */
+  readonly language: string;
+  /** Escaped source decorated only with class-based `hljs-*` spans. */
+  readonly html: string;
+}
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +284,54 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe, non-Markdown payload through the same bounded,
+ * cached lowlight instance as fenced Markdown code.
+ *
+ * The returned string contains escaped source plus class-only `hljs-*` spans,
+ * so consumers can pass it through their normal HTML sanitizer. `null` means
+ * the caller must render the original text as plain monospace: this covers an
+ * unknown code language, the size guard, tokenizer errors, and any unexpected
+ * per-line imbalance.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): HighlightedPayload | null {
+  const requestedLanguage =
+    payloadType === 'diff'
+      ? 'diff'
+      : payloadType === 'json'
+        ? 'json'
+        : payloadType === 'html-file'
+          ? 'xml'
+          : language?.trim().toLowerCase() || null;
+  if (!requestedLanguage) return null;
+
+  const sourceLines = source.split('\n');
+  const lines = highlightLines(source, requestedLanguage);
+  if (!lines || lines.length !== sourceLines.length) return null;
+
+  // highlight.js' diff grammar marks +/- lines but leaves @@ hunk headers as
+  // plain text in the currently supported version. Preserve the grammar's
+  // output and add the standard meta token to those already-escaped lines so
+  // renderers can distinguish all three visual diff states consistently.
+  const decoratedLines =
+    payloadType === 'diff'
+      ? lines.map((line, index) =>
+          /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+            ? `<span class="hljs-meta">${line}</span>`
+            : line,
+        )
+      : lines;
+
+  return {
+    language: HLJS_LANG[requestedLanguage] ?? requestedLanguage,
+    html: decoratedLines.join('\n'),
+  };
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */

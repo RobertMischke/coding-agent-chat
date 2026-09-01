@@ -171,13 +171,26 @@
                               </figure>
                             }
                             @default {
-                              <pre
-                                class="msg__payload msg__payload--raw"
-                                [attr.data-payload-type]="payload.type"
-                                [attr.data-language]="
-                                  payload.type === 'code-block' ? (payload.language ?? null) : null
-                                "
-                              ><code>{{ payload.text }}</code></pre>
+                              @if (highlightPayload(payload); as highlighted) {
+                                <div class="msg__payload-highlight markdown-body">
+                                  <pre
+                                    class="msg__payload msg__payload--raw msg__payload--highlighted md-code md-code--hl"
+                                    [attr.data-payload-type]="payload.type"
+                                    [attr.data-language]="highlighted.language"
+                                    [attr.data-lang]="highlighted.language"
+                                  ><code [innerHTML]="highlighted.html"></code></pre>
+                                </div>
+                              } @else {
+                                <pre
+                                  class="msg__payload msg__payload--raw"
+                                  [attr.data-payload-type]="payload.type"
+                                  [attr.data-language]="
+                                    payload.type === 'code-block'
+                                      ? (payload.language ?? null)
+                                      : null
+                                  "
+                                ><code>{{ payload.text }}</code></pre>
+                              }
                             }
                           }
                         }
