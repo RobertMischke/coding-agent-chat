@@ -275,6 +275,66 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+
+/** Typed non-Markdown payloads that use the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/** Sanitizer-safe, class-based HTML produced for one typed payload. */
+export interface HighlightPayloadResult {
+  /** Escaped source with optional `hljs-*` spans; safe to pass to Angular's `[innerHTML]`. */
+  readonly html: string;
+  /** True only when a registered grammar produced the returned token spans. */
+  readonly highlighted: boolean;
+  /** Normalized fence/grammar label used for the payload. */
+  readonly language: string | null;
+}
+
+/**
+ * Highlight a typed non-Markdown payload with the same lowlight instance,
+ * grammar map, size guard, per-line balancing, and LRU cache as fenced
+ * Markdown code. Unknown languages and oversized payloads return escaped,
+ * readable source without highlight classes.
+ */
+export function highlightPayload(
+  source: string,
+  type: HighlightPayloadType,
+  language?: string | null,
+): HighlightPayloadResult {
+  const normalizedLanguage = payloadLanguage(type, language);
+  let highlighted = highlightLines(source, normalizedLanguage);
+  const sourceLines = source.split('\n');
+  if (highlighted && highlighted.length !== sourceLines.length) highlighted = null;
+  if (type === 'diff' && highlighted) {
+    highlighted = highlighted.map((line, index) => {
+      // highlight.js' diff grammar recognizes `@@ -1,1 +1,1 @@`, but Git
+      // commonly omits a count of one (`@@ -1 +1 @@`). Keep that valid short
+      // form visually aligned with the grammar's existing `hljs-meta` output.
+      if (/^@@\s.+\s@@/.test(sourceLines[index] ?? '') && !line.includes('hljs-meta')) {
+        return `<span class="hljs-meta">${line}</span>`;
+      }
+      return line;
+    });
+  }
+  return {
+    html: highlighted ? highlighted.join('\n') : escapeHtml(source),
+    highlighted: highlighted !== null,
+    language: normalizedLanguage,
+  };
+}
+
+function payloadLanguage(type: HighlightPayloadType, language?: string | null): string | null {
+  switch (type) {
+    case 'code-block':
+      return language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];

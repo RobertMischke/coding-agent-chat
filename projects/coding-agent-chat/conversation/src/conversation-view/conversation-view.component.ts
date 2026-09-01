@@ -11,7 +11,11 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload,
+  MarkdownViewComponent,
+  type HighlightPayloadResult,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -802,6 +806,22 @@ export class ConversationViewComponent {
   /** Short, human model label (e.g. "sonnet 5") — matches the composer chip;
    *  the full id sits on the badge's tooltip. */
   trackByEvent = (_: number, row: RenderRow): string => row.id;
+
+  /** Highlight only renderer-safe typed payloads; raw logs remain plain text. */
+  highlightedPayload(payload: MessageContentPayload): HighlightPayloadResult | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightPayload(payload.text, payload.type);
+      case 'markdown':
+      case 'image-reference':
+      case 'raw-log':
+        return null;
+    }
+  }
 
   actorLabel(kind: MessageEvent['kind']): string {
     switch (kind) {

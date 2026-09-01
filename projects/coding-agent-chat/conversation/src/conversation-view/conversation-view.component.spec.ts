@@ -252,18 +252,44 @@ describe('ConversationViewComponent', () => {
     expect(agentRow.textContent).toContain('Flag added, wiring the projection next.');
   });
 
-  it('renders typed raw file payloads without passing them through Markdown', async () => {
+  it('syntax-highlights typed code, diff, JSON, and HTML payloads without parsing Markdown', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const json = '{"ok":true}';
     const html = '<!doctype html><html><body><ul><li>literal source</li></ul></body></html>';
     const fixture = await render([
-      msg('message.taskAgent', html, {
-        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      msg('message.taskAgent', 'Typed payload matrix', {
+        content: [
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'json', text: json },
+          { type: 'html-file', text: html, mediaType: 'text/html' },
+        ],
       }),
     ]);
     const host = fixture.nativeElement as HTMLElement;
-    const raw = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const renderedDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const renderedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const renderedHtml = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
 
-    expect(raw?.tagName).toBe('PRE');
-    expect(raw?.textContent).toBe(html);
+    expect(code?.classList).toContain('md-code--hl');
+    expect(code?.querySelector('[class^="hljs-"]')).toBeTruthy();
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(renderedDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(renderedDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(renderedDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(renderedJson?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(renderedHtml?.tagName).toBe('PRE');
+    expect(renderedHtml?.textContent).toBe(html);
+    expect(renderedHtml?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });

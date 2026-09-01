@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -392,6 +397,42 @@ describe('markdownToHtml', () => {
         linkTaskReferencesInHtml(input, [{ label: '   ', taskKey: 'agent-taskboard::blank' }]),
       ).toBe(input);
     });
+  });
+});
+
+describe('highlightPayload', () => {
+  it('maps typed payloads to the shared grammars and emits class-based tokens', () => {
+    const diff = highlightPayload('-old\n+new\n@@ -1 +1 @@', 'diff');
+    const csharp = highlightPayload(
+      'public class Foo { public int X { get; set; } }',
+      'code-block',
+      'csharp',
+    );
+    const json = highlightPayload('{"ok":true}', 'json');
+    const html = highlightPayload('<main data-id="fixture">Hello</main>', 'html-file');
+
+    expect(diff.highlighted).toBe(true);
+    expect(diff.html).toContain('hljs-deletion');
+    expect(diff.html).toContain('hljs-addition');
+    expect(diff.html).toContain('hljs-meta');
+    expect(csharp.html).toContain('hljs-keyword');
+    expect(json.html).toContain('hljs-attr');
+    expect(html.html).toContain('hljs-tag');
+  });
+
+  it('falls back to escaped readable source for unknown and oversized code', () => {
+    const unknown = highlightPayload('<script>alert(1)</script>', 'code-block', 'wat');
+    const oversizedSource = `public class Big { ${'x'.repeat(60_000)} }`;
+    const oversized = highlightPayload(oversizedSource, 'code-block', 'csharp');
+
+    expect(unknown).toEqual({
+      html: '&lt;script&gt;alert(1)&lt;/script&gt;',
+      highlighted: false,
+      language: 'wat',
+    });
+    expect(oversized.highlighted).toBe(false);
+    expect(oversized.html).toBe(oversizedSource);
+    expect(oversized.html).not.toContain('hljs-');
   });
 });
 
