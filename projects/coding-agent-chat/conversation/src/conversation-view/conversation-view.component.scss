@@ -350,6 +350,109 @@
   word-break: normal;
   font: 11.5px/1.45 var(--font-mono, ui-monospace, SFMono-Regular, monospace);
 }
+.msg__payload--highlighted {
+  color: var(--md-fg, currentColor);
+}
+.msg__payload--highlighted code {
+  display: block;
+  min-width: max-content;
+}
+
+/* Highlighted spans are inserted through Angular's sanitizer and therefore do
+ * not carry emulated-encapsulation attributes. Keep this scoped to typed
+ * payloads while reusing the central Markdown light/dark token palette. */
+:host ::ng-deep .msg__payload--highlighted {
+  .hljs-keyword,
+  .hljs-literal,
+  .hljs-selector-tag,
+  .hljs-doctag {
+    color: var(--md-hl-keyword);
+  }
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-meta .hljs-string {
+    color: var(--md-hl-string);
+  }
+  .hljs-number {
+    color: var(--md-hl-number);
+  }
+  .hljs-comment,
+  .hljs-quote {
+    color: var(--md-hl-comment);
+    font-style: italic;
+  }
+  .hljs-title,
+  .hljs-title.function_,
+  .hljs-section {
+    color: var(--md-hl-function);
+  }
+  .hljs-title.class_,
+  .hljs-type,
+  .hljs-selector-class,
+  .hljs-selector-id,
+  .hljs-selector-pseudo {
+    color: var(--md-hl-type);
+  }
+  .hljs-built_in {
+    color: var(--md-hl-builtin);
+  }
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-params,
+  .hljs-subst {
+    color: var(--md-hl-variable);
+  }
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-property {
+    color: var(--md-hl-attr);
+  }
+  .hljs-tag,
+  .hljs-name {
+    color: var(--md-hl-tag);
+  }
+  .hljs-meta,
+  .hljs-meta .hljs-keyword,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-link {
+    color: var(--md-hl-meta);
+  }
+  .hljs-punctuation,
+  .hljs-operator {
+    color: var(--md-hl-punct);
+  }
+  .hljs-addition {
+    color: var(--md-hl-addition);
+  }
+  .hljs-deletion {
+    color: var(--md-hl-deletion);
+  }
+  .hljs-emphasis {
+    font-style: italic;
+  }
+  .hljs-strong {
+    font-weight: 600;
+  }
+}
+
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] {
+  .hljs-addition,
+  .hljs-deletion,
+  .hljs-meta {
+    display: inline-block;
+    min-width: 100%;
+  }
+  .hljs-addition {
+    background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+  }
+  .hljs-deletion {
+    background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+  }
+  .hljs-meta {
+    background: color-mix(in srgb, var(--md-hl-meta) 9%, transparent);
+  }
+}
 .msg__payload--raw[data-payload-type='diff'] {
   border-left-color: color-mix(in srgb, var(--studio-accent-success, #22c55e) 70%, transparent);
 }
