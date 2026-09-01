@@ -247,6 +247,34 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
+/** Typed non-Markdown payloads that use the shared syntax-highlighting engine. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a renderer-safe typed payload with the same registered grammars,
+ * size guard, balanced-line output and LRU cache used by fenced Markdown code.
+ *
+ * Every returned line contains escaped source text plus class-only `hljs-*`
+ * spans, so consumers may bind it through their framework's HTML sanitizer.
+ * `null` asks the consumer to render plain text when the language is missing
+ * or unknown, the payload exceeds the size guard, or highlighting fails.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): readonly string[] | null {
+  const lang =
+    payloadType === 'code-block'
+      ? (language?.trim().toLowerCase() ?? null)
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  return highlightLines(source, lang);
+}
+
 function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];
@@ -264,6 +292,10 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   let result: readonly string[] | null;
   try {
     result = hastToLines(lowlight.highlight(grammar, source));
+    // highlight.js' diff grammar classifies +/- lines but leaves @@ hunk
+    // headers untagged. Normalize that one semantic line shape so both fenced
+    // Markdown diffs and typed payloads expose the promised visual meta class.
+    if (grammar === 'diff') result = highlightDiffHunkHeaders(source, result);
   } catch {
     result = null;
   }
@@ -273,6 +305,17 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+function highlightDiffHunkHeaders(
+  source: string,
+  highlighted: readonly string[],
+): readonly string[] {
+  const sourceLines = source.split('\n');
+  if (sourceLines.length !== highlighted.length) return highlighted;
+  return highlighted.map((line, index) =>
+    /^@@(?:\s|$)/.test(sourceLines[index] ?? '') ? `<span class="hljs-meta">${line}</span>` : line,
+  );
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */

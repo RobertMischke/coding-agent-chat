@@ -2,7 +2,44 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('maps typed payloads to the shared diff, JSON, XML, and source grammars', () => {
+    const diff = highlightPayload(
+      [
+        'diff --git a/a.txt b/a.txt',
+        '--- a/a.txt',
+        '+++ b/a.txt',
+        '@@ -1 +1 @@',
+        '-old',
+        '+new',
+      ].join('\n'),
+      'diff',
+    );
+    const json = highlightPayload('{"ok":true}', 'json');
+    const html = highlightPayload('<main data-ok="true">safe</main>', 'html-file');
+    const csharp = highlightPayload('public class Foo { }', 'code-block', 'CSHARP');
+
+    expect(diff?.join('\n')).toContain('hljs-deletion');
+    expect(diff?.join('\n')).toContain('hljs-addition');
+    expect(diff?.join('\n')).toContain('hljs-meta');
+    expect(json?.join('\n')).toContain('hljs-attr');
+    expect(html?.join('\n')).toContain('hljs-tag');
+    expect(html?.join('\n')).not.toContain('<main');
+    expect(csharp?.join('\n')).toContain('hljs-keyword');
+  });
+
+  it('returns null for an unknown source grammar or a payload over the shared size guard', () => {
+    expect(highlightPayload('readable source', 'code-block', 'unknown-lang')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'json')).toBeNull();
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {

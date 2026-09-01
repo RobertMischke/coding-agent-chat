@@ -268,6 +268,68 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed source, diff, JSON, and HTML payloads', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', 'Typed payload matrix', {
+        content: [
+          { type: 'diff', text: diff, format: 'git' },
+          {
+            type: 'code-block',
+            text: 'public class Foo { public int X { get; set; } }',
+            language: 'csharp',
+          },
+          { type: 'json', text: '{"ok":true}' },
+          {
+            type: 'html-file',
+            text: '<!doctype html><html><body>safe</body></html>',
+            mediaType: 'text/html',
+          },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(diffPayload?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(diffPayload?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(diffPayload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(codePayload?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(codePayload?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
+  });
+
+  it('keeps unknown and oversized typed source payloads as readable plain text', async () => {
+    const oversized = 'x'.repeat(60_001);
+    const fixture = await render([
+      msg('message.taskAgent', 'Fallback payloads', {
+        content: [
+          { type: 'code-block', text: 'plain source', language: 'unknown-lang' },
+          { type: 'json', text: oversized },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const payloads = host.querySelectorAll<HTMLElement>('.msg__payload--raw');
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].textContent).toBe('plain source');
+    expect(payloads[0].querySelector('[class*="hljs-"]')).toBeNull();
+    expect(payloads[1].textContent).toBe(oversized);
+    expect(payloads[1].querySelector('[class*="hljs-"]')).toBeNull();
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',
