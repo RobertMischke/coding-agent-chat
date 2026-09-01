@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightLines, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -309,6 +309,36 @@ export class ConversationViewComponent {
         if (userId !== null) untracked(() => this.stick()?.scrollToBottom());
       }
     });
+  }
+
+  /**
+   * Highlight renderer-safe typed payloads with the markdown entry point's
+   * shared lowlight instance. Returning null deliberately keeps raw logs,
+   * unknown grammars, oversized payloads, and any line-balance mismatch on
+   * the template's plain text-interpolation path.
+   */
+  highlightPayload(payload: MessageContentPayload): string | null {
+    let language: string | null;
+    switch (payload.type) {
+      case 'code-block':
+        language = payload.language?.trim().toLowerCase() ?? null;
+        break;
+      case 'diff':
+        language = 'diff';
+        break;
+      case 'json':
+        language = 'json';
+        break;
+      case 'html-file':
+        language = 'xml';
+        break;
+      default:
+        return null;
+    }
+
+    const highlighted = highlightLines(payload.text, language);
+    if (!highlighted || highlighted.length !== payload.text.split('\n').length) return null;
+    return highlighted.join('\n');
   }
 
   /**

@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightLines,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -218,6 +223,12 @@ describe('markdownToHtml', () => {
   });
 
   describe('language hint capture', () => {
+    it('marks single-line git diff hunk ranges as metadata', () => {
+      expect(highlightLines('@@ -1 +1 @@', 'diff')).toEqual([
+        '<span class="hljs-meta">@@ -1 +1 @@</span>',
+      ]);
+    });
+
     it('captures the fence language tag and syntax-highlights the body', () => {
       const md = ['```ts', 'const x: number = 1;', '```'].join('\n');
       const html = markdownToHtml(md);

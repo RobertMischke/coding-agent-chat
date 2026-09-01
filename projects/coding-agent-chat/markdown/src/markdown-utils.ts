@@ -247,7 +247,12 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
-function highlightLines(source: string, lang: string | null): readonly string[] | null {
+/**
+ * Return sanitizer-safe, class-based highlight markup balanced per source
+ * line, or null when the language is unknown or the source exceeds the
+ * synchronous highlighting guard.
+ */
+export function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];
   if (!grammar || !lowlight.registered(grammar)) return null;
@@ -264,6 +269,7 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   let result: readonly string[] | null;
   try {
     result = hastToLines(lowlight.highlight(grammar, source));
+    if (grammar === 'diff') result = markUnclassifiedDiffHunks(source, result);
   } catch {
     result = null;
   }
@@ -273,6 +279,24 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * highlight.js does not classify valid single-line git hunk ranges such as
+ * `@@ -1 +1 @@` (the omitted count means one line). Preserve the engine's
+ * output and add only the missing standard meta class so those hunk headers
+ * receive the same visual treatment as counted ranges.
+ */
+function markUnclassifiedDiffHunks(
+  source: string,
+  highlighted: readonly string[],
+): readonly string[] {
+  const sourceLines = source.split('\n');
+  return highlighted.map((line, index) =>
+    /^@@.*@@/.test(sourceLines[index] ?? '') && !line.includes('hljs-meta')
+      ? `<span class="hljs-meta">${line}</span>`
+      : line,
+  );
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
