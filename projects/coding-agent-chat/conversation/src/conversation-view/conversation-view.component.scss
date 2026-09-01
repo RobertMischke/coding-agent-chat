@@ -356,6 +356,36 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+.msg__payload--highlighted {
+  color: var(--md-fg, currentColor);
+  background: var(--md-code-bg, color-mix(in srgb, currentColor 5%, transparent));
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+/* `markdown-body` reuses the central light/dark `--md-hl-*` token rules for
+ * generated hljs spans. Diff spans come from sanitized innerHTML and therefore
+ * need ::ng-deep only for the line-level tints owned by this component. */
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] {
+  .hljs-addition,
+  .hljs-deletion,
+  .hljs-meta {
+    display: inline-block;
+    min-width: 100%;
+  }
+  .hljs-addition {
+    color: var(--md-hl-addition);
+    background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+  }
+  .hljs-deletion {
+    color: var(--md-hl-deletion);
+    background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+  }
+  .hljs-meta {
+    color: var(--md-hl-meta);
+    background: color-mix(in srgb, var(--md-hl-meta) 9%, transparent);
+  }
+}
 .msg__payload--image {
   width: fit-content;
 }
