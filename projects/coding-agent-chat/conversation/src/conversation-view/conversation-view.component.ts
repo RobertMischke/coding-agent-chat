@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightCodeToHtml, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -249,6 +249,26 @@ export class ConversationViewComponent {
   readonly variant = input<'framed' | 'embedded'>('embedded');
   readonly showHeader = input<boolean>(true);
   readonly toolsVisible = input<boolean | null>(null);
+
+  /**
+   * Render typed source payloads with the Markdown entry point's existing
+   * highlighter. Null preserves the plain-text path for raw logs, unknown
+   * grammars, and blocks rejected by the shared size guard.
+   */
+  protected highlightPayload(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightCodeToHtml(payload.text, payload.language ?? null);
+      case 'diff':
+        return highlightCodeToHtml(payload.text, 'diff');
+      case 'json':
+        return highlightCodeToHtml(payload.text, 'json');
+      case 'html-file':
+        return highlightCodeToHtml(payload.text, 'xml');
+      default:
+        return null;
+    }
+  }
 
   /**
    * When true the feed windows itself — only the rows near the viewport are

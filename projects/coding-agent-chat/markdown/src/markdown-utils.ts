@@ -275,6 +275,34 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/**
+ * Highlight a complete source block with the same registered grammars, size
+ * guard, cache, and balanced per-line spans used by fenced Markdown code.
+ * Source text is HTML-escaped before it is placed between the class-only
+ * `hljs-*` spans, so consumers can pass the result through their framework's
+ * normal HTML sanitizer. A null result means the caller must render the source
+ * as plain text.
+ */
+export function highlightCodeToHtml(source: string, lang: string | null): string | null {
+  const normalizedLang = lang?.trim().toLowerCase() || null;
+  let highlighted = highlightLines(source, normalizedLang);
+  if (!highlighted || highlighted.length !== source.split('\n').length) return null;
+  // highlight.js 11 marks +/- lines in git diffs but leaves @@ hunk
+  // coordinates unclassified. Complete the typed visual-diff shape here
+  // without changing the established Markdown fence renderer.
+  if (normalizedLang === 'diff' || normalizedLang === 'patch') {
+    highlighted = markDiffHunkLines(source, highlighted);
+  }
+  return highlighted.join('\n');
+}
+
+function markDiffHunkLines(source: string, highlighted: readonly string[]): readonly string[] {
+  const sourceLines = source.split('\n');
+  return highlighted.map((line, index) =>
+    /^@@@?\s/.test(sourceLines[index] ?? '') ? `<span class="hljs-meta">${line}</span>` : line,
+  );
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
