@@ -2,7 +2,42 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the shared grammars and returns escaped, balanced line markup', () => {
+    const source = ['public class Foo', '{', '    public int X { get; set; }', '}'].join('\n');
+    const html = highlightPayload(source, 'code-block', 'csharp');
+
+    expect(html).toContain('hljs-keyword');
+    expect((html?.match(/\n/g) ?? []).length).toBe(3);
+    expect((html?.match(/<span/g) ?? []).length).toBe(
+      (html?.match(/<\/span>/g) ?? []).length,
+    );
+
+    const htmlFile = highlightPayload('<script>alert("no")</script>', 'html-file');
+    expect(htmlFile).toContain('&lt;');
+    expect(htmlFile).not.toContain('<script>');
+  });
+
+  it('returns null for unknown grammars and content over the shared size guard', () => {
+    expect(highlightPayload('plain text', 'code-block', 'unknown-grammar')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'json')).toBeNull();
+  });
+
+  it('adds the missing metadata class to unified-diff hunk headers', () => {
+    const html = highlightPayload('@@ -1 +1 @@\n-old\n+new', 'diff');
+
+    expect(html).toContain('<span class="hljs-meta">@@ -1 +1 @@</span>');
+    expect(html).toContain('hljs-deletion');
+    expect(html).toContain('hljs-addition');
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
