@@ -356,6 +356,105 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+.msg__payload--highlighted code {
+  display: block;
+}
+
+/* innerHTML tokens need a scoped deep selector; colors reuse the shared
+ * fenced-Markdown palette, which changes with the nearest light/dark theme. */
+.msg__payload--highlighted ::ng-deep {
+  .hljs-keyword,
+  .hljs-literal,
+  .hljs-selector-tag,
+  .hljs-doctag {
+    color: var(--md-hl-keyword);
+  }
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-meta .hljs-string {
+    color: var(--md-hl-string);
+  }
+  .hljs-number {
+    color: var(--md-hl-number);
+  }
+  .hljs-comment,
+  .hljs-quote {
+    color: var(--md-hl-comment);
+    font-style: italic;
+  }
+  .hljs-title,
+  .hljs-title.function_,
+  .hljs-section {
+    color: var(--md-hl-function);
+  }
+  .hljs-title.class_,
+  .hljs-type,
+  .hljs-selector-class,
+  .hljs-selector-id,
+  .hljs-selector-pseudo {
+    color: var(--md-hl-type);
+  }
+  .hljs-built_in {
+    color: var(--md-hl-builtin);
+  }
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-params,
+  .hljs-subst {
+    color: var(--md-hl-variable);
+  }
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-property {
+    color: var(--md-hl-attr);
+  }
+  .hljs-tag,
+  .hljs-name {
+    color: var(--md-hl-tag);
+  }
+  .hljs-meta,
+  .hljs-meta .hljs-keyword,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-link {
+    color: var(--md-hl-meta);
+  }
+  .hljs-punctuation,
+  .hljs-operator {
+    color: var(--md-hl-punct);
+  }
+  .hljs-addition {
+    color: var(--md-hl-addition);
+  }
+  .hljs-deletion {
+    color: var(--md-hl-deletion);
+  }
+  .hljs-emphasis {
+    font-style: italic;
+  }
+  .hljs-strong {
+    font-weight: 600;
+  }
+}
+
+/* The diff grammar marks whole lines; tint those spans without adding an accent bar. */
+.msg__payload--highlighted[data-payload-type='diff'] ::ng-deep {
+  .hljs-addition,
+  .hljs-deletion,
+  .hljs-meta {
+    display: inline-block;
+    min-width: 100%;
+  }
+  .hljs-addition {
+    background: color-mix(in srgb, var(--md-hl-addition) 11%, transparent);
+  }
+  .hljs-deletion {
+    background: color-mix(in srgb, var(--md-hl-deletion) 11%, transparent);
+  }
+  .hljs-meta {
+    background: color-mix(in srgb, var(--md-hl-meta) 8%, transparent);
+  }
+}
 .msg__payload--image {
   width: fit-content;
 }
