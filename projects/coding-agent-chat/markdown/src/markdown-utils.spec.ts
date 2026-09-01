@@ -2,7 +2,34 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the shared grammar aliases and escapes source markup', () => {
+    const highlighted = highlightPayload('public class Foo<T> {}', 'code-block', 'CSHARP');
+
+    expect(highlighted).toContain('hljs-keyword');
+    expect(highlighted).toContain('&lt;');
+    expect(highlighted).toContain('&gt;');
+    expect(highlighted).not.toContain('<T>');
+  });
+
+  it('falls back for unknown grammars and payloads over the shared size guard', () => {
+    expect(highlightPayload('plain source', 'code-block', 'unknown-grammar')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'code-block', 'csharp')).toBeNull();
+  });
+
+  it('classifies compact git hunk ranges with the standard meta token', () => {
+    expect(highlightPayload('@@ -1 +1 @@', 'diff')).toBe(
+      '<span class="hljs-meta">@@ -1 +1 @@</span>',
+    );
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
