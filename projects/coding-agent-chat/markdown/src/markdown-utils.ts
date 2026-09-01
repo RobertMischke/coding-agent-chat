@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,42 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a typed, non-Markdown payload with the same lowlight instance,
+ * grammar registry, size guard, line balancing, and LRU cache used by fenced
+ * Markdown code. The returned markup contains only escaped source text and
+ * lowlight's class-based `hljs-*` spans, so callers may pass it through their
+ * framework HTML sanitizer. A null result means the caller must render the
+ * original source as plain text.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang = payloadType === 'code-block'
+    ? language?.trim().toLowerCase() || null
+    : payloadType === 'diff'
+      ? 'diff'
+      : payloadType === 'json'
+        ? 'json'
+        : 'xml';
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  // highlight.js 11's diff grammar leaves hunk ranges as plain text. Preserve
+  // the grammar output but tag those structural lines so all supported engine
+  // versions give the conversation renderer a distinct visual hunk header.
+  const lines = payloadType === 'diff'
+    ? highlighted.map((line, index) =>
+        sourceLines[index]?.startsWith('@@')
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      )
+    : highlighted;
+  return lines.join('\n');
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
