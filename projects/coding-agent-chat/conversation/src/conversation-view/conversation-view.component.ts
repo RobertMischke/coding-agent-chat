@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -695,6 +695,25 @@ export class ConversationViewComponent {
   });
 
   readonly hasContent = computed(() => this.rows().length > 0);
+
+  /**
+   * Return class-only highlighted HTML for typed source payloads. A null result
+   * keeps the template on its interpolated plain-text fallback.
+   */
+  highlightedPayload(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightPayload(payload.text, payload.type);
+      case 'markdown':
+      case 'image-reference':
+      case 'raw-log':
+        return null;
+    }
+  }
 
   /**
    * The rows the template actually loops over. In non-virtualised mode this
