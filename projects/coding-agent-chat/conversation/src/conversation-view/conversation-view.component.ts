@@ -11,7 +11,10 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload as highlightTypedPayload,
+  MarkdownViewComponent,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -830,6 +833,23 @@ export class ConversationViewComponent {
         return '🛡';
       case 'message.supportingAgent':
         return '🧰';
+    }
+  }
+
+  /**
+   * Reuse the Markdown package's guarded highlighter for typed source
+   * payloads. A null result deliberately keeps the existing plain-text path.
+   */
+  highlightPayload(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightTypedPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightTypedPayload(payload.text, payload.type);
+      default:
+        return null;
     }
   }
 

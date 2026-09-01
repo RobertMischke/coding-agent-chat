@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads that can reuse the Markdown syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,44 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe typed payload with the Markdown entry point's
+ * registered grammars, size guard, line balancing, and LRU cache.
+ *
+ * The returned HTML contains only escaped source text and fixed `hljs-*`
+ * class spans, so consumers can pass it through their framework sanitizer.
+ * `null` means the caller must render the original source as plain text.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  if (payloadType !== 'diff') return highlighted.join('\n');
+
+  // highlight.js' diff grammar recognises only comma-form hunk ranges
+  // (`@@ -1,1 +1,1 @@`). Git also emits compact single-line ranges such as
+  // `@@ -1 +1 @@`; retain the grammar output and tag only that missed shape.
+  return highlighted
+    .map((line, index) =>
+      /^@@\s.+\s@@/.test(sourceLines[index]) && !line.includes('class="hljs-meta"')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    )
+    .join('\n');
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
