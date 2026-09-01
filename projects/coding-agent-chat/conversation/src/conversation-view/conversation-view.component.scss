@@ -356,6 +356,96 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Typed source payloads reuse the markdown highlighter's class-only token
+ * output and palette. The custom properties switch with the central light /
+ * dark theme scopes, keeping fenced Markdown and standalone payloads aligned. */
+:host ::ng-deep .msg__payload--highlighted {
+  color: var(--md-fg, inherit);
+
+  :is(.hljs-keyword, .hljs-literal, .hljs-selector-tag, .hljs-doctag) {
+    color: var(--md-hl-keyword, currentColor);
+  }
+  :is(.hljs-string, .hljs-regexp, .hljs-meta .hljs-string) {
+    color: var(--md-hl-string, currentColor);
+  }
+  .hljs-number {
+    color: var(--md-hl-number, currentColor);
+  }
+  :is(.hljs-comment, .hljs-quote) {
+    color: var(--md-hl-comment, currentColor);
+    font-style: italic;
+  }
+  :is(.hljs-title, .hljs-title.function_, .hljs-section) {
+    color: var(--md-hl-function, currentColor);
+  }
+  :is(
+    .hljs-title.class_,
+    .hljs-type,
+    .hljs-selector-class,
+    .hljs-selector-id,
+    .hljs-selector-pseudo
+  ) {
+    color: var(--md-hl-type, currentColor);
+  }
+  .hljs-built_in {
+    color: var(--md-hl-builtin, currentColor);
+  }
+  :is(.hljs-variable, .hljs-template-variable, .hljs-params, .hljs-subst) {
+    color: var(--md-hl-variable, currentColor);
+  }
+  :is(.hljs-attr, .hljs-attribute, .hljs-property) {
+    color: var(--md-hl-attr, currentColor);
+  }
+  :is(.hljs-tag, .hljs-name) {
+    color: var(--md-hl-tag, currentColor);
+  }
+  :is(.hljs-meta, .hljs-meta .hljs-keyword, .hljs-symbol, .hljs-bullet, .hljs-link) {
+    color: var(--md-hl-meta, currentColor);
+  }
+  :is(.hljs-punctuation, .hljs-operator) {
+    color: var(--md-hl-punct, currentColor);
+  }
+  .hljs-emphasis {
+    font-style: italic;
+  }
+  .hljs-strong {
+    font-weight: 600;
+  }
+}
+
+/* Diff grammar tokens own complete source lines, so stretching the spans
+ * paints a quiet full-line tint while preserving horizontal scrolling. */
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] {
+  :is(.hljs-addition, .hljs-deletion, .hljs-meta) {
+    display: inline-block;
+    min-width: 100%;
+  }
+  .hljs-addition {
+    color: var(--md-hl-addition, var(--studio-accent-success, currentColor));
+    background: color-mix(
+      in srgb,
+      var(--studio-accent-success, var(--md-hl-addition, currentColor)) 12%,
+      transparent
+    );
+  }
+  .hljs-deletion {
+    color: var(--md-hl-deletion, var(--studio-accent-6, currentColor));
+    background: color-mix(
+      in srgb,
+      var(--studio-accent-6, var(--md-hl-deletion, currentColor)) 12%,
+      transparent
+    );
+  }
+  .hljs-meta {
+    color: var(--md-hl-meta, var(--severity-info, currentColor));
+    background: color-mix(
+      in srgb,
+      var(--severity-info, var(--md-hl-meta, currentColor)) 8%,
+      transparent
+    );
+  }
+}
 .msg__payload--image {
   width: fit-content;
 }

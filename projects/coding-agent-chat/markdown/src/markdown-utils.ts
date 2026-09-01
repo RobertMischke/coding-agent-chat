@@ -35,34 +35,85 @@ import yaml from 'highlight.js/lib/languages/yaml';
  * which strips inline styles.
  */
 const lowlight = createLowlight({
-  bash, c, cpp, csharp, css, diff, dockerfile, go, ini, java, javascript, json,
-  markdown, php, powershell, python, ruby, rust, scss, sql, typescript, xml, yaml,
+  bash,
+  c,
+  cpp,
+  csharp,
+  css,
+  diff,
+  dockerfile,
+  go,
+  ini,
+  java,
+  javascript,
+  json,
+  markdown,
+  php,
+  powershell,
+  python,
+  ruby,
+  rust,
+  scss,
+  sql,
+  typescript,
+  xml,
+  yaml,
 });
 
 /** Fence label → registered highlight.js grammar name. */
-const HLJS_LANG: Record<string, string> = {
-  ts: 'typescript', typescript: 'typescript', tsx: 'typescript',
-  js: 'javascript', javascript: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
-  py: 'python', python: 'python',
-  bash: 'bash', sh: 'bash', shell: 'bash', zsh: 'bash',
-  powershell: 'powershell', ps: 'powershell', ps1: 'powershell',
+const HLJS_LANG: Readonly<Record<string, string>> = {
+  ts: 'typescript',
+  typescript: 'typescript',
+  tsx: 'typescript',
+  js: 'javascript',
+  javascript: 'javascript',
+  jsx: 'javascript',
+  mjs: 'javascript',
+  cjs: 'javascript',
+  py: 'python',
+  python: 'python',
+  bash: 'bash',
+  sh: 'bash',
+  shell: 'bash',
+  zsh: 'bash',
+  powershell: 'powershell',
+  ps: 'powershell',
+  ps1: 'powershell',
   json: 'json',
-  yaml: 'yaml', yml: 'yaml',
-  html: 'xml', xml: 'xml', svg: 'xml', vue: 'xml',
-  css: 'css', scss: 'scss', sass: 'scss',
-  markdown: 'markdown', md: 'markdown',
-  diff: 'diff', patch: 'diff',
-  csharp: 'csharp', cs: 'csharp',
+  yaml: 'yaml',
+  yml: 'yaml',
+  html: 'xml',
+  xml: 'xml',
+  svg: 'xml',
+  vue: 'xml',
+  css: 'css',
+  scss: 'scss',
+  sass: 'scss',
+  markdown: 'markdown',
+  md: 'markdown',
+  diff: 'diff',
+  patch: 'diff',
+  csharp: 'csharp',
+  cs: 'csharp',
   java: 'java',
-  go: 'go', golang: 'go',
-  rust: 'rust', rs: 'rust',
+  go: 'go',
+  golang: 'go',
+  rust: 'rust',
+  rs: 'rust',
   sql: 'sql',
-  c: 'c', h: 'c',
-  cpp: 'cpp', 'c++': 'cpp', cc: 'cpp', hpp: 'cpp',
-  ruby: 'ruby', rb: 'ruby',
+  c: 'c',
+  h: 'c',
+  cpp: 'cpp',
+  'c++': 'cpp',
+  cc: 'cpp',
+  hpp: 'cpp',
+  ruby: 'ruby',
+  rb: 'ruby',
   php: 'php',
-  dockerfile: 'dockerfile', docker: 'dockerfile',
-  ini: 'ini', toml: 'ini',
+  dockerfile: 'dockerfile',
+  docker: 'dockerfile',
+  ini: 'ini',
+  toml: 'ini',
 };
 
 /**
@@ -71,6 +122,18 @@ const HLJS_LANG: Record<string, string> = {
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
+
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Sanitizer-safe highlighted payload content for an `[innerHTML]` binding.
+ * `html` contains only escaped source text and class-based `hljs-*` spans.
+ */
+export interface HighlightPayloadResult {
+  readonly html: string;
+  readonly highlighted: boolean;
+}
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -102,7 +165,10 @@ export function markdownToHtml(markdown: string, options: MarkdownImageOptions =
   const local = new Marked(buildMarkedExtension(options));
   try {
     const parsed = local.parse(markdown);
-    const html = linkTaskReferencesInHtml(typeof parsed === 'string' ? parsed : '', options.taskReferences);
+    const html = linkTaskReferencesInHtml(
+      typeof parsed === 'string' ? parsed : '',
+      options.taskReferences,
+    );
     return compactHtml(sanitizeHtml(html));
   } catch {
     return `<pre><code>${escapeHtml(markdown)}</code></pre>`;
@@ -133,7 +199,10 @@ function nodeToMarkdown(node: ChildNode, options: MarkdownImageOptions): string 
   }
 
   const tag = node.tagName.toLowerCase();
-  const children = () => Array.from(node.childNodes).map((c) => nodeToMarkdown(c, options)).join('');
+  const children = () =>
+    Array.from(node.childNodes)
+      .map((c) => nodeToMarkdown(c, options))
+      .join('');
 
   switch (tag) {
     case 'h1':
@@ -160,9 +229,13 @@ function nodeToMarkdown(node: ChildNode, options: MarkdownImageOptions): string 
     case 'pre':
       return `\`\`\`\n${node.textContent ?? ''}\n\`\`\``;
     case 'ul':
-      return Array.from(node.children).map((child) => `- ${nodeToMarkdown(child, options).trim()}`).join('\n');
+      return Array.from(node.children)
+        .map((child) => `- ${nodeToMarkdown(child, options).trim()}`)
+        .join('\n');
     case 'ol':
-      return Array.from(node.children).map((child, i) => `${i + 1}. ${nodeToMarkdown(child, options).trim()}`).join('\n');
+      return Array.from(node.children)
+        .map((child, i) => `${i + 1}. ${nodeToMarkdown(child, options).trim()}`)
+        .join('\n');
     case 'li':
       return children().trim();
     case 'br':
@@ -202,9 +275,10 @@ function buildMarkedExtension(options: MarkdownImageOptions): MarkedExtension {
       },
       link(token: Tokens.Link): string {
         const href = safeLinkUrl(token.href ?? '');
-        const inner = token.tokens && token.tokens.length
-          ? this.parser.parseInline(token.tokens)
-          : escapeHtml(token.text ?? '');
+        const inner =
+          token.tokens && token.tokens.length
+            ? this.parser.parseInline(token.tokens)
+            : escapeHtml(token.text ?? '');
         return `<a href="${escapeAttribute(href)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
       },
       image(token: Tokens.Image): string {
@@ -275,6 +349,47 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/**
+ * Highlight a typed non-Markdown payload with the same registered grammars,
+ * line balancing, LRU cache, and size guard used by fenced Markdown code.
+ * Unknown languages and oversized payloads remain escaped, readable text.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string,
+): HighlightPayloadResult {
+  const lang = payloadLanguage(payloadType, language);
+  const sourceLines = source.split('\n');
+  let highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) {
+    return { html: escapeHtml(source), highlighted: false };
+  }
+  // The registered diff grammar tags +/- lines but leaves @@ hunk headers
+  // plain in some highlight.js releases. Preserve the stable visual contract.
+  if (payloadType === 'diff') {
+    highlighted = highlighted.map((line, index) =>
+      sourceLines[index]?.startsWith('@@') && !line.includes('hljs-meta')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+  return { html: highlighted.join('\n'), highlighted: true };
+}
+
+function payloadLanguage(payloadType: HighlightPayloadType, language?: string): string | null {
+  switch (payloadType) {
+    case 'code-block':
+      return language?.trim().toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
@@ -317,7 +432,11 @@ function classOf(node: Element): string {
   return escapeAttribute(raw);
 }
 
-function renderCodeBlock(source: string, lang: string | null, options: MarkdownImageOptions): string {
+function renderCodeBlock(
+  source: string,
+  lang: string | null,
+  options: MarkdownImageOptions,
+): string {
   const codeLines = source.split('\n');
   const threshold = options.codeLineNumberThreshold ?? 5;
   const hasLang = !!lang;
@@ -346,10 +465,12 @@ function renderCodeBlock(source: string, lang: string | null, options: MarkdownI
     .map((line, i) => {
       const num = i + 1;
       const text = highlighted ? highlighted[i] : escapeHtml(line);
-      return `<span class="md-code-row" data-line="${num}">`
-        + `<span class="md-code-num" aria-hidden="true">${num}</span>`
-        + `<span class="md-code-text">${text}</span>`
-        + `</span>`;
+      return (
+        `<span class="md-code-row" data-line="${num}">` +
+        `<span class="md-code-num" aria-hidden="true">${num}</span>` +
+        `<span class="md-code-text">${text}</span>` +
+        `</span>`
+      );
     })
     .join('');
   const langClass = hasLang ? ` md-code--lang-${escapeAttribute(normaliseLang(lang!))}` : '';
@@ -363,20 +484,46 @@ function renderCodeBlock(source: string, lang: string | null, options: MarkdownI
  */
 function normaliseLang(lang: string): string {
   switch (lang) {
-    case 'typescript': case 'tsx': return 'ts';
-    case 'javascript': case 'jsx': case 'mjs': case 'cjs': return 'js';
-    case 'python': return 'py';
-    case 'shell': case 'sh': case 'zsh': return 'bash';
-    case 'yml': return 'yaml';
-    case 'csharp': case 'cs': return 'csharp';
-    case 'powershell': case 'ps': case 'ps1': return 'powershell';
-    case 'patch': return 'diff';
-    case 'plaintext': case 'text': case 'txt': return 'text';
-    default: return lang.replace(/[^a-z0-9]/g, '');
+    case 'typescript':
+    case 'tsx':
+      return 'ts';
+    case 'javascript':
+    case 'jsx':
+    case 'mjs':
+    case 'cjs':
+      return 'js';
+    case 'python':
+      return 'py';
+    case 'shell':
+    case 'sh':
+    case 'zsh':
+      return 'bash';
+    case 'yml':
+      return 'yaml';
+    case 'csharp':
+    case 'cs':
+      return 'csharp';
+    case 'powershell':
+    case 'ps':
+    case 'ps1':
+      return 'powershell';
+    case 'patch':
+      return 'diff';
+    case 'plaintext':
+    case 'text':
+    case 'txt':
+      return 'text';
+    default:
+      return lang.replace(/[^a-z0-9]/g, '');
   }
 }
 
-function renderImage(alt: string, src: string, _title: string | null, options: MarkdownImageOptions): string {
+function renderImage(
+  alt: string,
+  src: string,
+  _title: string | null,
+  options: MarkdownImageOptions,
+): string {
   const resolved = options.resolveImageSrc ? options.resolveImageSrc(src) : src;
   return `<img src="${escapeAttribute(resolved)}" alt="${escapeAttribute(alt)}">`;
 }
@@ -410,8 +557,11 @@ export function linkTaskReferencesInHtml(
   if (!html || !references?.length || typeof document === 'undefined') return html;
   const unique = uniqueTaskReferences(references);
   if (!unique.length) return html;
-  const byLabel = new Map(unique.map(ref => [ref.label.toLowerCase(), ref]));
-  const pattern = new RegExp(`(^|[^A-Za-z0-9_-])(${unique.map(ref => escapeRegExp(ref.label)).join('|')})(?=$|[^A-Za-z0-9_-])`, 'gi');
+  const byLabel = new Map(unique.map((ref) => [ref.label.toLowerCase(), ref]));
+  const pattern = new RegExp(
+    `(^|[^A-Za-z0-9_-])(${unique.map((ref) => escapeRegExp(ref.label)).join('|')})(?=$|[^A-Za-z0-9_-])`,
+    'gi',
+  );
   const template = document.createElement('template');
   template.innerHTML = html;
   const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT, {
@@ -440,7 +590,8 @@ export function linkTaskReferencesInHtml(
       const labelStart = match.index + prefix.length;
       const ref = byLabel.get(label.toLowerCase());
       if (!ref) continue;
-      if (labelStart > cursor) fragment.append(document.createTextNode(text.slice(cursor, labelStart)));
+      if (labelStart > cursor)
+        fragment.append(document.createTextNode(text.slice(cursor, labelStart)));
       const anchor = document.createElement('a');
       anchor.href = `#task:${encodeURIComponent(ref.taskKey)}`;
       anchor.dataset['taskRef'] = 'true';
@@ -620,7 +771,9 @@ export function injectInlineReferenceMarkers(
   return changed ? template.innerHTML : html;
 }
 
-function uniqueTaskReferences(references: readonly MarkdownTaskReference[]): MarkdownTaskReference[] {
+function uniqueTaskReferences(
+  references: readonly MarkdownTaskReference[],
+): MarkdownTaskReference[] {
   const byLabel = new Map<string, MarkdownTaskReference>();
   const duplicateLabels = new Set<string>();
   for (const ref of references) {
