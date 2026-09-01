@@ -72,6 +72,51 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads that have a registered syntax grammar. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed non-Markdown payload with the same lowlight pipeline used
+ * by fenced Markdown code. The returned HTML contains only escaped source text
+ * and class-based `hljs-*` spans, ready for a framework-sanitised `innerHTML`
+ * binding. `null` preserves the caller's plain-text fallback for an unknown
+ * language, failed tokenisation, or content over the shared size guard.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang = payloadLanguage(payloadType, language);
+  const sourceLines = source.split('\n');
+  let highlighted = highlightLines(source, lang);
+  if (highlighted && highlighted.length !== sourceLines.length) highlighted = null;
+  // highlight.js 11.11 marks +/- lines but leaves git hunk headers as plain
+  // text. Keep them visually distinct with the engine's standard meta token.
+  if (highlighted && payloadType === 'diff') {
+    highlighted = highlighted.map((line, index) =>
+      sourceLines[index]?.startsWith('@@') ? `<span class="hljs-meta">${line}</span>` : line,
+    );
+  }
+  return highlighted?.join('\n') ?? null;
+}
+
+function payloadLanguage(
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  switch (payloadType) {
+    case 'code-block':
+      return language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
+}
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
