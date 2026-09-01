@@ -275,6 +275,58 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed conversation payload with the same curated grammars,
+ * cache, size guard, escaping, and per-line span balancing as fenced Markdown
+ * code. The returned fragment contains only escaped text and controlled
+ * `hljs-*` spans, making it safe to pass through a framework HTML sanitizer.
+ * Returns null when highlighting is unavailable so renderers can keep a plain
+ * text fallback.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang = payloadLanguage(payloadType, language);
+  let highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  if (payloadType === 'diff') highlighted = highlightDiffHunks(sourceLines, highlighted);
+  return highlighted.join('\n');
+}
+
+function payloadLanguage(
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  switch (payloadType) {
+    case 'code-block':
+      return language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
+}
+
+/** highlight.js 11 leaves unified-diff hunk headers unclassified. */
+function highlightDiffHunks(
+  sourceLines: readonly string[],
+  highlightedLines: readonly string[],
+): readonly string[] {
+  return highlightedLines.map((line, index) =>
+    sourceLines[index]?.startsWith('@@') && !line.includes('class="hljs-meta"')
+      ? `<span class="hljs-meta">${escapeHtml(sourceLines[index])}</span>`
+      : line,
+  );
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];

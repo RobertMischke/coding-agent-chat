@@ -264,8 +264,68 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('renders typed code and diff payloads with the shared syntax highlighter', async () => {
+    const csharp = 'public class Foo { public int X { get; set; } }';
+    // Exact diff body captured in codex/0.146.x/content-matrix.stream.json.
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        id: 'typed-csharp',
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', diff, {
+        id: 'typed-diff',
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const visualDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+
+    expect(code?.classList).toContain('md-code--hl');
+    expect(code?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(code?.querySelector('.hljs-keyword')?.textContent).toBe('public');
+    expect(visualDiff?.classList).toContain('md-code--hl');
+    expect(visualDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(visualDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(visualDiff?.querySelector('.hljs-meta')?.textContent).toBe('@@ -1 +1 @@');
+  });
+
+  it('highlights typed JSON and keeps oversized code on the plain text fallback', async () => {
+    const json = '{"ok": true}';
+    const oversized = `public class Huge { /* ${'x'.repeat(60_001)} */ }`;
+    const fixture = await render([
+      msg('message.taskAgent', json, {
+        id: 'typed-json',
+        content: [{ type: 'json', text: json }],
+      }),
+      msg('message.taskAgent', oversized, {
+        id: 'oversized-code',
+        content: [{ type: 'code-block', text: oversized, language: 'csharp' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const highlightedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const plainCode = host.querySelector<HTMLElement>(
+      '[data-item-id="oversized-code"] [data-payload-type="code-block"]',
+    );
+
+    expect(highlightedJson?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(plainCode?.classList).not.toContain('md-code--hl');
+    expect(plainCode?.querySelector('[class*="hljs-"]')).toBeNull();
+    expect(plainCode?.textContent).toBe(oversized);
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {
