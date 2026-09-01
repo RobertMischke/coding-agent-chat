@@ -275,6 +275,47 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a renderer-safe payload with the same grammar registry, line
+ * balancing, size guard, and LRU cache used by fenced Markdown code.
+ *
+ * The returned fragment is safe for a sanitized `[innerHTML]` binding: source
+ * text and generated class attributes are escaped while serializing lowlight's
+ * HAST. `null` tells renderers to preserve their plain-text fallback.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language: string | null = null,
+): string | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted) return null;
+  const sourceLines = source.split('\n');
+  if (highlighted.length !== sourceLines.length) return null;
+  return highlighted
+    .map((line, index) => {
+      // highlight.js' diff grammar currently leaves `@@` hunk ranges as plain
+      // text. Normalize them to the grammar's metadata token shape so every
+      // consumer can theme hunk boundaries without parsing the raw payload.
+      if (payloadType === 'diff' && sourceLines[index]?.startsWith('@@')) {
+        return `<span class="hljs-meta">${line}</span>`;
+      }
+      return line;
+    })
+    .join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];

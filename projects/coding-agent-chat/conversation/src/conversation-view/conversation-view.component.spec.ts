@@ -268,6 +268,64 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed source payloads and renders line-level visual diff classes', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', 'typed payload matrix', {
+        content: [
+          {
+            type: 'code-block',
+            language: 'csharp',
+            text: 'public class Foo { public int X { get; set; } }',
+          },
+          { type: 'diff', format: 'git', text: diff },
+          { type: 'json', text: '{"ok": true}' },
+          { type: 'html-file', mediaType: 'text/html', text: '<main>ok</main>' },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const renderedDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+
+    expect(code?.classList).toContain('md-code--hl');
+    expect(code?.querySelector('[class^="hljs-"]')).toBeTruthy();
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(renderedDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(renderedDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(renderedDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@');
+    expect(host.querySelector('[data-payload-type="json"] .hljs-attr')).toBeTruthy();
+    expect(host.querySelector('[data-payload-type="html-file"] .hljs-tag')).toBeTruthy();
+  });
+
+  it('keeps unknown and oversized code payloads on the readable plain-text fallback', async () => {
+    const oversized = 'x'.repeat(60_001);
+    const fixture = await render([
+      msg('message.taskAgent', 'guarded payloads', {
+        content: [
+          { type: 'code-block', language: 'unknown', text: 'plain' },
+          { type: 'code-block', language: 'typescript', text: oversized },
+        ],
+      }),
+    ]);
+    const blocks = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+      '[data-payload-type="code-block"]',
+    );
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].classList).not.toContain('md-code--hl');
+    expect(blocks[0].textContent).toBe('plain');
+    expect(blocks[1].querySelector('[class^="hljs-"]')).toBeNull();
+    expect(blocks[1].textContent).toBe(oversized);
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',
