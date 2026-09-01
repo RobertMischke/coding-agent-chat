@@ -11,6 +11,8 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ### Added
 
+- Typed code, diff, JSON, and HTML-file payloads in the conversation view now
+  reuse the Markdown highlighter, including line-level visual diff coloring.
 - A versioned Codex/Claude/Gemini frame compatibility corpus, documented
   deviation matrix, capture-backed rendering regression tier, and Conversation
   Lab replays now make CLI protocol differences explicit.
