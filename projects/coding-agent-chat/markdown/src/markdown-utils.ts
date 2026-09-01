@@ -72,6 +72,60 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads that can reuse the fenced-code highlighter. */
+export type HighlightablePayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed conversation payload with the same grammar registry,
+ * bounded cache and size guard as fenced Markdown code. The returned strings
+ * contain only escaped source text and class-based `hljs-*` spans, with spans
+ * balanced per source line so callers can safely join them with newlines and
+ * pass the result through their framework HTML sanitizer.
+ *
+ * `null` deliberately means "render as plain text": the code block has no or
+ * an unknown language, the source exceeds the synchronous highlighting guard,
+ * or highlighting failed.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightablePayloadType,
+  language?: string | null,
+): readonly string[] | null {
+  const lang = payloadLanguage(payloadType, language);
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11's diff grammar only recognises count-bearing hunk ranges
+  // (`@@ -1,2 +1,3 @@`). Git also emits the valid single-line shorthand used
+  // by our captured Codex fixture (`@@ -1 +1 @@`), so retain the engine output
+  // but supply its missing semantic class for that line shape.
+  if (payloadType === 'diff') {
+    return highlighted.map((line, index) =>
+      sourceLines[index]?.startsWith('@@') && !line.includes('hljs-meta')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+  return highlighted;
+}
+
+function payloadLanguage(
+  payloadType: HighlightablePayloadType,
+  language?: string | null,
+): string | null {
+  switch (payloadType) {
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+    case 'code-block':
+      return language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
+  }
+}
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
