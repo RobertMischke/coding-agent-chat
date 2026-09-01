@@ -356,6 +356,87 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Typed source payloads use the same token palette as fenced Markdown. The
+ * spans come from sanitized innerHTML, so ::ng-deep is limited to this payload
+ * ancestor instead of leaking highlight.js selectors into the host page. */
+.msg__payload--raw ::ng-deep .hljs-keyword,
+.msg__payload--raw ::ng-deep .hljs-literal,
+.msg__payload--raw ::ng-deep .hljs-selector-tag,
+.msg__payload--raw ::ng-deep .hljs-doctag {
+  color: var(--md-hl-keyword);
+}
+.msg__payload--raw ::ng-deep .hljs-string,
+.msg__payload--raw ::ng-deep .hljs-regexp,
+.msg__payload--raw ::ng-deep .hljs-meta .hljs-string {
+  color: var(--md-hl-string);
+}
+.msg__payload--raw ::ng-deep .hljs-number {
+  color: var(--md-hl-number);
+}
+.msg__payload--raw ::ng-deep .hljs-comment,
+.msg__payload--raw ::ng-deep .hljs-quote {
+  color: var(--md-hl-comment);
+  font-style: italic;
+}
+.msg__payload--raw ::ng-deep .hljs-title,
+.msg__payload--raw ::ng-deep .hljs-title.function_,
+.msg__payload--raw ::ng-deep .hljs-section {
+  color: var(--md-hl-function);
+}
+.msg__payload--raw ::ng-deep .hljs-title.class_,
+.msg__payload--raw ::ng-deep .hljs-type,
+.msg__payload--raw ::ng-deep .hljs-selector-class,
+.msg__payload--raw ::ng-deep .hljs-selector-id,
+.msg__payload--raw ::ng-deep .hljs-selector-pseudo {
+  color: var(--md-hl-type);
+}
+.msg__payload--raw ::ng-deep .hljs-built_in {
+  color: var(--md-hl-builtin);
+}
+.msg__payload--raw ::ng-deep .hljs-variable,
+.msg__payload--raw ::ng-deep .hljs-template-variable,
+.msg__payload--raw ::ng-deep .hljs-params,
+.msg__payload--raw ::ng-deep .hljs-subst {
+  color: var(--md-hl-variable);
+}
+.msg__payload--raw ::ng-deep .hljs-attr,
+.msg__payload--raw ::ng-deep .hljs-attribute,
+.msg__payload--raw ::ng-deep .hljs-property {
+  color: var(--md-hl-attr);
+}
+.msg__payload--raw ::ng-deep .hljs-tag,
+.msg__payload--raw ::ng-deep .hljs-name {
+  color: var(--md-hl-tag);
+}
+.msg__payload--raw ::ng-deep .hljs-meta,
+.msg__payload--raw ::ng-deep .hljs-meta .hljs-keyword,
+.msg__payload--raw ::ng-deep .hljs-symbol,
+.msg__payload--raw ::ng-deep .hljs-bullet,
+.msg__payload--raw ::ng-deep .hljs-link {
+  color: var(--md-hl-meta);
+}
+.msg__payload--raw ::ng-deep .hljs-punctuation,
+.msg__payload--raw ::ng-deep .hljs-operator {
+  color: var(--md-hl-punct);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-addition {
+  color: var(--md-hl-addition);
+  background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-deletion {
+  color: var(--md-hl-deletion);
+  background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  background: color-mix(in srgb, var(--md-hl-meta) 9%, transparent);
+}
+.msg__payload--raw ::ng-deep .hljs-emphasis {
+  font-style: italic;
+}
+.msg__payload--raw ::ng-deep .hljs-strong {
+  font-weight: 600;
+}
 .msg__payload--image {
   width: fit-content;
 }

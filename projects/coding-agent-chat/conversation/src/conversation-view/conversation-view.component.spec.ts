@@ -268,6 +268,68 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed code, diff, JSON, and HTML payloads', async () => {
+    const csharp = 'public class Foo { public int X { get; set; } }';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const json = '{"ok":true}';
+    const html = '<!doctype html><html><body>Fixture</body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', 'typed payload matrix', {
+        content: [
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'json', text: json },
+          { type: 'html-file', text: html, mediaType: 'text/html' },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const renderedDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const renderedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const renderedHtml = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(code?.classList.contains('md-code--hl')).toBe(true);
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(code?.textContent).toBe(csharp);
+    expect(renderedDiff?.querySelector('.hljs-addition')).toBeTruthy();
+    expect(renderedDiff?.querySelector('.hljs-deletion')).toBeTruthy();
+    expect(renderedDiff?.querySelector('.hljs-meta')).toBeTruthy();
+    expect(renderedDiff?.textContent).toBe(diff);
+    expect(renderedJson?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(renderedHtml?.querySelector('.hljs-tag')).toBeTruthy();
+  });
+
+  it('keeps unknown and oversized code payloads on the escaped plain-text fallback', async () => {
+    const unknown = '<script>alert("still text")</script>';
+    const oversized = `public class Large { ${'x'.repeat(60_001)} }`;
+    const fixture = await render([
+      msg('message.taskAgent', 'fallback payloads', {
+        content: [
+          { type: 'code-block', text: unknown, language: 'unknown-language' },
+          { type: 'code-block', text: oversized, language: 'csharp' },
+        ],
+      }),
+    ]);
+    const payloads = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+      '[data-payload-type="code-block"]',
+    );
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].querySelector('script')).toBeNull();
+    expect(payloads[0].querySelector('[class^="hljs-"]')).toBeNull();
+    expect(payloads[0].textContent).toBe(unknown);
+    expect(payloads[1].querySelector('[class^="hljs-"]')).toBeNull();
+    expect(payloads[1].textContent).toBe(oversized);
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',

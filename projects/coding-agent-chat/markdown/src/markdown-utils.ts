@@ -275,6 +275,47 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed conversation payload through the same lowlight instance,
+ * grammar aliases, cache, size guard, and balanced-line serializer used by
+ * fenced Markdown code. Returned strings contain only escaped source text and
+ * class-based `hljs-*` spans, so consumers can safely pass each line through
+ * their framework HTML sanitizer. `null` means render the source as plain text.
+ */
+export function highlightPayloadLines(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): readonly string[] | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js' diff grammar only recognises hunk ranges with explicit
+  // counts (`-1,1 +1,1`). Git commonly omits a count of one (`-1 +1`), as in
+  // the captured Codex fixture. The serialized line is already HTML-escaped;
+  // add the same fixed class the grammar emits so both valid forms look alike.
+  if (payloadType === 'diff') {
+    return highlighted.map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index] ?? '') && !line.includes('class="hljs-meta"')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+  return highlighted;
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
@@ -325,8 +366,7 @@ function renderCodeBlock(source: string, lang: string | null, options: MarkdownI
 
   // Syntax-highlight when possible; require one highlighted line per source
   // line so it lines up with either shape (else fall back to plain text).
-  let highlighted = highlightLines(source, lang);
-  if (highlighted && highlighted.length !== codeLines.length) highlighted = null;
+  const highlighted = highlightPayloadLines(source, 'code-block', lang);
   const hlClass = highlighted ? ' md-code--hl' : '';
 
   // Only attach md-code* classes when a language is present, otherwise
