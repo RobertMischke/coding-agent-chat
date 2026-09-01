@@ -356,6 +356,100 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Typed source payloads use the same class-based lowlight tokens and
+ * light/dark custom-property palette as fenced Markdown code. `::ng-deep` is
+ * limited to this payload container because Angular-created `[innerHTML]`
+ * descendants do not receive the component's emulated-scope attribute. */
+.msg__payload--highlighted {
+  color: var(--md-fg, #cdd6f4);
+}
+.msg__payload--highlighted ::ng-deep .hljs-keyword,
+.msg__payload--highlighted ::ng-deep .hljs-literal,
+.msg__payload--highlighted ::ng-deep .hljs-selector-tag,
+.msg__payload--highlighted ::ng-deep .hljs-doctag {
+  color: var(--md-hl-keyword, #cba6f7);
+}
+.msg__payload--highlighted ::ng-deep .hljs-string,
+.msg__payload--highlighted ::ng-deep .hljs-regexp,
+.msg__payload--highlighted ::ng-deep .hljs-meta .hljs-string {
+  color: var(--md-hl-string, #a6e3a1);
+}
+.msg__payload--highlighted ::ng-deep .hljs-number {
+  color: var(--md-hl-number, #fab387);
+}
+.msg__payload--highlighted ::ng-deep .hljs-comment,
+.msg__payload--highlighted ::ng-deep .hljs-quote {
+  color: var(--md-hl-comment, #7f849c);
+  font-style: italic;
+}
+.msg__payload--highlighted ::ng-deep .hljs-title,
+.msg__payload--highlighted ::ng-deep .hljs-title.function_,
+.msg__payload--highlighted ::ng-deep .hljs-section {
+  color: var(--md-hl-function, #89b4fa);
+}
+.msg__payload--highlighted ::ng-deep .hljs-title.class_,
+.msg__payload--highlighted ::ng-deep .hljs-type,
+.msg__payload--highlighted ::ng-deep .hljs-selector-class,
+.msg__payload--highlighted ::ng-deep .hljs-selector-id,
+.msg__payload--highlighted ::ng-deep .hljs-selector-pseudo {
+  color: var(--md-hl-type, #f9e2af);
+}
+.msg__payload--highlighted ::ng-deep .hljs-built_in {
+  color: var(--md-hl-builtin, #f38ba8);
+}
+.msg__payload--highlighted ::ng-deep .hljs-variable,
+.msg__payload--highlighted ::ng-deep .hljs-template-variable,
+.msg__payload--highlighted ::ng-deep .hljs-params,
+.msg__payload--highlighted ::ng-deep .hljs-subst {
+  color: var(--md-hl-variable, #bac2de);
+}
+.msg__payload--highlighted ::ng-deep .hljs-attr,
+.msg__payload--highlighted ::ng-deep .hljs-attribute,
+.msg__payload--highlighted ::ng-deep .hljs-property {
+  color: var(--md-hl-attr, #f9e2af);
+}
+.msg__payload--highlighted ::ng-deep .hljs-tag,
+.msg__payload--highlighted ::ng-deep .hljs-name {
+  color: var(--md-hl-tag, #89b4fa);
+}
+.msg__payload--highlighted ::ng-deep .hljs-meta,
+.msg__payload--highlighted ::ng-deep .hljs-meta .hljs-keyword,
+.msg__payload--highlighted ::ng-deep .hljs-symbol,
+.msg__payload--highlighted ::ng-deep .hljs-bullet,
+.msg__payload--highlighted ::ng-deep .hljs-link {
+  color: var(--md-hl-meta, #f5c2e7);
+}
+.msg__payload--highlighted ::ng-deep .hljs-punctuation,
+.msg__payload--highlighted ::ng-deep .hljs-operator {
+  color: var(--md-hl-punct, #9399b2);
+}
+.msg__payload--highlighted ::ng-deep .hljs-emphasis {
+  font-style: italic;
+}
+.msg__payload--highlighted ::ng-deep .hljs-strong {
+  font-weight: 600;
+}
+
+/* Diff grammar classes wrap complete lines. Inline-block keeps the source
+ * newline layout while extending the subtle semantic tint across the block. */
+.msg__payload--highlighted[data-payload-type='diff'] ::ng-deep .hljs-addition,
+.msg__payload--highlighted[data-payload-type='diff'] ::ng-deep .hljs-deletion,
+.msg__payload--highlighted[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  display: inline-block;
+  min-width: 100%;
+}
+.msg__payload--highlighted[data-payload-type='diff'] ::ng-deep .hljs-addition {
+  color: var(--md-hl-addition, #a6e3a1);
+  background: color-mix(in srgb, var(--md-hl-addition, #a6e3a1) 12%, transparent);
+}
+.msg__payload--highlighted[data-payload-type='diff'] ::ng-deep .hljs-deletion {
+  color: var(--md-hl-deletion, #f38ba8);
+  background: color-mix(in srgb, var(--md-hl-deletion, #f38ba8) 12%, transparent);
+}
+.msg__payload--highlighted[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  background: color-mix(in srgb, var(--md-hl-meta, #f5c2e7) 9%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }
