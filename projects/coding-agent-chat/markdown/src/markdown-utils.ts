@@ -275,6 +275,58 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a renderer-safe typed payload with the same registered grammars,
+ * size guard, per-line span balancing, and LRU cache used by fenced Markdown
+ * code. The returned HTML contains only escaped source text and lowlight's
+ * class-based `hljs-*` spans; callers must still bind it through their
+ * framework sanitizer. `null` means the caller should render the source as
+ * plain text (unknown language, oversized input, or highlighting failure).
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string,
+): string | null {
+  let lang: string | null;
+  switch (payloadType) {
+    case 'code-block':
+      lang = language?.trim().toLowerCase() || null;
+      break;
+    case 'diff':
+      lang = 'diff';
+      break;
+    case 'json':
+      lang = 'json';
+      break;
+    case 'html-file':
+      lang = 'xml';
+      break;
+  }
+
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11's diff grammar only tags hunk ranges when both counts are
+  // explicit (`@@ -1,1 +1,1 @@`). Git omits a count of one, as in the captured
+  // Codex fixture (`@@ -1 +1 @@`), so complete that class at the per-line layer.
+  if (payloadType === 'diff') {
+    return highlighted
+      .map((line, index) =>
+        /^@@(?:\s|$)/.test(sourceLines[index]) && !line.includes('class="hljs-meta"')
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      )
+      .join('\n');
+  }
+
+  return highlighted.join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];

@@ -264,8 +264,67 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.querySelector('.hljs-name')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('syntax-highlights typed code and renders typed diffs with line classes', async () => {
+    const csharp = [
+      'public class Foo',
+      '{',
+      '    public int X { get; set; }',
+      '}',
+    ].join('\n');
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', `${csharp}\n${diff}`, {
+        content: [
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'json', text: '{"ok":true}' },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const visualDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const json = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+
+    expect(code?.classList.contains('md-code--hl')).toBe(true);
+    expect(code?.querySelector('.hljs-keyword')?.textContent).toBe('public');
+    expect(visualDiff?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(visualDiff?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(visualDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(json?.querySelector('[class^="hljs-"]')).toBeTruthy();
+  });
+
+  it('falls back to readable plain text for unknown and oversized code grammars', async () => {
+    const oversized = `public class Huge { }${'x'.repeat(60_001)}`;
+    const fixture = await render([
+      msg('message.taskAgent', 'fallback payloads', {
+        content: [
+          { type: 'code-block', text: '<not-markup>', language: 'unknown-grammar' },
+          { type: 'code-block', text: oversized, language: 'csharp' },
+        ],
+      }),
+    ]);
+    const payloads = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+      '[data-payload-type="code-block"]',
+    );
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].textContent).toBe('<not-markup>');
+    expect(payloads[0].querySelector('[class^="hljs-"]')).toBeNull();
+    expect(payloads[1].textContent).toBe(oversized);
+    expect(payloads[1].querySelector('[class^="hljs-"]')).toBeNull();
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {
