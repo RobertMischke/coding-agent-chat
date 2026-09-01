@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightCode,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -392,6 +397,23 @@ describe('markdownToHtml', () => {
         linkTaskReferencesInHtml(input, [{ label: '   ', taskKey: 'agent-taskboard::blank' }]),
       ).toBe(input);
     });
+  });
+});
+
+describe('highlightCode', () => {
+  it('returns sanitizer-safe, line-balanced diff markup for compact git hunks', () => {
+    const source = ['@@ -1 +1 @@', '-old', '+new'].join('\n');
+    const html = highlightCode(source, 'diff');
+
+    expect(html).toContain('<span class="hljs-meta">@@ -1 +1 @@</span>');
+    expect(html).toContain('<span class="hljs-deletion">-old</span>');
+    expect(html).toContain('<span class="hljs-addition">+new</span>');
+    expect((html?.match(/\n/g) ?? []).length).toBe(2);
+  });
+
+  it('returns null for unknown grammars and oversized input', () => {
+    expect(highlightCode('plain', 'wat')).toBeNull();
+    expect(highlightCode('x'.repeat(60_001), 'json')).toBeNull();
   });
 });
 

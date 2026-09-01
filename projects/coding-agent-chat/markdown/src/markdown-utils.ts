@@ -264,6 +264,18 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   let result: readonly string[] | null;
   try {
     result = hastToLines(lowlight.highlight(grammar, source));
+    // highlight.js' diff grammar only tags hunk headers when both ranges use
+    // the explicit `start,count` shape. Git commonly omits `,1` (including in
+    // the captured Codex fixture), so preserve the grammar output while
+    // classifying that equivalent `@@ -1 +1 @@` line as meta as well.
+    if (grammar === 'diff') {
+      const sourceLines = source.split('\n');
+      result = result.map((line, index) =>
+        /^@@@?\s/.test(sourceLines[index] ?? '') && !line.includes('hljs-meta')
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      );
+    }
   } catch {
     result = null;
   }
@@ -273,6 +285,22 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Syntax-highlight a complete source payload with the shared lowlight engine.
+ *
+ * The returned HTML contains only escaped source text and class-based
+ * `hljs-*` spans, so consumers can pass it through their normal HTML
+ * sanitizer. `null` means the caller must render the original source as plain
+ * text (unknown grammar, oversized input, tokenization failure, or an
+ * unexpected line-count mismatch).
+ */
+export function highlightCode(source: string, lang: string | null | undefined): string | null {
+  const normalizedLang = lang?.trim().toLowerCase() || null;
+  const highlighted = highlightLines(source, normalizedLang);
+  if (!highlighted || highlighted.length !== source.split('\n').length) return null;
+  return highlighted.join('\n');
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
