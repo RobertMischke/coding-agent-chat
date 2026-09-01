@@ -275,6 +275,72 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads that use the shared syntax-highlight engine. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Sanitizer-safe HTML for a typed payload. `html` contains only escaped source
+ * text and class-based `hljs-*` spans emitted by the registered lowlight
+ * grammars. When highlighting is unavailable, `html` is escaped plain text.
+ */
+export interface HighlightPayloadResult {
+  readonly html: string;
+  readonly highlighted: boolean;
+}
+
+/**
+ * Highlight a typed, non-Markdown payload through the same guarded and cached
+ * lowlight path as fenced Markdown code. The fixed payload grammars prevent
+ * callers from accidentally treating a diff, JSON document, or HTML file as
+ * prose; code blocks retain their explicit language and safely fall back when
+ * that language is unknown.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): HighlightPayloadResult {
+  const lang = payloadHighlightLanguage(payloadType, language);
+  let highlighted = highlightLines(source, lang);
+
+  // Keep the same per-line balancing invariant as fenced code. A grammar that
+  // ever changes the line count must degrade to readable escaped text rather
+  // than producing a malformed visual diff.
+  if (highlighted && highlighted.length !== source.split('\n').length) highlighted = null;
+  if (highlighted && payloadType === 'diff') {
+    const sourceLines = source.split('\n');
+    // highlight.js 11 marks +/- lines but leaves git hunk headers unclassified.
+    // Give those already-escaped lines the standard meta token expected by the
+    // visual diff theme; no source text or grammar registration is duplicated.
+    highlighted = highlighted.map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+
+  return {
+    html: highlighted ? highlighted.join('\n') : escapeHtml(source),
+    highlighted: highlighted !== null,
+  };
+}
+
+function payloadHighlightLanguage(
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  switch (payloadType) {
+    case 'code-block':
+      return language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];

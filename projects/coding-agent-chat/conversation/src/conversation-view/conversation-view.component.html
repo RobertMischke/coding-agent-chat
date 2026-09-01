@@ -170,13 +170,43 @@
                                 }
                               </figure>
                             }
+                            @case ('code-block') {
+                              @let rendered = highlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw"
+                                [class.md-code--hl]="rendered.highlighted"
+                                data-payload-type="code-block"
+                                [attr.data-language]="payload.language ?? null"
+                              ><code [innerHTML]="rendered.html"></code></pre>
+                            }
+                            @case ('diff') {
+                              @let rendered = highlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw"
+                                [class.md-code--hl]="rendered.highlighted"
+                                data-payload-type="diff"
+                              ><code [innerHTML]="rendered.html"></code></pre>
+                            }
+                            @case ('json') {
+                              @let rendered = highlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw"
+                                [class.md-code--hl]="rendered.highlighted"
+                                data-payload-type="json"
+                              ><code [innerHTML]="rendered.html"></code></pre>
+                            }
+                            @case ('html-file') {
+                              @let rendered = highlightedPayload(payload);
+                              <pre
+                                class="msg__payload msg__payload--raw"
+                                [class.md-code--hl]="rendered.highlighted"
+                                data-payload-type="html-file"
+                              ><code [innerHTML]="rendered.html"></code></pre>
+                            }
                             @default {
                               <pre
                                 class="msg__payload msg__payload--raw"
                                 [attr.data-payload-type]="payload.type"
-                                [attr.data-language]="
-                                  payload.type === 'code-block' ? (payload.language ?? null) : null
-                                "
                               ><code>{{ payload.text }}</code></pre>
                             }
                           }

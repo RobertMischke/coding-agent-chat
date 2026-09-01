@@ -252,7 +252,75 @@ describe('ConversationViewComponent', () => {
     expect(agentRow.textContent).toContain('Flag added, wiring the projection next.');
   });
 
-  it('renders typed raw file payloads without passing them through Markdown', async () => {
+  it('highlights typed code, diff, JSON, and HTML payloads with their fixed grammars', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const json = '{"ok":true,"count":1}';
+    const html = '<!doctype html><html><body><p>Fixture</p></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', json, {
+        content: [{ type: 'json', text: json }],
+      }),
+      msg('message.taskAgent', html, {
+        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(codePayload?.classList).toContain('md-code--hl');
+    expect(codePayload?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(diffPayload?.classList).toContain('md-code--hl');
+    expect(diffPayload?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(diffPayload?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(diffPayload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-literal')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-name')).toBeTruthy();
+  });
+
+  it('falls back to readable plain text for unknown and over-limit code grammars', async () => {
+    const unknown = '<widget>raw</widget>';
+    const overLimit = 'x'.repeat(60_001);
+    const fixture = await render([
+      msg('message.taskAgent', unknown, {
+        content: [{ type: 'code-block', text: unknown, language: 'unknown-grammar' }],
+      }),
+      msg('message.taskAgent', overLimit, {
+        content: [{ type: 'code-block', text: overLimit, language: 'csharp' }],
+      }),
+    ]);
+    const payloads = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+      '[data-payload-type="code-block"]',
+    );
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].classList).not.toContain('md-code--hl');
+    expect(payloads[0].querySelector('.hljs-keyword')).toBeNull();
+    expect(payloads[0].textContent).toBe(unknown);
+    expect(payloads[1].classList).not.toContain('md-code--hl');
+    expect(payloads[1].querySelector('[class^="hljs-"]')).toBeNull();
+    expect(payloads[1].textContent).toBe(overLimit);
+  });
+
+  it('renders typed HTML file payloads without passing them through Markdown', async () => {
     const html = '<!doctype html><html><body><ul><li>literal source</li></ul></body></html>';
     const fixture = await render([
       msg('message.taskAgent', html, {
@@ -264,6 +332,7 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.classList).toContain('md-code--hl');
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });

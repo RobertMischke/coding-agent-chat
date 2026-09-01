@@ -11,7 +11,11 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload,
+  type HighlightPayloadResult,
+  MarkdownViewComponent,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -287,6 +291,24 @@ export class ConversationViewComponent {
   readonly visibleStart = signal<number>(0);
   /** Exclusive end index of the virtual window. */
   readonly visibleEnd = signal<number>(50);
+
+  /**
+   * Render typed source payloads through Markdown's shared lowlight engine.
+   * The helper returns escaped plain text when the language is unknown or the
+   * payload exceeds the synchronous highlight guard.
+   */
+  highlightedPayload(payload: MessageContentPayload): HighlightPayloadResult {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightPayload(payload.text, payload.type);
+      default:
+        return { html: '', highlighted: false };
+    }
+  }
 
   constructor() {
     // When the LOCAL user posts a turn, always bring it into view — even if

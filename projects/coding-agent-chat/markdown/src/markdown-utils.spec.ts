@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -392,6 +397,39 @@ describe('markdownToHtml', () => {
         linkTaskReferencesInHtml(input, [{ label: '   ', taskKey: 'agent-taskboard::blank' }]),
       ).toBe(input);
     });
+  });
+});
+
+describe('highlightPayload', () => {
+  it('uses the shared grammars for typed code and visual diff lines', () => {
+    const code = highlightPayload('public class Foo {}', 'code-block', 'csharp');
+    const diff = highlightPayload(
+      [
+        'diff --git a/a.txt b/a.txt',
+        '--- a/a.txt',
+        '+++ b/a.txt',
+        '@@ -1 +1 @@',
+        '-old',
+        '+new',
+      ].join('\n'),
+      'diff',
+    );
+
+    expect(code.highlighted).toBe(true);
+    expect(code.html).toContain('hljs-keyword');
+    expect(diff.highlighted).toBe(true);
+    expect(diff.html).toContain('hljs-meta');
+    expect(diff.html).toContain('hljs-deletion');
+    expect(diff.html).toContain('hljs-addition');
+  });
+
+  it('returns escaped plain text for unknown and over-limit code blocks', () => {
+    const unknown = highlightPayload('<widget>raw</widget>', 'code-block', 'unknown-grammar');
+    const overLimit = highlightPayload('x'.repeat(60_001), 'code-block', 'csharp');
+
+    expect(unknown).toEqual({ html: '&lt;widget&gt;raw&lt;/widget&gt;', highlighted: false });
+    expect(overLimit.highlighted).toBe(false);
+    expect(overLimit.html).toBe('x'.repeat(60_001));
   });
 });
 
