@@ -11,7 +11,11 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload,
+  MarkdownViewComponent,
+  type HighlightPayloadType,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -149,6 +153,11 @@ type RenderRow =
   | { kind: 'tokenMetric'; id: string; event: MetricTokenEvent }
   | { kind: 'traceLink'; id: string; event: TraceLinkEvent };
 
+type HighlightedMessageContentPayload = Extract<
+  MessageContentPayload,
+  { type: HighlightPayloadType }
+>;
+
 /** Glyph + leading verb for the compact `feedback.queued` marker, keyed by composer mode. */
 const FEEDBACK_MODE_META: Record<FeedbackQueuedEvent['mode'], { glyph: string; verb: string }> = {
   ask: { glyph: '💬', verb: 'asked' },
@@ -249,6 +258,29 @@ export class ConversationViewComponent {
   readonly variant = input<'framed' | 'embedded'>('embedded');
   readonly showHeader = input<boolean>(true);
   readonly toolsVisible = input<boolean | null>(null);
+
+  /**
+   * Return sanitizer-safe, class-based highlight markup for typed source
+   * payloads. Raw logs deliberately return null and keep their plain-text
+   * rendering path until ANSI rendering is implemented separately.
+   */
+  highlightedPayloadHtml(payload: MessageContentPayload): string | null {
+    if (!this.isHighlightPayload(payload)) return null;
+    const language = payload.type === 'code-block' ? payload.language : undefined;
+    const lines = highlightPayload(payload.text, payload.type, language);
+    return lines?.join('\n') ?? null;
+  }
+
+  private isHighlightPayload(
+    payload: MessageContentPayload,
+  ): payload is HighlightedMessageContentPayload {
+    return (
+      payload.type === 'code-block' ||
+      payload.type === 'diff' ||
+      payload.type === 'json' ||
+      payload.type === 'html-file'
+    );
+  }
 
   /**
    * When true the feed windows itself — only the rows near the viewport are

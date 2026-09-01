@@ -2,7 +2,36 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the shared typed-payload grammars and returns balanced per-line spans', () => {
+    const source = ['public class Foo', '{', '    public int X { get; set; }', '}'].join('\n');
+    const lines = highlightPayload(source, 'code-block', 'csharp');
+
+    expect(lines).toHaveLength(4);
+    expect(lines?.join('\n')).toContain('hljs-keyword');
+    for (const line of lines ?? []) {
+      expect((line.match(/<span/g) ?? []).length).toBe((line.match(/<\/span>/g) ?? []).length);
+    }
+
+    expect(highlightPayload('{"ok":true}', 'json')?.join('\n')).toContain('hljs-attr');
+    expect(highlightPayload('<main>ok</main>', 'html-file')?.join('\n')).toContain('hljs-tag');
+    const diff = highlightPayload('@@ -1 +1 @@\n-old\n+new', 'diff')?.join('\n');
+    expect(diff).toContain('hljs-meta');
+    expect(diff).toContain('hljs-addition');
+  });
+
+  it('falls back to plain rendering for unknown grammars and oversized payloads', () => {
+    expect(highlightPayload('noop', 'code-block', 'unknown-language')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'json')).toBeNull();
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
