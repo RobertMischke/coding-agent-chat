@@ -268,6 +268,57 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('renders the captured Codex git diff with addition, deletion, and hunk classes', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const payload = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-payload-type="diff"]',
+    );
+
+    expect(payload?.classList.contains('md-code--hl')).toBe(true);
+    expect(payload?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(payload?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(payload?.querySelector('.hljs-comment')?.textContent).toContain('diff --git');
+    expect(payload?.querySelector('.hljs-meta')?.textContent).toContain('@@');
+  });
+
+  it('syntax-highlights typed C#, JSON, and HTML payloads with their shared grammars', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const json = '{"ok":true}';
+    const html = '<!doctype html><html><body><main>Fixture</main></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', 'typed payloads', {
+        content: [
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'json', text: json },
+          { type: 'html-file', text: html, mediaType: 'text/html' },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(code?.getAttribute('data-language')).toBe('csharp');
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-literal')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(htmlPayload?.querySelector('main')).toBeNull();
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',

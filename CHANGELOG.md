@@ -30,6 +30,9 @@ pushing a `v<version>` tag (`scripts/release.sh <version>`), which the
 
 ### Fixed
 
+- Typed C#, JSON, HTML, and diff payloads in the conversation view now reuse
+  the Markdown highlighter, including line-level addition, deletion, and hunk
+  styling for visual diffs, with bounded plain-text fallback behavior.
 - Codex `file_change` started/completed metadata no longer renders as standalone
   rows; paired frames enrich their owning work phase, orphan frames degrade to
   one compact trace-backed notice, and no-action runtime frames stay trace-only.

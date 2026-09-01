@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -218,6 +223,20 @@ describe('markdownToHtml', () => {
   });
 
   describe('language hint capture', () => {
+    it('highlights typed payloads with the shared grammar map', () => {
+      expect(highlightPayload('public class Foo {}', 'code-block', 'csharp')).toContain(
+        'hljs-keyword',
+      );
+      expect(highlightPayload('{"ok":true}', 'json')).toContain('hljs-literal');
+      expect(highlightPayload('<main>ok</main>', 'html-file')).toContain('hljs-tag');
+      expect(highlightPayload('@@ -1 +1 @@\n-old\n+new', 'diff')).toContain('hljs-meta');
+    });
+
+    it('keeps unknown and oversized typed code payloads on the plain-text fallback', () => {
+      expect(highlightPayload('readable text', 'code-block', 'unknown-grammar')).toBeNull();
+      expect(highlightPayload('x'.repeat(60_001), 'code-block', 'csharp')).toBeNull();
+    });
+
     it('captures the fence language tag and syntax-highlights the body', () => {
       const md = ['```ts', 'const x: number = 1;', '```'].join('\n');
       const html = markdownToHtml(md);
