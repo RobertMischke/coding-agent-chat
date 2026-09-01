@@ -356,6 +356,32 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Highlighted payloads also carry the global `.markdown-body` palette scope,
+ * so standard hljs tokens reuse the fenced-code colors in light and dark.
+ * Angular-sanitised spans have no emulated-encapsulation attribute, hence the
+ * component-rooted ::ng-deep selector for the three diff-only line tints. */
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] {
+  code {
+    display: block;
+    min-width: max-content;
+  }
+  .hljs-addition,
+  .hljs-deletion,
+  .hljs-meta {
+    display: inline-block;
+    min-width: 100%;
+  }
+  .hljs-addition {
+    background: color-mix(in srgb, var(--md-hl-addition) 10%, transparent);
+  }
+  .hljs-deletion {
+    background: color-mix(in srgb, var(--md-hl-deletion) 10%, transparent);
+  }
+  .hljs-meta {
+    background: color-mix(in srgb, var(--md-hl-meta) 8%, transparent);
+  }
+}
 .msg__payload--image {
   width: fit-content;
 }

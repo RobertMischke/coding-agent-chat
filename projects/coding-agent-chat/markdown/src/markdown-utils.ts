@@ -275,6 +275,53 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed, non-Markdown message payload with the same lowlight
+ * instance, grammar registry, cache, and size guard used by fenced Markdown
+ * code. The returned fragment contains only escaped text and class-based
+ * `<span>` elements, one balanced fragment per source line joined by newlines.
+ *
+ * `null` deliberately means "render the original source as plain text": the
+ * code-block language is absent or unknown, the payload exceeds the shared
+ * size guard, highlighting failed, or lowlight returned an unexpected line
+ * count. Consumers should keep their normal sanitizer in the `[innerHTML]`
+ * path and use text interpolation for that fallback.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11 marks +/- lines but leaves git hunk ranges unclassified.
+  // Normalise those range lines to the public visual-diff contract without
+  // registering or running a second grammar. Each fragment is already escaped
+  // by hastToLines, so wrapping it in the same class-only shape remains safe.
+  const lines =
+    payloadType === 'diff'
+      ? highlighted.map((line, index) =>
+          /^@@(?:\s|$)/.test(sourceLines[index] ?? '') && !line.includes('hljs-meta')
+            ? `<span class="hljs-meta">${line}</span>`
+            : line,
+        )
+      : highlighted;
+  return lines.join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
