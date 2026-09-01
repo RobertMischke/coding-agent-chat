@@ -253,7 +253,7 @@ describe('ConversationViewComponent', () => {
   });
 
   it('renders typed raw file payloads without passing them through Markdown', async () => {
-    const html = '<!doctype html><html><body><ul><li>literal source</li></ul></body></html>';
+    const html = `<!doctype html><html><body><ul><li>${'literal source '.repeat(5000)}</li></ul></body></html>`;
     const fixture = await render([
       msg('message.taskAgent', html, {
         content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
@@ -264,8 +264,49 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.classList).not.toContain('md-code--hl');
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('syntax-highlights typed code, diff, JSON, and HTML payloads', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const json = '{"ok":true}';
+    const html = '<!doctype html><html><body><main>Fixture</main></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', json, {
+        content: [{ type: 'json', text: json }],
+      }),
+      msg('message.taskAgent', html, {
+        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const renderedDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+
+    expect(code?.classList).toContain('md-code--hl');
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(code?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(renderedDiff?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(renderedDiff?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(renderedDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(host.querySelector('[data-payload-type="json"] .hljs-attr')).toBeTruthy();
+    expect(host.querySelector('[data-payload-type="html-file"] .hljs-tag')).toBeTruthy();
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {
