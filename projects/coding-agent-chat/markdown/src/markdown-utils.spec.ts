@@ -2,39 +2,41 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
     expect(markdownToHtml('# Status\n\n- **Done**\n- `jobId`')).toBe(
-      '<h1>Status</h1><ul><li><strong>Done</strong></li><li><code>jobId</code></li></ul>'
+      '<h1>Status</h1><ul><li><strong>Done</strong></li><li><code>jobId</code></li></ul>',
     );
   });
 
   it('escapes raw html before rendering markdown', () => {
     expect(markdownToHtml('Hello <script>alert(1)</script>')).toBe(
-      '<p>Hello &lt;script&gt;alert(1)&lt;/script&gt;</p>'
+      '<p>Hello &lt;script&gt;alert(1)&lt;/script&gt;</p>',
     );
   });
 
   it('renders standalone image lines as block-level <img>', () => {
     expect(markdownToHtml('Before\n\n![shot](attachments/abc.png)\n\nAfter')).toBe(
-      '<p>Before</p><img src="attachments/abc.png" alt="shot"><p>After</p>'
+      '<p>Before</p><img src="attachments/abc.png" alt="shot"><p>After</p>',
     );
   });
 
   it('expands attachment refs through resolveImageSrc', () => {
     const html = markdownToHtml('![shot](attachments/abc.png)', {
-      resolveImageSrc: (src) =>
-        src.startsWith('attachments/') ? `/api/tasks/x/${src}` : src
+      resolveImageSrc: (src) => (src.startsWith('attachments/') ? `/api/tasks/x/${src}` : src),
     });
     expect(html).toBe('<img src="/api/tasks/x/attachments/abc.png" alt="shot">');
   });
 
   it('renders ordered lists as <ol>', () => {
-    expect(markdownToHtml('1. one\n2. two')).toBe(
-      '<ol><li>one</li><li>two</li></ol>'
-    );
+    expect(markdownToHtml('1. one\n2. two')).toBe('<ol><li>one</li><li>two</li></ol>');
   });
 
   it('renders GFM tables', () => {
@@ -56,7 +58,7 @@ describe('markdownToHtml', () => {
 
   it('treats single-asterisk pairs as italic alongside underscore italic', () => {
     expect(markdownToHtml('a *star* and _under_')).toBe(
-      '<p>a <em>star</em> and <em>under</em></p>'
+      '<p>a <em>star</em> and <em>under</em></p>',
     );
   });
 
@@ -69,7 +71,14 @@ describe('markdownToHtml', () => {
 
   describe('edge cases', () => {
     it('renders fenced code blocks verbatim with inner markdown left alone', () => {
-      const md = ['Here is some code:', '', '```', 'const x = "**not bold**";', '// comment', '```'].join('\n');
+      const md = [
+        'Here is some code:',
+        '',
+        '```',
+        'const x = "**not bold**";',
+        '// comment',
+        '```',
+      ].join('\n');
       const html = markdownToHtml(md);
       expect(html).toContain('<pre><code>');
       expect(html).toContain('const x = "**not bold**";');
@@ -90,9 +99,12 @@ describe('markdownToHtml', () => {
     });
 
     it('handles a long URL inside a paragraph without breaking the link rendering', () => {
-      const md = 'See [docs](https://example.com/path/with/lots/of/segments?query=very-long-string-of-text-that-could-trigger-wrapping#fragment).';
+      const md =
+        'See [docs](https://example.com/path/with/lots/of/segments?query=very-long-string-of-text-that-could-trigger-wrapping#fragment).';
       const html = markdownToHtml(md);
-      expect(html).toContain('href="https://example.com/path/with/lots/of/segments?query=very-long-string-of-text-that-could-trigger-wrapping#fragment"');
+      expect(html).toContain(
+        'href="https://example.com/path/with/lots/of/segments?query=very-long-string-of-text-that-could-trigger-wrapping#fragment"',
+      );
       expect(html).toContain('>docs</a>');
     });
 
@@ -113,10 +125,16 @@ describe('markdownToHtml', () => {
     });
 
     it('surrounds an embedded image with the surrounding text paragraphs', () => {
-      const md = ['Above the image.', '', '![shot](attachments/abc.png)', '', 'Below the image.'].join('\n');
+      const md = [
+        'Above the image.',
+        '',
+        '![shot](attachments/abc.png)',
+        '',
+        'Below the image.',
+      ].join('\n');
       const html = markdownToHtml(md);
       expect(html).toBe(
-        '<p>Above the image.</p><img src="attachments/abc.png" alt="shot"><p>Below the image.</p>'
+        '<p>Above the image.</p><img src="attachments/abc.png" alt="shot"><p>Below the image.</p>',
       );
     });
 
@@ -153,7 +171,9 @@ describe('markdownToHtml', () => {
     it('renders a list followed by a paragraph without leaking the list tag', () => {
       const md = '- item one\n- item two\n\nFollow-up paragraph.';
       const html = markdownToHtml(md);
-      expect(html).toMatch(/<ul><li>item one<\/li><li>item two<\/li><\/ul>\s*<p>Follow-up paragraph\.<\/p>/);
+      expect(html).toMatch(
+        /<ul><li>item one<\/li><li>item two<\/li><\/ul>\s*<p>Follow-up paragraph\.<\/p>/,
+      );
     });
 
     it('handles a code block followed by another paragraph (closing fence boundary)', () => {
@@ -256,7 +276,14 @@ describe('markdownToHtml', () => {
     });
 
     it('highlights per line inside the numbered shape, one row per source line', () => {
-      const md = ['```ts', 'const a = 1;', 'const b = 2;', 'const c = 3;', 'const d = 4;', '```'].join('\n');
+      const md = [
+        '```ts',
+        'const a = 1;',
+        'const b = 2;',
+        'const c = 3;',
+        'const d = 4;',
+        '```',
+      ].join('\n');
       const html = markdownToHtml(md, { codeLineNumbers: true, codeLineNumberThreshold: 2 });
       expect(html).toContain('md-code--numbered');
       expect(html).toContain('md-code--hl');
@@ -267,7 +294,9 @@ describe('markdownToHtml', () => {
     });
 
     it('re-opens a token span across line boundaries (multi-line comment)', () => {
-      const md = ['```ts', '/* line one', '   line two', '   end */', 'const x = 1;', '```'].join('\n');
+      const md = ['```ts', '/* line one', '   line two', '   end */', 'const x = 1;', '```'].join(
+        '\n',
+      );
       const html = markdownToHtml(md, { codeLineNumbers: true, codeLineNumberThreshold: 2 });
       // Four source lines → four rows; the 3-line comment re-opens its span
       // per line (≥3 hljs-comment spans), and every span stays balanced.
@@ -295,7 +324,10 @@ describe('markdownToHtml', () => {
       const md = ['```js', '/* a', 'b */', 'const x = 1;', '```'].join('\n');
       const html = markdownToHtml(md);
       expect(html).toContain('md-code--hl');
-      const codeInner = html.slice(html.indexOf('<code>') + '<code>'.length, html.indexOf('</code>'));
+      const codeInner = html.slice(
+        html.indexOf('<code>') + '<code>'.length,
+        html.indexOf('</code>'),
+      );
       // Three source lines → two newline separators survive.
       expect((codeInner.match(/\n/g) ?? []).length).toBe(2);
     });
@@ -303,7 +335,15 @@ describe('markdownToHtml', () => {
     it('keeps leading indentation in numbered highlighted rows (no <pre> collapse)', () => {
       // Regression: the `md-code-text` cell open tag `>` directly preceded each
       // line's leading spaces, so `>\s+<` ate the Python indentation flush-left.
-      const md = ['```python', 'def f():', '    x = 1', '    y = 2', '    z = 3', '    return x', '```'].join('\n');
+      const md = [
+        '```python',
+        'def f():',
+        '    x = 1',
+        '    y = 2',
+        '    z = 3',
+        '    return x',
+        '```',
+      ].join('\n');
       const html = markdownToHtml(md, { codeLineNumbers: true, codeLineNumberThreshold: 2 });
       expect(html).toContain('md-code--numbered');
       expect(html).toContain('md-code--hl');
@@ -322,7 +362,10 @@ describe('markdownToHtml', () => {
   describe('task references', () => {
     const refs = [
       { label: 'ASS-738', taskKey: 'agent-taskboard::ass-738' },
-      { label: 'feature-clickable-task-references-open-task-tab', taskKey: 'agent-taskboard::feature-clickable-task-references-open-task-tab' },
+      {
+        label: 'feature-clickable-task-references-open-task-tab',
+        taskKey: 'agent-taskboard::feature-clickable-task-references-open-task-tab',
+      },
     ];
 
     it('links only known task references in rendered prose', () => {
@@ -335,7 +378,9 @@ describe('markdownToHtml', () => {
     });
 
     it('does not link task references inside code or existing links', () => {
-      const html = markdownToHtml('`ASS-738` and [ASS-738](https://example.com)', { taskReferences: refs });
+      const html = markdownToHtml('`ASS-738` and [ASS-738](https://example.com)', {
+        taskReferences: refs,
+      });
       expect(html).toContain('<code>ASS-738</code>');
       expect(html).toContain('<a href="https://example.com"');
       expect(html).not.toContain('data-task-ref="true"');
@@ -347,7 +392,9 @@ describe('markdownToHtml', () => {
         refs,
       );
       expect(html).toContain('data-task-ref="true"');
-      expect(html).toContain('data-task-key="agent-taskboard::feature-clickable-task-references-open-task-tab"');
+      expect(html).toContain(
+        'data-task-key="agent-taskboard::feature-clickable-task-references-open-task-tab"',
+      );
     });
 
     it('leaves duplicate labels unlinked so ambiguous references do not open the wrong task', () => {
@@ -362,7 +409,9 @@ describe('markdownToHtml', () => {
     });
 
     it('does not link task references embedded in longer words or slugs', () => {
-      const html = markdownToHtml('See XASS-738, ASS-738-extra, and ASS-738.', { taskReferences: refs });
+      const html = markdownToHtml('See XASS-738, ASS-738-extra, and ASS-738.', {
+        taskReferences: refs,
+      });
 
       expect(html).toContain('XASS-738');
       expect(html).toContain('ASS-738-extra');
@@ -395,16 +444,52 @@ describe('markdownToHtml', () => {
   });
 });
 
+describe('highlightPayload', () => {
+  it('maps typed payloads to the shared csharp, diff, json, and xml grammars', () => {
+    expect(highlightPayload('public class Foo {}', 'code-block', 'csharp')).toContain(
+      'hljs-keyword',
+    );
+
+    const diff = highlightPayload(
+      [
+        'diff --git a/a.txt b/a.txt',
+        '--- a/a.txt',
+        '+++ b/a.txt',
+        '@@ -1 +1 @@',
+        '-old',
+        '+new',
+      ].join('\n'),
+      'diff',
+    );
+    expect(diff).toContain('hljs-meta');
+    expect(diff).toContain('hljs-deletion');
+    expect(diff).toContain('hljs-addition');
+
+    expect(highlightPayload('{"ok":true}', 'json')).toContain('hljs-literal');
+    const html = highlightPayload('<main>safe</main>', 'html-file');
+    expect(html).toContain('hljs-tag');
+    expect(html).toContain('&lt;');
+    expect(html).not.toContain('<main>');
+  });
+
+  it('returns null for unknown code grammars and payloads above the shared size guard', () => {
+    expect(highlightPayload('plain', 'code-block', 'unknown-language')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'code-block', 'csharp')).toBeNull();
+  });
+});
+
 describe('htmlToMarkdown', () => {
   it('converts headings and paragraphs back to markdown blocks', () => {
     expect(htmlToMarkdown('<h1>Title</h1><p>Body text</p><h2>Sub</h2>')).toBe(
-      '# Title\n\nBody text\n\n## Sub'
+      '# Title\n\nBody text\n\n## Sub',
     );
   });
 
   it('converts emphasis, inline code and links back to inline markdown', () => {
     expect(
-      htmlToMarkdown('<p>Some <strong>bold</strong>, <em>soft</em>, <code>x</code> and <a href="https://example.com">docs</a></p>')
+      htmlToMarkdown(
+        '<p>Some <strong>bold</strong>, <em>soft</em>, <code>x</code> and <a href="https://example.com">docs</a></p>',
+      ),
     ).toBe('Some **bold**, _soft_, `x` and [docs](https://example.com)');
   });
 
@@ -419,7 +504,7 @@ describe('htmlToMarkdown', () => {
 
   it('converts <pre><code> blocks to fenced code and <br> to a newline', () => {
     expect(htmlToMarkdown('<pre><code>const a = 1;\nconst b = 2;</code></pre>')).toBe(
-      '```\nconst a = 1;\nconst b = 2;\n```'
+      '```\nconst a = 1;\nconst b = 2;\n```',
     );
     expect(htmlToMarkdown('<p>line one<br>line two</p>')).toBe('line one\nline two');
   });

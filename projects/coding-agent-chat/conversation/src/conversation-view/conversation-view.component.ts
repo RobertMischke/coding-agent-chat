@@ -11,7 +11,10 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload as renderHighlightedPayload,
+  MarkdownViewComponent,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -319,6 +322,24 @@ export class ConversationViewComponent {
    */
   private readonly localShowTools = signal(true);
   readonly showTools = computed(() => this.toolsVisible() ?? this.localShowTools());
+
+  /**
+   * Highlight typed source payloads without routing raw file contents through
+   * Markdown. A null result deliberately keeps the template on its escaped
+   * plain-text fallback for unknown languages and oversized inputs.
+   */
+  highlightedPayload(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return renderHighlightedPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return renderHighlightedPayload(payload.text, payload.type);
+      default:
+        return null;
+    }
+  }
 
   readonly rows = computed<RenderRow[]>(() => {
     const out: RenderRow[] = [];

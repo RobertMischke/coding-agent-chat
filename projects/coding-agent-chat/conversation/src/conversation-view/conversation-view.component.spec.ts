@@ -264,8 +264,56 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.classList.contains('md-code--hl')).toBe(true);
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('renders typed diffs and csharp source with class-based syntax highlighting', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+
+    expect(diffPayload?.classList.contains('md-code--hl')).toBe(true);
+    expect(diffPayload?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(diffPayload?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(diffPayload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(codePayload?.getAttribute('data-language')).toBe('csharp');
+    expect(codePayload?.classList.contains('md-code--hl')).toBe(true);
+    expect(codePayload?.querySelector('.hljs-keyword')?.textContent).toBe('public');
+  });
+
+  it('highlights typed JSON while preserving the raw source text', async () => {
+    const json = '{"ok":true,"count":2}';
+    const fixture = await render([
+      msg('message.taskAgent', json, { content: [{ type: 'json', text: json }] }),
+    ]);
+    const payload = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-payload-type="json"]',
+    );
+
+    expect(payload?.textContent).toBe(json);
+    expect(payload?.classList.contains('md-code--hl')).toBe(true);
+    expect(payload?.querySelector('.hljs-literal')?.textContent).toBe('true');
+    expect(payload?.querySelector('.hljs-number')?.textContent).toBe('2');
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

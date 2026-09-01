@@ -171,13 +171,30 @@
                               </figure>
                             }
                             @default {
-                              <pre
-                                class="msg__payload msg__payload--raw"
-                                [attr.data-payload-type]="payload.type"
-                                [attr.data-language]="
-                                  payload.type === 'code-block' ? (payload.language ?? null) : null
-                                "
-                              ><code>{{ payload.text }}</code></pre>
+                              @if (
+                                payload.type === 'code-block' ||
+                                payload.type === 'diff' ||
+                                payload.type === 'json' ||
+                                payload.type === 'html-file'
+                              ) {
+                                @let highlighted = highlightedPayload(payload);
+                                <pre
+                                  class="msg__payload msg__payload--raw md-code"
+                                  [class.md-code--hl]="highlighted !== null"
+                                  [class.msg__payload--highlighted]="highlighted !== null"
+                                  [attr.data-payload-type]="payload.type"
+                                  [attr.data-language]="
+                                    payload.type === 'code-block'
+                                      ? (payload.language ?? null)
+                                      : null
+                                  "
+                                >@if (highlighted !== null) {<code [innerHTML]="highlighted"></code>} @else {<code>{{ payload.text }}</code>}</pre>
+                              } @else {
+                                <pre
+                                  class="msg__payload msg__payload--raw"
+                                  [attr.data-payload-type]="payload.type"
+                                ><code>{{ payload.text }}</code></pre>
+                              }
                             }
                           }
                         }
