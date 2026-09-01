@@ -170,14 +170,27 @@
                                 }
                               </figure>
                             }
-                            @default {
+                            @case ('raw-log') {
                               <pre
                                 class="msg__payload msg__payload--raw"
+                                [attr.data-payload-type]="payload.type"
+                              ><code>{{ payload.text }}</code></pre>
+                            }
+                            @default {
+                              @let highlighted =
+                                highlightPayload(
+                                  payload.text,
+                                  payload.type,
+                                  payload.type === 'code-block' ? (payload.language ?? null) : null
+                                );
+                              <pre
+                                class="msg__payload msg__payload--raw md-code"
+                                [class.md-code--hl]="highlighted.highlighted"
                                 [attr.data-payload-type]="payload.type"
                                 [attr.data-language]="
                                   payload.type === 'code-block' ? (payload.language ?? null) : null
                                 "
-                              ><code>{{ payload.text }}</code></pre>
+                              ><code [innerHTML]="highlighted.html"></code></pre>
                             }
                           }
                         }
