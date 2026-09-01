@@ -268,6 +268,44 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed code, diff, JSON, and HTML payloads', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = 'public class Foo { public int X { get; set; } }';
+    const json = '{"ok":true,"count":1}';
+    const html = '<!doctype html><html><body><p>Fixture</p></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', [diff, csharp, json, html].join('\n'), {
+        content: [
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'json', text: json },
+          { type: 'html-file', text: html, mediaType: 'text/html' },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(diffPayload?.querySelector('.hljs-addition')).toBeTruthy();
+    expect(diffPayload?.querySelector('.hljs-deletion')).toBeTruthy();
+    expect(diffPayload?.querySelector('.hljs-meta')).toBeTruthy();
+    expect(codePayload?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(codePayload?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(codePayload?.classList.contains('md-code--hl')).toBe(true);
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',
