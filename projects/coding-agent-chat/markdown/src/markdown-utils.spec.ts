@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -392,6 +397,29 @@ describe('markdownToHtml', () => {
         linkTaskReferencesInHtml(input, [{ label: '   ', taskKey: 'agent-taskboard::blank' }]),
       ).toBe(input);
     });
+  });
+});
+
+describe('highlightPayload', () => {
+  it('uses the registered grammar for each typed payload and escapes source HTML', () => {
+    expect(highlightPayload('public class Foo {}', 'code-block', 'csharp')).toContain(
+      'hljs-keyword',
+    );
+    const diff = highlightPayload('@@ -1 +1 @@\n-added\n+added', 'diff');
+    expect(diff).toContain('hljs-addition');
+    expect(diff).toContain('hljs-deletion');
+    expect(diff).toContain('hljs-meta');
+    expect(highlightPayload('{"ok": true}', 'json')).toContain('hljs-attr');
+
+    const html = highlightPayload('<script>alert("nope")</script>', 'html-file');
+    expect(html).toContain('hljs-tag');
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;');
+  });
+
+  it('returns null for unknown grammars and payloads over the shared size guard', () => {
+    expect(highlightPayload('plain source', 'code-block', 'unknown-language')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'code-block', 'typescript')).toBeNull();
   });
 });
 
