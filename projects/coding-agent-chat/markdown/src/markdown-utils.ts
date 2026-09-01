@@ -72,6 +72,19 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/** Sanitizer-safe HTML plus metadata for a typed non-Markdown payload. */
+export interface HighlightedPayload {
+  /** Escaped source decorated only with class-based `hljs-*` spans. */
+  readonly html: string;
+  /** Whether a registered grammar highlighted the source. */
+  readonly highlighted: boolean;
+  /** Requested grammar label, retained when highlighting falls back. */
+  readonly language: string | null;
+}
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +286,64 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight renderer-safe typed payloads with the same engine, cache and size
+ * guard as fenced Markdown code. The returned HTML contains only escaped text
+ * and class-based `hljs-*` spans, so consumers may pass it through their normal
+ * HTML sanitizer. Unknown grammars and oversized payloads return escaped plain
+ * text instead of throwing or reinterpreting the source as markup.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language: string | null = null,
+): HighlightedPayload {
+  const requestedLanguage = payloadLanguage(payloadType, language);
+  const sourceLines = source.split('\n');
+  let highlightedLines = highlightLines(source, requestedLanguage);
+  if (highlightedLines && highlightedLines.length !== sourceLines.length) {
+    highlightedLines = null;
+  }
+  if (highlightedLines && payloadType === 'diff') {
+    highlightedLines = decorateDiffHunkHeaders(sourceLines, highlightedLines);
+  }
+
+  return {
+    html: highlightedLines ? highlightedLines.join('\n') : escapeHtml(source),
+    highlighted: highlightedLines !== null,
+    language: requestedLanguage,
+  };
+}
+
+/**
+ * highlight.js' diff grammar recognises `@@ -1,1 +1,1 @@` but not Git's valid
+ * single-line shorthand `@@ -1 +1 @@`, which is present in captured Codex
+ * output. Preserve the grammar result and add only the missing line-level
+ * metadata class so both hunk-header forms share the same visual treatment.
+ */
+function decorateDiffHunkHeaders(
+  sourceLines: readonly string[],
+  highlightedLines: readonly string[],
+): readonly string[] {
+  return highlightedLines.map((line, index) => {
+    if (!sourceLines[index]?.startsWith('@@') || line.includes('class="hljs-meta"')) return line;
+    return `<span class="hljs-meta">${line}</span>`;
+  });
+}
+
+function payloadLanguage(payloadType: HighlightPayloadType, language: string | null): string | null {
+  switch (payloadType) {
+    case 'code-block':
+      return language?.trim().toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
