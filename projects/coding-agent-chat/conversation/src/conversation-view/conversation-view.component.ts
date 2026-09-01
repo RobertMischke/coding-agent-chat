@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -942,6 +942,19 @@ export class ConversationViewComponent {
     if (n < 1000) return `${n}`;
     if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`;
     return `${(n / 1_000_000).toFixed(1)}M`;
+  }
+
+  highlightTypedPayload(payload: MessageContentPayload): readonly string[] | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightPayload(payload.text, payload.type);
+      default:
+        return null;
+    }
   }
 
   // ── Progressive disclosure ──────────────────────────────────────────

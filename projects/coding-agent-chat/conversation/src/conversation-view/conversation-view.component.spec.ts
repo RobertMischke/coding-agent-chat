@@ -268,6 +268,61 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed code and renders git payloads as visual diffs', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const visualDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+
+    expect(code?.classList.contains('md-code--hl')).toBe(true);
+    expect(code?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(visualDiff?.classList.contains('md-code--hl')).toBe(true);
+    expect(visualDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(visualDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(visualDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+  });
+
+  it('uses typed grammars for JSON and HTML and keeps raw logs on the plain-text path', async () => {
+    const json = '{"ok":true}';
+    const html = '<!doctype html><html><body><main>ok</main></body></html>';
+    const log = '2026-07-30T10:00:00Z [INFO] starting';
+    const fixture = await render([
+      msg('message.taskAgent', json, { content: [{ type: 'json', text: json }] }),
+      msg('message.taskAgent', html, {
+        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      }),
+      msg('message.taskAgent', log, {
+        content: [{ type: 'raw-log', text: log, ansi: false }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-payload-type="json"] .hljs-attr')).toBeTruthy();
+    expect(host.querySelector('[data-payload-type="html-file"] .hljs-tag')).toBeTruthy();
+    expect(host.querySelector('[data-payload-type="raw-log"]')?.textContent).toBe(log);
+    expect(host.querySelector('[data-payload-type="raw-log"] .hljs-keyword')).toBeNull();
+    expect(host.querySelector('[data-payload-type="raw-log"]')?.classList).not.toContain(
+      'md-code--hl',
+    );
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',
