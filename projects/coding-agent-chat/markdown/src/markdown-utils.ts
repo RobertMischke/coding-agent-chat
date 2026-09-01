@@ -70,7 +70,9 @@ const HLJS_LANG: Record<string, string> = {
  * synchronous tokenization of a very large paste would jank the UI, and the
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
-const MAX_HIGHLIGHT_CHARS = 60_000;
+export const MAX_HIGHLIGHT_CHARS = 60_000;
+
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -273,6 +275,43 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a typed, non-Markdown message payload with the same grammar,
+ * cache, size guard, and balanced-per-line output used by fenced Markdown
+ * code. The returned HTML contains only escaped source text and class-based
+ * `<span>` elements, making it suitable for a framework-sanitized
+ * `[innerHTML]` binding. `null` keeps callers on their plain-text fallback.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const requestedLanguage =
+    payloadType === 'code-block'
+      ? (language?.trim().split(/\s+/, 1)[0]?.toLowerCase() ?? null)
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, requestedLanguage);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  if (payloadType !== 'diff') return highlighted.join('\n');
+
+  // highlight.js leaves unified-diff hunk headers unclassified. Preserve the
+  // grammar output for every other line and tag @@ ranges with its conventional
+  // meta class so the conversation view can distinguish hunk boundaries.
+  return highlighted
+    .map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+        ? `<span class="hljs-meta">${escapeHtml(sourceLines[index] ?? '')}</span>`
+        : line,
+    )
+    .join('\n');
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
