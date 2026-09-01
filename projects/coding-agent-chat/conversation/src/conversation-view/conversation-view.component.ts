@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -789,6 +789,16 @@ export class ConversationViewComponent {
    */
   readonly activeModel = computed<string | null>(() => this.latestAttr('model'));
   readonly activeThinking = computed<string | null>(() => this.latestAttr('thinkingLevel'));
+
+  highlightedPayload(payload: MessageContentPayload): string | null {
+    if (payload.type === 'code-block') {
+      return highlightPayload(payload.text, payload.type, payload.language);
+    }
+    if (payload.type === 'diff' || payload.type === 'json' || payload.type === 'html-file') {
+      return highlightPayload(payload.text, payload.type);
+    }
+    return null;
+  }
 
   private latestAttr(key: 'model' | 'thinkingLevel'): string | null {
     const events = this.events();

@@ -2,7 +2,32 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the typed payload grammar and returns sanitizer-safe token spans', () => {
+    const diff = highlightPayload('-old\n+new\n@@ -1 +1 @@', 'diff');
+    const json = highlightPayload('{"ok": true}', 'json');
+    const html = highlightPayload('<main data-ready="true">Done</main>', 'html-file');
+
+    expect(diff).toContain('hljs-deletion');
+    expect(diff).toContain('hljs-addition');
+    expect(diff).toContain('hljs-meta');
+    expect(json).toContain('hljs-attr');
+    expect(html).toContain('hljs-tag');
+    expect(html).toContain('&lt;');
+  });
+
+  it('falls back for unknown code grammars and oversized payloads', () => {
+    expect(highlightPayload('plain source', 'code-block', 'unknown-language')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'code-block', 'typescript')).toBeNull();
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
