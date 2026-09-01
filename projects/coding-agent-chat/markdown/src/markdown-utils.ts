@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,44 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe typed payload with the same curated grammars,
+ * size guard, per-line balancing, and LRU cache used by fenced Markdown code.
+ * Every returned fragment contains escaped source plus class-only `hljs-*`
+ * spans, making it safe to pass through a normal HTML sanitizer. `null` asks
+ * the caller to render the original source as plain text.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): readonly string[] | null {
+  const lang =
+    payloadType === 'code-block'
+      ? (language?.trim().toLowerCase() ?? null)
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11's diff grammar only marks `@@ -1,2 +1,2 @@` as meta,
+  // while valid compact ranges such as the captured `@@ -1 +1 @@` stay plain.
+  // Preserve the grammar output and fill that narrow class gap so every git
+  // hunk header receives the same visual treatment.
+  if (payloadType === 'diff') {
+    return highlighted.map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index]) && !line.includes('class="hljs-meta"')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+  return highlighted;
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */

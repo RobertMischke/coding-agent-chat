@@ -171,13 +171,18 @@
                               </figure>
                             }
                             @default {
+                              @let highlighted = highlightedPayloadLines(payload);
                               <pre
                                 class="msg__payload msg__payload--raw"
+                                [class.md-code]="highlighted !== null"
+                                [class.md-code--hl]="highlighted !== null"
                                 [attr.data-payload-type]="payload.type"
                                 [attr.data-language]="
                                   payload.type === 'code-block' ? (payload.language ?? null) : null
                                 "
-                              ><code>{{ payload.text }}</code></pre>
+                              >@if (highlighted) {<code
+                                  [innerHTML]="highlighted.join('\n')"
+                                ></code>} @else {<code>{{ payload.text }}</code>}</pre>
                             }
                           }
                         }
