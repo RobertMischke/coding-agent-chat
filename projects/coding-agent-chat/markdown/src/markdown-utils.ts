@@ -275,6 +275,32 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/**
+ * Highlight source text with the existing Markdown code engine and return
+ * sanitizer-safe, class-based HTML. A null result means the language is
+ * unknown, the size guard was exceeded, or highlighting failed; callers
+ * should then render the original source as plain text.
+ */
+export function highlightCodeToHtml(source: string, lang: string | null): string | null {
+  const normalizedLang = lang?.trim().toLowerCase() || null;
+  const highlighted = highlightLines(source, normalizedLang);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11 marks +/- diff lines but leaves @@ hunk headers
+  // unclassified. Add its standard meta token without replacing the grammar.
+  if (normalizedLang === 'diff') {
+    return highlighted
+      .map((line, index) =>
+        sourceLines[index]?.startsWith('@@') && !line.includes('class="hljs-meta"')
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      )
+      .join('\n');
+  }
+  return highlighted.join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];

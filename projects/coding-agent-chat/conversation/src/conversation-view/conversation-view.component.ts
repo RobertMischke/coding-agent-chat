@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightCodeToHtml, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -830,6 +830,32 @@ export class ConversationViewComponent {
         return '🛡';
       case 'message.supportingAgent':
         return '🧰';
+    }
+  }
+
+  /**
+   * Highlight the typed source payloads that have a deterministic grammar.
+   * Returning null keeps unknown languages and oversized blocks on the plain
+   * text path, preserving readability without bypassing Angular's sanitizer.
+   */
+  highlightPayload(payload: MessageContentPayload): string | null {
+    const language = this.payloadLanguage(payload);
+    if (!language || payload.type === 'image-reference') return null;
+    return highlightCodeToHtml(payload.text, language);
+  }
+
+  payloadLanguage(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return payload.language ?? null;
+      case 'diff':
+        return 'diff';
+      case 'json':
+        return 'json';
+      case 'html-file':
+        return 'xml';
+      default:
+        return null;
     }
   }
 

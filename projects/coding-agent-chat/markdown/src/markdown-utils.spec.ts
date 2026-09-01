@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightCodeToHtml,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -392,6 +397,29 @@ describe('markdownToHtml', () => {
         linkTaskReferencesInHtml(input, [{ label: '   ', taskKey: 'agent-taskboard::blank' }]),
       ).toBe(input);
     });
+  });
+});
+
+describe('highlightCodeToHtml', () => {
+  it('returns escaped class-based spans from the shared language registry', () => {
+    const html = highlightCodeToHtml('public class Worker { }\n<script>', 'csharp');
+
+    expect(html).toContain('hljs-keyword');
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).not.toContain('<script>');
+  });
+
+  it('falls back for an unknown grammar or source over the highlight guard', () => {
+    expect(highlightCodeToHtml('plain text', 'unknown-language')).toBeNull();
+    expect(highlightCodeToHtml('x'.repeat(60_001), 'typescript')).toBeNull();
+  });
+
+  it('classifies visual diff lines, including hunk headers', () => {
+    const html = highlightCodeToHtml('@@ -1 +1 @@\n-old\n+new', 'diff');
+
+    expect(html).toContain('hljs-meta');
+    expect(html).toContain('hljs-deletion');
+    expect(html).toContain('hljs-addition');
   });
 });
 
