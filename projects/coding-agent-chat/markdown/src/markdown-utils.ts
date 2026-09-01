@@ -275,6 +275,63 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed, non-Markdown payload with the same grammar registry,
+ * cache, size guard, and per-line span balancing used by fenced Markdown
+ * code. The returned HTML contains only escaped source text and class-based
+ * `hljs-*` spans, so callers can pass it through their normal HTML sanitizer.
+ *
+ * Returns `null` when the requested grammar is unavailable, highlighting
+ * fails, or the source exceeds the synchronous highlighting size guard. The
+ * caller must render the original source as text in that case.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang = payloadType === 'code-block'
+    ? language?.trim().toLowerCase() || null
+    : payloadType === 'diff'
+      ? 'diff'
+      : payloadType === 'json'
+        ? 'json'
+        : 'xml';
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+
+  // Preserve the source's exact line shape. This is the same safety check as
+  // the fenced-code renderer and protects callers from malformed grammar output.
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  if (payloadType !== 'diff') return highlighted.join('\n');
+
+  // highlight.js 11.x misses the valid compact unified-diff hunk form
+  // `@@ -1 +1 @@` because its meta rule requires explicit line counts. Keep
+  // hunk headers visually distinct without replacing or re-registering the
+  // shared grammar; the line is already escaped by hastToLines.
+  const diffLines = highlighted
+    .map((line, index) =>
+      /^@@\s/.test(sourceLines[index] ?? '') && !line.includes('hljs-meta')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  return diffLines
+    .map((line) => {
+      const kind = line.includes('class="hljs-addition"')
+        ? 'addition'
+        : line.includes('class="hljs-deletion"')
+          ? 'deletion'
+          : line.includes('class="hljs-meta"')
+            ? 'meta'
+            : null;
+      const kindClass = kind ? ` md-code-line--${kind}` : '';
+      return `<span class="md-code-line${kindClass}">${line}</span>`;
+    })
+    .join('');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];

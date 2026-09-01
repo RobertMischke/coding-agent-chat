@@ -340,9 +340,11 @@
   margin: 6px 0;
 }
 .msg__payload--raw {
+  --msg-payload-inline-padding: 10px;
+
   max-width: 100%;
   overflow-x: auto;
-  padding: 8px 10px;
+  padding: 8px var(--msg-payload-inline-padding);
   border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
   border-radius: 6px;
   background: color-mix(in srgb, currentColor 5%, transparent);
@@ -355,6 +357,108 @@
 }
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
+}
+.msg__payload-highlight {
+  display: contents;
+}
+
+/* Highlighted payload HTML is inserted by Angular, so the token nodes do not
+ * carry this component's emulated-encapsulation attribute. Keep the deep scope
+ * anchored to this component and reuse the shared Markdown palette tokens. */
+:host ::ng-deep .msg__payload--raw.md-code--hl {
+  .hljs-keyword,
+  .hljs-literal,
+  .hljs-selector-tag,
+  .hljs-doctag {
+    color: var(--md-hl-keyword, #cba6f7);
+  }
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-meta .hljs-string {
+    color: var(--md-hl-string, #a6e3a1);
+  }
+  .hljs-number {
+    color: var(--md-hl-number, #fab387);
+  }
+  .hljs-comment,
+  .hljs-quote {
+    color: var(--md-hl-comment, #7f849c);
+    font-style: italic;
+  }
+  .hljs-title,
+  .hljs-title.function_,
+  .hljs-section {
+    color: var(--md-hl-function, #89b4fa);
+  }
+  .hljs-title.class_,
+  .hljs-type,
+  .hljs-selector-class,
+  .hljs-selector-id,
+  .hljs-selector-pseudo {
+    color: var(--md-hl-type, #f9e2af);
+  }
+  .hljs-built_in {
+    color: var(--md-hl-builtin, #f38ba8);
+  }
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-params,
+  .hljs-subst {
+    color: var(--md-hl-variable, #bac2de);
+  }
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-property {
+    color: var(--md-hl-attr, #f9e2af);
+  }
+  .hljs-tag,
+  .hljs-name {
+    color: var(--md-hl-tag, #89b4fa);
+  }
+  .hljs-meta,
+  .hljs-meta .hljs-keyword,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-link {
+    color: var(--md-hl-meta, #f5c2e7);
+  }
+  .hljs-punctuation,
+  .hljs-operator {
+    color: var(--md-hl-punct, #9399b2);
+  }
+  .hljs-addition {
+    color: var(--md-hl-addition, #a6e3a1);
+  }
+  .hljs-deletion {
+    color: var(--md-hl-deletion, #f38ba8);
+  }
+  .hljs-emphasis {
+    font-style: italic;
+  }
+  .hljs-strong {
+    font-weight: 600;
+  }
+}
+
+:host ::ng-deep .msg__payload--raw.md-code--hl[data-payload-type='diff'] {
+  > code {
+    display: block;
+    min-width: max-content;
+  }
+  .md-code-line {
+    display: block;
+    margin-inline: calc(-1 * var(--msg-payload-inline-padding));
+    padding-inline: var(--msg-payload-inline-padding);
+  }
+  .md-code-line--addition {
+    background: color-mix(in srgb, var(--md-hl-addition, #a6e3a1) 12%, transparent);
+  }
+  .md-code-line--deletion {
+    background: color-mix(in srgb, var(--md-hl-deletion, #f38ba8) 12%, transparent);
+  }
+  .md-code-line--meta {
+    background: color-mix(in srgb, var(--md-hl-meta, #f5c2e7) 8%, transparent);
+  }
 }
 .msg__payload--image {
   width: fit-content;
