@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -830,6 +830,26 @@ export class ConversationViewComponent {
         return '🛡';
       case 'message.supportingAgent':
         return '🧰';
+    }
+  }
+
+  /**
+   * Highlight renderer-safe payloads without sending their source through the
+   * Markdown parser. Null keeps unknown languages, raw logs, and oversized
+   * payloads on the plain-text interpolation path.
+   */
+  highlightedPayload(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightPayload(payload.text, payload.type);
+      case 'markdown':
+      case 'image-reference':
+      case 'raw-log':
+        return null;
     }
   }
 

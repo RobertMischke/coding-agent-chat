@@ -275,6 +275,60 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed non-Markdown payload with the same lowlight instance used
+ * for fenced Markdown code. The returned fragment contains only escaped text
+ * and sanitizer-approved, class-based `hljs-*` spans, so consumers can bind it
+ * through their framework's normal sanitizing `innerHTML` path. A null result
+ * means the caller must render the original source as text.
+ *
+ * Keeping the payload mapping here makes every renderer share the registered
+ * grammars, LRU cache, size guard, and per-line span balancing.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang = payloadHighlightLanguage(payloadType, language);
+  let highlighted = highlightLines(source, lang);
+  if (highlighted && highlighted.length !== source.split('\n').length) highlighted = null;
+  if (highlighted && payloadType === 'diff') highlighted = markDiffMetaLines(source, highlighted);
+  return highlighted ? sanitizeHtml(highlighted.join('\n')) : null;
+}
+
+function payloadHighlightLanguage(
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  switch (payloadType) {
+    case 'code-block':
+      return language?.trim().toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
+}
+
+const DIFF_META_LINE_RE =
+  /^(?:diff --git |index |@@(?: |$)|--- |\+\+\+ |(?:new|deleted) file mode |(?:old|new) mode |(?:dis)?similarity index |(?:rename|copy) (?:from|to) )/;
+
+/** highlight.js leaves some unified-diff headers unclassified. */
+function markDiffMetaLines(source: string, highlighted: readonly string[]): readonly string[] {
+  const sourceLines = source.split('\n');
+  return highlighted.map((line, index) =>
+    DIFF_META_LINE_RE.test(sourceLines[index] ?? '')
+      ? `<span class="hljs-meta">${line}</span>`
+      : line,
+  );
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
