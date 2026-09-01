@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,57 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a typed non-Markdown payload with the same lowlight instance,
+ * grammar registry, cache, and size guard used by fenced Markdown code.
+ *
+ * The returned fragment contains only escaped source text and class-based
+ * `hljs-*` spans. Consumers should bind it through a sanitizer-aware
+ * `[innerHTML]` path. `null` means the source must be rendered as plain text
+ * (missing/unknown code grammar, oversized input, or a highlighting failure).
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  let lang: string | null;
+  switch (payloadType) {
+    case 'code-block':
+      lang = language?.trim().toLowerCase() ?? null;
+      break;
+    case 'diff':
+      lang = 'diff';
+      break;
+    case 'json':
+      lang = 'json';
+      break;
+    case 'html-file':
+      lang = 'xml';
+      break;
+  }
+
+  const highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+
+  // Keep the same one-output-line-per-source-line invariant as numbered
+  // Markdown code blocks. A mismatch degrades to readable plain text.
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js' diff grammar classifies +/- lines but leaves @@ hunk
+  // headers untagged. Supply the standard meta token at the per-line boundary
+  // so the renderer can distinguish hunks without parsing or recolouring the
+  // diff itself. `line` already contains only escaped text / safe hljs spans.
+  if (payloadType === 'diff') {
+    return highlighted
+      .map((line, index) =>
+        /^@@/.test(sourceLines[index] ?? '') ? `<span class="hljs-meta">${line}</span>` : line,
+      )
+      .join('\n');
+  }
+  return highlighted.join('\n');
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
