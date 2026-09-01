@@ -275,6 +275,57 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed, non-Markdown payloads that use the shared syntax-highlighting engine. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/** Sanitizer-safe presentation returned by {@link highlightPayload}. */
+export interface HighlightPayloadResult {
+  /** Escaped source with optional class-only `hljs-*` spans. */
+  readonly html: string;
+  /** Whether a registered grammar produced the returned token spans. */
+  readonly highlighted: boolean;
+}
+
+/**
+ * Highlight a typed, non-Markdown payload with the same registered grammars,
+ * size guard, per-line span balancing, and LRU cache used by fenced Markdown
+ * code. The returned HTML contains only escaped source text and class-only
+ * `span` elements, so consumers can pass it through their normal HTML
+ * sanitizer. Unknown languages and oversized payloads remain readable as
+ * escaped plain text.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): HighlightPayloadResult {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const sourceLines = source.split('\n');
+  let highlighted = highlightLines(source, lang);
+  if (highlighted && highlighted.length !== sourceLines.length) highlighted = null;
+  if (highlighted && payloadType === 'diff') {
+    // highlight.js requires explicit ",count" ranges in its hunk rule, while
+    // valid one-line git hunks commonly omit them (`@@ -1 +1 @@`). Keep those
+    // headers visually distinct without changing or re-registering the grammar.
+    highlighted = highlighted.map((line, index) =>
+      /^@@\s/.test(sourceLines[index] ?? '') && !line.includes('hljs-meta')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+  return {
+    html: highlighted ? highlighted.join('\n') : escapeHtml(source),
+    highlighted: highlighted !== null,
+  };
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
