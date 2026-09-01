@@ -264,8 +264,49 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.classList.contains('md-code--hl')).toBe(true);
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('syntax-highlights typed C# and renders git payloads as visual diffs', async () => {
+    const csharp = ['public sealed class Foo', '{', '    public int X { get; set; }', '}'].join(
+      '\n',
+    );
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const json = '{"ok": true, "count": 2}';
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', json, {
+        content: [{ type: 'json', text: json }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const visualDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const highlightedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+
+    expect(code?.classList.contains('md-code--hl')).toBe(true);
+    expect(code?.querySelector('[class*="hljs-"]')).toBeTruthy();
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(visualDiff?.classList.contains('md-code--hl')).toBe(true);
+    expect(visualDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(visualDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(visualDiff?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(highlightedJson?.querySelector('.hljs-literal')?.textContent).toBe('true');
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {
