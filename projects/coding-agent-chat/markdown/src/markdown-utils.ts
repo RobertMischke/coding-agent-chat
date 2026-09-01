@@ -70,7 +70,9 @@ const HLJS_LANG: Record<string, string> = {
  * synchronous tokenization of a very large paste would jank the UI, and the
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
-const MAX_HIGHLIGHT_CHARS = 60_000;
+export const MAX_HIGHLIGHT_CHARS = 60_000;
+
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -273,6 +275,48 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe, non-Markdown payload with the same registered
+ * grammar, bounded cache, and size guard used by fenced Markdown code.
+ *
+ * The returned markup contains only highlighter-owned `<span class="hljs-*">`
+ * elements and escaped source text, so it is safe to pass through Angular's
+ * normal `[innerHTML]` sanitizer. `null` tells callers to render `source` as
+ * plain text, preserving a readable fallback for unknown languages, oversized
+ * payloads, or a highlighter failure.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language: string | null = null,
+): string | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const sourceLines = source.split('\n');
+  let highlighted = highlightLines(source, lang);
+
+  // highlight.js' diff grammar only tags range headers when both sides carry
+  // an explicit comma/count (`@@ -1,1 +1,1 @@`). Git also emits the valid,
+  // compact `@@ -1 +1 @@` shape used by our captured Codex fixture, so fill
+  // that narrow grammar gap without registering or duplicating a grammar.
+  if (payloadType === 'diff' && highlighted) {
+    highlighted = highlighted.map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index] ?? '') && !line.includes('class="hljs-meta"')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+
+  // Keep the same per-line balancing invariant as numbered Markdown fences.
+  return highlighted?.length === sourceLines.length ? highlighted.join('\n') : null;
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
