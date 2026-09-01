@@ -229,14 +229,6 @@ function safeLinkUrl(raw: string): string {
 }
 
 /**
- * Syntax-highlight `source` with the grammar for `lang`, returning one HTML
- * string PER LINE (token spans balanced within each line, so the numbered
- * gutter's per-line grid stays intact and a multi-line token — a block
- * comment, a template literal — re-opens its span on each line). Returns null
- * to fall back to plain escaped text: no language, an unregistered grammar, or
- * a block over the size guard.
- */
-/**
  * Bounded LRU cache of highlight output, keyed by (grammar, source). The chat
  * re-renders the whole message body on every stream tick, so without this every
  * settled code block in the message would be re-tokenised on every frame. On a
@@ -247,7 +239,14 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
-function highlightLines(source: string, lang: string | null): readonly string[] | null {
+/**
+ * Syntax-highlight `source` with the grammar for `lang`, returning one
+ * sanitizer-safe HTML string per line. Token spans are balanced within each
+ * line so consumers can render line-oriented layouts. Returns null for a
+ * missing or unknown language, highlighting errors, or content over the size
+ * guard, allowing callers to fall back to plain text.
+ */
+export function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];
   if (!grammar || !lowlight.registered(grammar)) return null;
@@ -264,6 +263,18 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   let result: readonly string[] | null;
   try {
     result = hastToLines(lowlight.highlight(grammar, source));
+    // highlight.js 11's diff grammar classifies additions/deletions but leaves
+    // unified-diff hunk headers (`@@ ... @@`) untagged. Normalise that stable
+    // diff construct to the grammar's metadata class so every consumer gets a
+    // complete visual diff without registering or duplicating a grammar.
+    if (grammar === 'diff') {
+      const sourceLines = source.split('\n');
+      result = result.map((line, index) =>
+        /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+          ? `<span class="hljs-meta">${line}</span>`
+          : line,
+      );
+    }
   } catch {
     result = null;
   }

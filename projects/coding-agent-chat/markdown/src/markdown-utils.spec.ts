@@ -2,7 +2,12 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightLines,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -316,6 +321,18 @@ describe('markdownToHtml', () => {
       expect(html).not.toContain('md-code--hl');
       expect(html).not.toContain('hljs-');
       expect(html).toContain('<code>noop</code>');
+    });
+
+    it('keeps the shared highlighter bounded for reusable rendering surfaces', () => {
+      expect(highlightLines('x'.repeat(60_001), 'typescript')).toBeNull();
+      expect(highlightLines('const x = 1;', 'unknown-grammar')).toBeNull();
+    });
+
+    it('tags unified-diff hunk headers as metadata in the shared output', () => {
+      const lines = highlightLines('@@ -1 +1 @@\n-old\n+new', 'diff');
+      expect(lines?.[0]).toContain('class="hljs-meta"');
+      expect(lines?.[1]).toContain('class="hljs-deletion"');
+      expect(lines?.[2]).toContain('class="hljs-addition"');
     });
   });
 
