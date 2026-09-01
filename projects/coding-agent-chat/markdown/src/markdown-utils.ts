@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,46 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe typed payload with the markdown entry point's
+ * existing lowlight instance. The returned strings contain only escaped text
+ * and generated `hljs-*` spans, one balanced string per source line.
+ *
+ * `null` deliberately keeps callers on their plain-text rendering path when
+ * the code language is unknown, the source exceeds the shared size guard, or
+ * tokenisation fails.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): readonly string[] | null {
+  const lang =
+    payloadType === 'code-block'
+      ? (language?.trim().split(/\s+/, 1)[0]?.toLowerCase() ?? null)
+      : payloadType === 'diff'
+        ? 'diff'
+        : payloadType === 'json'
+          ? 'json'
+          : 'xml';
+  const highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  if (payloadType !== 'diff') return highlighted;
+
+  // highlight.js recognises only hunk ranges with explicit counts
+  // (`@@ -1,1 +1,1 @@`). Git omits the count when it is one, as in
+  // `@@ -1 +1 @@`, so tag that valid form after tokenisation. The line HTML
+  // is already escaped and span-balanced by highlightLines.
+  return highlighted.map((line, index) =>
+    /^@@\s+.*\s+@@(?:\s|$)/.test(sourceLines[index] ?? '') &&
+    !/class="hljs-(?:meta|info)"/.test(line)
+      ? `<span class="hljs-meta">${line}</span>`
+      : line,
+  );
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
