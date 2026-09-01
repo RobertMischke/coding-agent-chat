@@ -356,6 +356,104 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* Typed payload highlighting uses the same inherited light/dark token palette
+ * as fenced Markdown. The spans come from sanitizer-safe innerHTML, so
+ * ::ng-deep is limited to this payload container rather than leaking global
+ * hljs rules. */
+:host ::ng-deep .msg__payload--raw.md-code--hl {
+  color: var(--md-fg, inherit);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-keyword,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-literal,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-selector-tag,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-doctag {
+  color: var(--md-hl-keyword);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-string,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-regexp,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-meta .hljs-string {
+  color: var(--md-hl-string);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-number {
+  color: var(--md-hl-number);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-comment,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-quote {
+  color: var(--md-hl-comment);
+  font-style: italic;
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-title,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-title.function_,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-section {
+  color: var(--md-hl-function);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-title.class_,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-type,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-selector-class,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-selector-id,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-selector-pseudo {
+  color: var(--md-hl-type);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-built_in {
+  color: var(--md-hl-builtin);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-variable,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-template-variable,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-params,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-subst {
+  color: var(--md-hl-variable);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-attr,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-attribute,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-property {
+  color: var(--md-hl-attr);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-tag,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-name {
+  color: var(--md-hl-tag);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-meta,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-meta .hljs-keyword,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-symbol,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-bullet,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-link {
+  color: var(--md-hl-meta);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-punctuation,
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-operator {
+  color: var(--md-hl-punct);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-addition {
+  color: var(--md-hl-addition);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-deletion {
+  color: var(--md-hl-deletion);
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-emphasis {
+  font-style: italic;
+}
+:host ::ng-deep .msg__payload--raw.md-code--hl .hljs-strong {
+  font-weight: 600;
+}
+
+/* The diff grammar wraps whole changed/hunk lines in top-level spans. Render
+ * those spans as tinted rows while retaining the neutral payload border and
+ * the shared token colours. */
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] code > .hljs-addition,
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] code > .hljs-deletion,
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] code > .hljs-meta {
+  display: block;
+}
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] code > .hljs-addition {
+  background: color-mix(in srgb, var(--md-hl-addition, currentColor) 12%, transparent);
+}
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] code > .hljs-deletion {
+  background: color-mix(in srgb, var(--md-hl-deletion, currentColor) 12%, transparent);
+}
+:host ::ng-deep .msg__payload--raw[data-payload-type='diff'] code > .hljs-meta {
+  background: color-mix(in srgb, var(--md-hl-meta, currentColor) 8%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }
