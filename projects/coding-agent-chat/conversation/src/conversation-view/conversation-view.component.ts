@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightLines, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -249,6 +249,47 @@ export class ConversationViewComponent {
   readonly variant = input<'framed' | 'embedded'>('embedded');
   readonly showHeader = input<boolean>(true);
   readonly toolsVisible = input<boolean | null>(null);
+
+  /**
+   * Highlight renderer-safe payloads without sending raw file contents
+   * through Markdown. `highlightLines` owns grammar registration, caching,
+   * escaping, and the large-input guard; null keeps the plain-text fallback.
+   */
+  highlightPayload(payload: MessageContentPayload): string | null {
+    let language: string | null;
+    switch (payload.type) {
+      case 'code-block':
+        language = payload.language?.trim().toLowerCase() || null;
+        break;
+      case 'diff':
+        language = 'diff';
+        break;
+      case 'json':
+        language = 'json';
+        break;
+      case 'html-file':
+        language = 'xml';
+        break;
+      default:
+        return null;
+    }
+
+    const lines = highlightLines(payload.text, language);
+    if (!lines || lines.length !== payload.text.split('\n').length) return null;
+
+    // highlight.js 11 marks +/- lines but leaves git hunk ranges unclassified.
+    // Preserve the engine's escaped output and add its standard metadata class
+    // so @@ headers receive the same palette as other diff metadata.
+    if (payload.type === 'diff') {
+      const sourceLines = payload.text.split('\n');
+      return lines
+        .map((line, index) =>
+          sourceLines[index]?.startsWith('@@') ? `<span class="hljs-meta">${line}</span>` : line,
+        )
+        .join('\n');
+    }
+    return lines.join('\n');
+  }
 
   /**
    * When true the feed windows itself — only the rows near the viewport are

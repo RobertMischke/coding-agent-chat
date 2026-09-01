@@ -2,7 +2,23 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightLines,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightLines', () => {
+  it('exposes escaped, line-balanced highlighting with guarded fallbacks', () => {
+    const highlighted = highlightLines('public class Foo\n{\n}', 'csharp');
+
+    expect(highlighted).toHaveLength(3);
+    expect(highlighted?.join('\n')).toContain('hljs-keyword');
+    expect(highlightLines('<script>alert(1)</script>', 'unknown')).toBeNull();
+    expect(highlightLines('x'.repeat(60_001), 'csharp')).toBeNull();
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
