@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -273,6 +273,20 @@ export class ConversationViewComponent {
   readonly openFollowUp = output<string>();
   /** Raised when a rendered tool output hit is clicked. The host may open a richer file viewer later. */
   readonly openSourceLocation = output<ToolOutputHit & { rawRange: RawLineRange }>();
+
+  /** Highlight only the typed source payloads; all other payloads stay plain. */
+  readonly highlightedPayload = (payload: MessageContentPayload): string | null => {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightPayload(payload.text, payload.type);
+      default:
+        return null;
+    }
+  };
 
   private readonly expandedItems = signal<ReadonlySet<string>>(readExpandedMessageIds());
   private readonly expandedWaitGroups = signal<ReadonlySet<string>>(new Set());

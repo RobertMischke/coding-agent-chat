@@ -356,6 +356,33 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+.msg__payload--highlighted code {
+  color: var(--md-fg);
+}
+
+/* `markdown-body` on the highlighted <pre> routes standard hljs token spans
+ * through the shared light/dark Markdown palette. Only visual diff tints are
+ * component-specific. Sanitizer-created spans need the host-scoped deep path. */
+
+/* The diff grammar wraps complete lines in these classes. Inline blocks keep
+ * the source newlines authoritative while extending tints across the viewport
+ * and any horizontally scrolled content. */
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] .hljs-addition,
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] .hljs-deletion,
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] .hljs-meta {
+  display: inline-block;
+  min-width: 100%;
+  width: max-content;
+}
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] .hljs-addition {
+  background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+}
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] .hljs-deletion {
+  background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+}
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] .hljs-meta {
+  background: color-mix(in srgb, var(--md-hl-meta) 9%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }

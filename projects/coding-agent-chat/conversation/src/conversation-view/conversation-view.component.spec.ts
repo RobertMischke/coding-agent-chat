@@ -268,6 +268,45 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed code and renders git payloads as visual diffs', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = ['public class Foo', '{', '    public int X { get; set; }', '}'].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', 'typed payload matrix', {
+        content: [
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'json', text: '{"ok": true}' },
+          { type: 'html-file', text: '<main>Safe</main>', mediaType: 'text/html' },
+          { type: 'raw-log', text: '[info] unchanged', ansi: false },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+
+    expect(diffPayload?.classList).toContain('md-code--hl');
+    expect(diffPayload?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(diffPayload?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(diffPayload?.querySelector('.hljs-meta')?.textContent).toContain('@@');
+    expect(codePayload?.classList).toContain('md-code--hl');
+    expect(codePayload?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(host.querySelector('[data-payload-type="json"] .hljs-attr')).toBeTruthy();
+    expect(host.querySelector('[data-payload-type="html-file"] .hljs-tag')).toBeTruthy();
+    expect(host.querySelector('[data-payload-type="raw-log"] .hljs-attr')).toBeNull();
+    expect(host.querySelector('[data-payload-type="raw-log"]')?.textContent).toBe(
+      '[info] unchanged',
+    );
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',

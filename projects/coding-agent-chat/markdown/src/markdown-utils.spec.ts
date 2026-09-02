@@ -2,7 +2,46 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('uses the shared grammars for typed source payloads', () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+
+    expect(highlightPayload(diff, 'diff')).toContain('hljs-addition');
+    expect(highlightPayload(diff, 'diff')).toContain('hljs-deletion');
+    expect(highlightPayload(diff, 'diff')).toContain('hljs-meta');
+    expect(highlightPayload('public class Foo {}', 'code-block', 'csharp')).toContain(
+      'hljs-keyword',
+    );
+    expect(highlightPayload('{"ok": true}', 'json')).toContain('hljs-attr');
+    expect(highlightPayload('<main>Safe</main>', 'html-file')).toContain('hljs-tag');
+  });
+
+  it('returns null for unknown grammars and payloads over the shared size guard', () => {
+    expect(highlightPayload('noop', 'code-block', 'unknown-language')).toBeNull();
+    expect(highlightPayload('x'.repeat(60_001), 'code-block', 'csharp')).toBeNull();
+  });
+
+  it('escapes source markup in the sanitizer-safe output', () => {
+    const html = highlightPayload('<script>alert(1)</script>', 'html-file');
+
+    expect(html).toContain('&lt;');
+    expect(html).not.toContain('<script>');
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
