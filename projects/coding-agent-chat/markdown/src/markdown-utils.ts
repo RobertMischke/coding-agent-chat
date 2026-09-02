@@ -275,6 +275,57 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   return result;
 }
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a renderer-safe typed payload with the same lowlight instance,
+ * language registry, size guard, and LRU cache used by fenced Markdown code.
+ *
+ * The returned markup contains only escaped source text and classed span
+ * elements, so consumers can pass it through their framework sanitizer. A
+ * null result means the language is unknown, the payload exceeds the size
+ * guard, or highlighting failed; consumers must then render the source as
+ * plain text rather than as HTML.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  let lang: string | null;
+  switch (payloadType) {
+    case 'code-block':
+      lang = language?.trim().toLowerCase() || null;
+      break;
+    case 'diff':
+      lang = 'diff';
+      break;
+    case 'json':
+      lang = 'json';
+      break;
+    case 'html-file':
+      lang = 'xml';
+      break;
+  }
+  const highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+
+  // Preserve the per-line balancing invariant used by renderCodeBlock. A
+  // mismatched result cannot safely be laid out as source lines.
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  return highlighted
+    .map((line, index) => {
+      // highlight.js 11.11 tags +/- lines but leaves @@ hunk headers plain.
+      // Add the engine's standard metadata class without touching source text.
+      if (payloadType === 'diff' && sourceLines[index]?.startsWith('@@')) {
+        return `<span class="hljs-meta">${line}</span>`;
+      }
+      return line;
+    })
+    .join('\n');
+}
+
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */
 function hastToLines(tree: Root): string[] {
   const lines: string[] = [];
