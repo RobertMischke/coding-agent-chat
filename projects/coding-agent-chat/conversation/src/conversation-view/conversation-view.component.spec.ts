@@ -264,8 +264,66 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.classList).toContain('md-code--hl');
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('renders typed C# and captured Codex diff payloads with highlight token classes', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.orchestrator', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const visualDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+
+    expect(code?.classList).toContain('md-code--hl');
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(visualDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(visualDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(visualDiff?.querySelector('.hljs-meta')?.textContent).toBe('@@ -1 +1 @@');
+  });
+
+  it('highlights typed JSON and keeps unknown code and raw logs on the plain fallback', async () => {
+    const json = '{"ok":true}';
+    const unknown = 'plain readable source';
+    const log = 'INFO first\nERROR second';
+    const fixture = await render([
+      msg('message.taskAgent', json, { content: [{ type: 'json', text: json }] }),
+      msg('message.orchestrator', unknown, {
+        content: [{ type: 'code-block', text: unknown, language: 'unknown-language' }],
+      }),
+      msg('message.taskAgent', log, {
+        content: [{ type: 'raw-log', text: log, ansi: false }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const unknownPayload = host.querySelector<HTMLElement>(
+      '[data-language="unknown-language"]',
+    );
+    const rawLog = host.querySelector<HTMLElement>('[data-payload-type="raw-log"]');
+
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(unknownPayload?.classList).not.toContain('md-code--hl');
+    expect(unknownPayload?.textContent).toBe(unknown);
+    expect(rawLog?.classList).not.toContain('md-code--hl');
+    expect(rawLog?.textContent).toBe(log);
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

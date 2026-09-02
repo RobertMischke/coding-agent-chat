@@ -11,7 +11,10 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import {
+  highlightPayload as highlightTypedPayload,
+  MarkdownViewComponent,
+} from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -287,6 +290,24 @@ export class ConversationViewComponent {
   readonly visibleStart = signal<number>(0);
   /** Exclusive end index of the virtual window. */
   readonly visibleEnd = signal<number>(50);
+
+  /**
+   * Highlight only renderer-safe typed source payloads. Returning null is
+   * intentional: raw logs, unknown grammars, and oversized blocks retain the
+   * existing escaped plain-text rendering.
+   */
+  highlightedPayload(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightTypedPayload(payload.text, payload.type, payload.language ?? null);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightTypedPayload(payload.text, payload.type);
+      default:
+        return null;
+    }
+  }
 
   constructor() {
     // When the LOCAL user posts a turn, always bring it into view — even if
