@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed non-Markdown payloads supported by the shared syntax highlighter. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,42 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe typed payload with the same lowlight instance,
+ * grammar aliases, size guard, line balancing, and LRU cache used by fenced
+ * Markdown code. The returned HTML contains only escaped source text and
+ * classed `span` elements, so callers can pass it through their framework's
+ * normal HTML sanitizer. `null` means the caller must render the original
+ * source as plain text.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang = payloadLanguage(payloadType, language);
+  let highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+  if (highlighted && highlighted.length !== sourceLines.length) highlighted = null;
+  // highlight.js' diff grammar leaves @@ hunk ranges unclassified. Preserve
+  // the engine output but mark those metadata lines for the visual diff theme.
+  if (highlighted && payloadType === 'diff') {
+    highlighted = highlighted.map((line, index) =>
+      /^@@(?:\s|$)/.test(sourceLines[index] ?? '')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    );
+  }
+  return highlighted?.join('\n') ?? null;
+}
+
+function payloadLanguage(payloadType: HighlightPayloadType, language?: string | null): string | null {
+  if (payloadType === 'diff') return 'diff';
+  if (payloadType === 'json') return 'json';
+  if (payloadType === 'html-file') return 'xml';
+  return language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */

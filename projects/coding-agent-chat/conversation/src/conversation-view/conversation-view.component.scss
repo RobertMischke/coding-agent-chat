@@ -356,6 +356,29 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+
+/* The shared markdown-body class applies the existing light/dark hljs token
+ * palette. Diff grammar spans cover whole lines; full-width tints keep +/- and
+ * hunk rows distinguishable even when the text itself is short. */
+.msg__payload--raw.markdown-body {
+  overflow-wrap: normal;
+  hyphens: none;
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-addition,
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-deletion,
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  display: inline-block;
+  min-width: 100%;
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-addition {
+  background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-deletion {
+  background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+}
+.msg__payload--raw[data-payload-type='diff'] ::ng-deep .hljs-meta {
+  background: color-mix(in srgb, var(--md-hl-meta) 8%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }
