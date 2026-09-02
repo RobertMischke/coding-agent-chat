@@ -268,6 +268,44 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed code, diff, JSON, and HTML payloads', async () => {
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new';
+    const json = '{"ok":true}';
+    const html = '<!doctype html><html><body><p>Fixture</p></body></html>';
+    const rawLog = '2026-07-30T10:00:00Z INFO Started\n2026-07-30T10:00:01Z ERROR Failed';
+    const fixture = await render([
+      msg('message.taskAgent', 'typed payload matrix', {
+        content: [
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'json', text: json },
+          { type: 'html-file', text: html, mediaType: 'text/html' },
+          { type: 'raw-log', text: rawLog, ansi: false },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const visualDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+    const rawLogPayload = host.querySelector<HTMLElement>('[data-payload-type="raw-log"]');
+
+    expect(code?.classList.contains('md-code--hl')).toBe(true);
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(code?.textContent).toBe(csharp);
+    expect(visualDiff?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(visualDiff?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(visualDiff?.querySelector('.hljs-meta')?.textContent).toBe('@@ -1 +1 @@');
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(htmlPayload?.textContent).toBe(html);
+    expect(rawLogPayload?.classList.contains('md-code--hl')).toBe(false);
+    expect(rawLogPayload?.querySelector('[class^="hljs-"]')).toBeNull();
+    expect(rawLogPayload?.textContent).toBe(rawLog);
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',
