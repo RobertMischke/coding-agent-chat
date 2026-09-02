@@ -252,20 +252,78 @@ describe('ConversationViewComponent', () => {
     expect(agentRow.textContent).toContain('Flag added, wiring the projection next.');
   });
 
-  it('renders typed raw file payloads without passing them through Markdown', async () => {
+  it('syntax-highlights typed source payloads without passing them through Markdown', async () => {
     const html = '<!doctype html><html><body><ul><li>literal source</li></ul></body></html>';
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
     const fixture = await render([
       msg('message.taskAgent', html, {
         content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
       }),
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', '{"ok":true}', {
+        content: [{ type: 'json', text: '{"ok":true}' }],
+      }),
     ]);
     const host = fixture.nativeElement as HTMLElement;
-    const raw = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
 
-    expect(raw?.tagName).toBe('PRE');
-    expect(raw?.textContent).toBe(html);
+    expect(htmlPayload?.tagName).toBe('PRE');
+    expect(htmlPayload?.textContent).toBe(html);
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+    expect(diffPayload?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(diffPayload?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(diffPayload?.querySelector('.hljs-meta')?.textContent).toContain('@@');
+    expect(codePayload?.getAttribute('data-language')).toBe('csharp');
+    expect(codePayload?.querySelector('[class^="hljs-"]')).toBeTruthy();
+    expect(codePayload?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+  });
+
+  it('falls back to readable plain text for unknown and oversized code payloads', async () => {
+    const oversized = 'x'.repeat(60_001);
+    const log = '2026-07-30T10:00:00Z INFO Started';
+    const fixture = await render([
+      msg('message.taskAgent', 'plain', {
+        content: [{ type: 'code-block', text: 'plain', language: 'unknown-language' }],
+      }),
+      msg('message.taskAgent', oversized, {
+        content: [{ type: 'code-block', text: oversized, language: 'typescript' }],
+      }),
+      msg('message.taskAgent', log, {
+        content: [{ type: 'raw-log', text: log, ansi: false }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const payloads = host.querySelectorAll<HTMLElement>(
+      '[data-payload-type="code-block"]',
+    );
+    const rawLog = host.querySelector<HTMLElement>('[data-payload-type="raw-log"]');
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].textContent).toBe('plain');
+    expect(payloads[0].querySelector('[class^="hljs-"]')).toBeNull();
+    expect(payloads[1].textContent).toBe(oversized);
+    expect(payloads[1].querySelector('[class^="hljs-"]')).toBeNull();
+    expect(rawLog?.textContent).toBe(log);
+    expect(rawLog?.classList.contains('msg__payload--highlighted')).toBe(false);
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

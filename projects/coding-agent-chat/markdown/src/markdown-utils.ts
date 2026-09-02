@@ -229,14 +229,6 @@ function safeLinkUrl(raw: string): string {
 }
 
 /**
- * Syntax-highlight `source` with the grammar for `lang`, returning one HTML
- * string PER LINE (token spans balanced within each line, so the numbered
- * gutter's per-line grid stays intact and a multi-line token — a block
- * comment, a template literal — re-opens its span on each line). Returns null
- * to fall back to plain escaped text: no language, an unregistered grammar, or
- * a block over the size guard.
- */
-/**
  * Bounded LRU cache of highlight output, keyed by (grammar, source). The chat
  * re-renders the whole message body on every stream tick, so without this every
  * settled code block in the message would be re-tokenised on every frame. On a
@@ -247,6 +239,50 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
+/** Payload kinds whose source can use the shared syntax-highlighting engine. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/**
+ * Highlight a typed non-Markdown payload with the same curated grammars, LRU
+ * cache, size guard, and line balancing used by fenced Markdown code.
+ *
+ * Each returned string is sanitizer-safe HTML for one source line: source text
+ * is escaped and the only generated markup is class-based `hljs-*` spans.
+ * `null` requests a plain-text fallback for unknown grammars, oversized input,
+ * or any tokenizer failure.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string,
+): readonly string[] | null {
+  const lang =
+    payloadType === 'code-block'
+      ? language?.trim().toLowerCase() || null
+      : ({ diff: 'diff', json: 'json', 'html-file': 'xml' } as const)[payloadType];
+  const sourceLines = source.split('\n');
+  const highlighted = highlightLines(source, lang);
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+  // highlight.js 11 marks +/- lines but leaves unified-diff hunk headers as
+  // plain text. Preserve the engine output and add its standard meta token so
+  // `@@` ranges receive the same class-based, sanitizer-safe visual treatment.
+  if (payloadType === 'diff') {
+    return highlighted.map((line, index) =>
+      /^\s*@@/.test(sourceLines[index] ?? '') ? `<span class="hljs-meta">${line}</span>` : line,
+    );
+  }
+  return highlighted;
+}
+
+/**
+ * Syntax-highlight `source` with the grammar for `lang`, returning one HTML
+ * string PER LINE (token spans balanced within each line, so the numbered
+ * gutter's per-line grid stays intact and a multi-line token — a block
+ * comment, a template literal — re-opens its span on each line). Returns null
+ * to fall back to plain escaped text: no language, an unregistered grammar, or
+ * a block over the size guard.
+ */
 function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];
