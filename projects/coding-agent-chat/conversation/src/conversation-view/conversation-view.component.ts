@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightLines, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -309,6 +309,47 @@ export class ConversationViewComponent {
         if (userId !== null) untracked(() => this.stick()?.scrollToBottom());
       }
     });
+  }
+
+  /**
+   * Highlight renderer-safe payloads with the markdown entry point's shared
+   * lowlight instance. Joining the balanced per-line output preserves source
+   * newlines; null keeps unknown or oversized inputs on the plain-text path.
+   */
+  highlightPayload(payload: MessageContentPayload): string | null {
+    let language: string | null;
+    switch (payload.type) {
+      case 'code-block':
+        language = payload.language?.trim().toLowerCase() ?? null;
+        break;
+      case 'diff':
+        language = 'diff';
+        break;
+      case 'json':
+        language = 'json';
+        break;
+      case 'html-file':
+        language = 'xml';
+        break;
+      default:
+        return null;
+    }
+
+    const sourceLines = payload.text.split('\n');
+    const highlighted = highlightLines(payload.text, language);
+    if (!highlighted || highlighted.length !== sourceLines.length) return null;
+
+    // highlight.js 11's diff grammar leaves @@ hunk headers unclassified.
+    // Keep the engine output intact and add its standard meta token only to
+    // those balanced lines so hunks remain distinct from context lines.
+    if (payload.type === 'diff') {
+      return highlighted
+        .map((line, index) =>
+          /^\s*@@/.test(sourceLines[index]) ? `<span class="hljs-meta">${line}</span>` : line,
+        )
+        .join('\n');
+    }
+    return highlighted.join('\n');
   }
 
   /**

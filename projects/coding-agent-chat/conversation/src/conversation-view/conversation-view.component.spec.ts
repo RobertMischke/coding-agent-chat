@@ -268,6 +268,77 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('syntax-highlights typed code, diff, JSON, and HTML payloads', async () => {
+    const csharp = ['public class Foo', '{', '    public int X { get; set; }', '}'].join('\n');
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const json = '{"ok":true}';
+    const html = '<!doctype html><html><body><p>Fixture</p></body></html>';
+    const fixture = await render([
+      msg('message.taskAgent', 'Typed payload matrix', {
+        content: [
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'diff', text: diff, format: 'git' },
+          { type: 'json', text: json },
+          { type: 'html-file', text: html, mediaType: 'text/html' },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const renderedDiff = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const renderedJson = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const renderedHtml = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+
+    expect(code?.classList).toContain('md-code--hl');
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(code?.textContent).toBe(csharp);
+    expect(renderedDiff?.querySelector('.hljs-addition')).toBeTruthy();
+    expect(renderedDiff?.querySelector('.hljs-deletion')).toBeTruthy();
+    expect(renderedDiff?.querySelector('.hljs-meta')).toBeTruthy();
+    expect(renderedDiff?.textContent).toBe(diff);
+    expect(renderedJson?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(renderedJson?.querySelector('.hljs-literal')).toBeTruthy();
+    expect(renderedHtml?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(renderedHtml?.querySelector('.hljs-name')).toBeTruthy();
+  });
+
+  it('falls back to plain text for unknown grammars and oversized payloads', async () => {
+    const unknown = '<widget>still text</widget>';
+    const oversized = `public class Huge { /* ${'x'.repeat(60_001)} */ }`;
+    const fixture = await render([
+      msg('message.taskAgent', unknown, {
+        id: 'unknown-language',
+        content: [{ type: 'code-block', text: unknown, language: 'wat' }],
+      }),
+      msg('message.taskAgent', oversized, {
+        id: 'oversized-source',
+        content: [{ type: 'code-block', text: oversized, language: 'csharp' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const unknownPayload = host.querySelector<HTMLElement>(
+      '[data-item-id="unknown-language"] [data-payload-type="code-block"]',
+    );
+    const oversizedPayload = host.querySelector<HTMLElement>(
+      '[data-item-id="oversized-source"] [data-payload-type="code-block"]',
+    );
+
+    expect(unknownPayload?.classList).not.toContain('md-code--hl');
+    expect(unknownPayload?.querySelector('.hljs-keyword')).toBeNull();
+    expect(unknownPayload?.querySelector('widget')).toBeNull();
+    expect(unknownPayload?.textContent).toBe(unknown);
+    expect(oversizedPayload?.classList).not.toContain('md-code--hl');
+    expect(oversizedPayload?.querySelector('[class^="hljs-"]')).toBeNull();
+    expect(oversizedPayload?.textContent).toBe(oversized);
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',

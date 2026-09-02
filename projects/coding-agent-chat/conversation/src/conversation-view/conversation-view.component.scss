@@ -356,6 +356,25 @@
 .msg__payload--raw[data-payload-type='html-file'] {
   border-left-color: color-mix(in srgb, var(--severity-info, #38bdf8) 70%, transparent);
 }
+/* `.markdown-body` on highlighted payloads reuses the global light/dark
+ * `hljs-*` token palette. Only diff rows need local presentation: lowlight's
+ * top-level line spans provide a full-width, low-contrast visual diff. */
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] > code > .hljs-addition,
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] > code > .hljs-deletion,
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] > code > .hljs-meta {
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 100%;
+}
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] > code > .hljs-addition {
+  background: color-mix(in srgb, var(--md-hl-addition) 12%, transparent);
+}
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] > code > .hljs-deletion {
+  background: color-mix(in srgb, var(--md-hl-deletion) 12%, transparent);
+}
+:host ::ng-deep .msg__payload--highlighted[data-payload-type='diff'] > code > .hljs-meta {
+  background: color-mix(in srgb, var(--md-hl-meta) 8%, transparent);
+}
 .msg__payload--image {
   width: fit-content;
 }
