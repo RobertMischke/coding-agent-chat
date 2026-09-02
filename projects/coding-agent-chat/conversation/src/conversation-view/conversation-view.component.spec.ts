@@ -264,8 +264,60 @@ describe('ConversationViewComponent', () => {
 
     expect(raw?.tagName).toBe('PRE');
     expect(raw?.textContent).toBe(html);
+    expect(raw?.classList.contains('md-code--hl')).toBe(true);
+    expect(raw?.getAttribute('data-language')).toBe('xml');
+    expect(raw?.querySelector('.hljs-tag')).toBeTruthy();
     expect(host.querySelector('[data-payload-type="html-file"] ul')).toBeNull();
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
+  });
+
+  it('renders a captured git diff payload with addition, deletion, and hunk classes', async () => {
+    // From core/test-fixtures/rendering/codex/0.146.x/content-matrix.stream.json.
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const payload = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '[data-payload-type="diff"]',
+    );
+
+    expect(payload?.classList.contains('md-code--hl')).toBe(true);
+    expect(payload?.getAttribute('data-language')).toBe('diff');
+    expect(payload?.querySelector('.hljs-addition')?.textContent).toContain('+new');
+    expect(payload?.querySelector('.hljs-deletion')?.textContent).toContain('-old');
+    expect(payload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+  });
+
+  it('renders typed C# and JSON payloads with class-based syntax tokens', async () => {
+    const csharp = 'public sealed class Foo { public int X { get; set; } }';
+    const json = '{"ok": true, "count": 2}';
+    const fixture = await render([
+      msg('message.taskAgent', `${csharp}\n${json}`, {
+        content: [
+          { type: 'code-block', text: csharp, language: 'csharp' },
+          { type: 'json', text: json },
+        ],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const code = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+
+    expect(code?.classList.contains('md-code--hl')).toBe(true);
+    expect(code?.getAttribute('data-language')).toBe('csharp');
+    expect(code?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(jsonPayload?.classList.contains('md-code--hl')).toBe(true);
+    expect(jsonPayload?.getAttribute('data-language')).toBe('json');
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
   });
 
   it('keeps structured board summaries and moderate messages fully visible', async () => {

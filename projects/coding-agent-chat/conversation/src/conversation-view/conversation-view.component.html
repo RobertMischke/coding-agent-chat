@@ -171,13 +171,26 @@
                               </figure>
                             }
                             @default {
-                              <pre
-                                class="msg__payload msg__payload--raw"
-                                [attr.data-payload-type]="payload.type"
-                                [attr.data-language]="
-                                  payload.type === 'code-block' ? (payload.language ?? null) : null
-                                "
-                              ><code>{{ payload.text }}</code></pre>
+                              @if (
+                                payload.type === 'code-block' ||
+                                payload.type === 'diff' ||
+                                payload.type === 'json' ||
+                                payload.type === 'html-file'
+                              ) {
+                                @let highlighted = highlightTypedPayload(payload);
+                                <pre
+                                  class="msg__payload msg__payload--raw msg__payload--typed md-code"
+                                  [class.md-code--hl]="highlighted.highlighted"
+                                  [attr.data-payload-type]="payload.type"
+                                  [attr.data-language]="highlighted.language"
+                                  [attr.data-lang]="highlighted.language"
+                                ><code [innerHTML]="highlighted.html"></code></pre>
+                              } @else {
+                                <pre
+                                  class="msg__payload msg__payload--raw"
+                                  [attr.data-payload-type]="payload.type"
+                                ><code>{{ payload.text }}</code></pre>
+                              }
                             }
                           }
                         }

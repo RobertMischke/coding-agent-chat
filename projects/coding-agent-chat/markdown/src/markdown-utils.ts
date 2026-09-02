@@ -40,7 +40,7 @@ const lowlight = createLowlight({
 });
 
 /** Fence label → registered highlight.js grammar name. */
-const HLJS_LANG: Record<string, string> = {
+export const HLJS_LANG: Readonly<Record<string, string>> = {
   ts: 'typescript', typescript: 'typescript', tsx: 'typescript',
   js: 'javascript', javascript: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
   py: 'python', python: 'python',
@@ -70,7 +70,20 @@ const HLJS_LANG: Record<string, string> = {
  * synchronous tokenization of a very large paste would jank the UI, and the
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
-const MAX_HIGHLIGHT_CHARS = 60_000;
+export const MAX_HIGHLIGHT_CHARS = 60_000;
+
+/** Typed non-Markdown payloads that use the shared syntax highlighter. */
+export type HighlightablePayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
+/** Sanitizer-safe HTML plus metadata for a highlighted typed payload. */
+export interface PayloadHighlightResult {
+  /** Escaped source decorated only with class-based `hljs-*` spans. */
+  html: string;
+  /** Grammar label selected for the payload, including unknown code labels. */
+  language: string | null;
+  /** False when the size guard, an unknown grammar, or tokenization prevents highlighting. */
+  highlighted: boolean;
+}
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -247,7 +260,7 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
-function highlightLines(source: string, lang: string | null): readonly string[] | null {
+export function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];
   if (!grammar || !lowlight.registered(grammar)) return null;
@@ -273,6 +286,62 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a renderer-safe typed payload with the same engine, grammar map,
+ * size guard, balanced-line serializer, and LRU cache as fenced Markdown code.
+ * The fallback is HTML-escaped, so consumers can bind `html` through their
+ * normal sanitizer without ever interpreting raw file content as markup.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightablePayloadType,
+  language?: string | null,
+): PayloadHighlightResult {
+  const selectedLanguage = payloadLanguage(payloadType, language);
+  const sourceLines = source.split('\n');
+  let highlightedLines = highlightLines(source, selectedLanguage);
+  if (highlightedLines && highlightedLines.length !== sourceLines.length) {
+    highlightedLines = null;
+  }
+  if (highlightedLines && payloadType === 'diff') {
+    highlightedLines = decorateShortDiffHunks(highlightedLines, sourceLines);
+  }
+
+  return {
+    html: highlightedLines ? highlightedLines.join('\n') : escapeHtml(source),
+    language: selectedLanguage,
+    highlighted: highlightedLines !== null,
+  };
+}
+
+/** highlight.js 11 recognises comma ranges but misses valid `@@ -1 +1 @@` headers. */
+function decorateShortDiffHunks(
+  highlightedLines: readonly string[],
+  sourceLines: readonly string[],
+): readonly string[] {
+  return highlightedLines.map((line, index) => {
+    if (!/^@@\s+.*\s+@@(?:\s.*)?$/.test(sourceLines[index] ?? '')) return line;
+    if (line.includes('class="hljs-meta"')) return line;
+    return `<span class="hljs-meta">${line}</span>`;
+  });
+}
+
+function payloadLanguage(
+  payloadType: HighlightablePayloadType,
+  language: string | null | undefined,
+): string | null {
+  switch (payloadType) {
+    case 'code-block':
+      return language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */

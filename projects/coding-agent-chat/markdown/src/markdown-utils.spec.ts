@@ -2,7 +2,47 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightPayload,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+  MAX_HIGHLIGHT_CHARS,
+} from './markdown-utils';
+
+describe('highlightPayload', () => {
+  it('maps typed payloads to the shared diff, JSON, XML, and C# grammars', () => {
+    const diff = highlightPayload('-old\n+new\n@@ -1 +1 @@', 'diff');
+    const json = highlightPayload('{"ok": true}', 'json');
+    const html = highlightPayload('<main class="app">Hello</main>', 'html-file');
+    const csharp = highlightPayload('public sealed class Foo {}', 'code-block', 'csharp');
+
+    expect(diff.language).toBe('diff');
+    expect(diff.html).toContain('hljs-deletion');
+    expect(diff.html).toContain('hljs-addition');
+    expect(diff.html).toContain('hljs-meta');
+    expect(json.language).toBe('json');
+    expect(json.html).toContain('hljs-attr');
+    expect(html.language).toBe('xml');
+    expect(html.html).toContain('hljs-tag');
+    expect(csharp.language).toBe('csharp');
+    expect(csharp.html).toContain('hljs-keyword');
+  });
+
+  it('returns escaped readable text for unknown grammars and oversized payloads', () => {
+    const unknown = highlightPayload('<script>alert(1)</script>', 'code-block', 'wat');
+    const oversizedSource = `<main>${'x'.repeat(MAX_HIGHLIGHT_CHARS)}</main>`;
+    const oversized = highlightPayload(oversizedSource, 'html-file');
+
+    expect(unknown).toEqual({
+      html: '&lt;script&gt;alert(1)&lt;/script&gt;',
+      language: 'wat',
+      highlighted: false,
+    });
+    expect(oversized.highlighted).toBe(false);
+    expect(oversized.html).toBe(`&lt;main&gt;${'x'.repeat(MAX_HIGHLIGHT_CHARS)}&lt;/main&gt;`);
+  });
+});
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
