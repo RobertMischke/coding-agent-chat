@@ -171,13 +171,16 @@
                               </figure>
                             }
                             @default {
+                              @let highlighted = highlightedPayload(payload);
                               <pre
                                 class="msg__payload msg__payload--raw"
+                                [class.msg__payload--highlighted]="highlighted !== null"
+                                [class.md-code--hl]="highlighted !== null"
                                 [attr.data-payload-type]="payload.type"
                                 [attr.data-language]="
                                   payload.type === 'code-block' ? (payload.language ?? null) : null
                                 "
-                              ><code>{{ payload.text }}</code></pre>
+                              ><code>@if (highlighted !== null) {<span [innerHTML]="highlighted"></span>} @else {<ng-container>{{ payload.text }}</ng-container>}</code></pre>
                             }
                           }
                         }
