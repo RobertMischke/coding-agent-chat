@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightLines, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -204,6 +204,21 @@ function classifyMessageBody(body: string): ClassifiedBody {
   return { raw: body };
 }
 
+function payloadHighlightLanguage(payload: MessageContentPayload): string | null {
+  switch (payload.type) {
+    case 'code-block':
+      return payload.language?.trim().split(/\s+/, 1)[0]?.toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+    default:
+      return null;
+  }
+}
+
 /**
  * Next-gen chat conversation renderer (`Frontend:NextGenChat`).
  *
@@ -276,6 +291,7 @@ export class ConversationViewComponent {
 
   private readonly expandedItems = signal<ReadonlySet<string>>(readExpandedMessageIds());
   private readonly expandedWaitGroups = signal<ReadonlySet<string>>(new Set());
+  private readonly highlightedPayloadHtml = new WeakMap<MessageContentPayload, string | null>();
 
   /** The stick-to-bottom directive on the scroll root (see the template). */
   private readonly stick = viewChild(StickToBottomDirective);
@@ -309,6 +325,33 @@ export class ConversationViewComponent {
         if (userId !== null) untracked(() => this.stick()?.scrollToBottom());
       }
     });
+  }
+
+  /**
+   * Highlight renderer-safe payloads with the markdown entry point's shared
+   * lowlight instance. The returned markup contains only escaped source text
+   * and lowlight-owned class spans; Angular sanitizes it again at [innerHTML].
+   */
+  highlightPayload(payload: MessageContentPayload): string | null {
+    const cached = this.highlightedPayloadHtml.get(payload);
+    if (cached !== undefined) return cached;
+
+    const language = payloadHighlightLanguage(payload);
+    const source = 'text' in payload ? payload.text : null;
+    const lines = source === null ? null : highlightLines(source, language);
+    const sourceLines = source?.split('\n') ?? [];
+    const highlighted =
+      lines && lines.length === sourceLines.length
+        ? lines
+            .map((line, index) =>
+              payload.type === 'diff' && sourceLines[index]?.startsWith('@@')
+                ? `<span class="hljs-meta">${line}</span>`
+                : line,
+            )
+            .join('\n')
+        : null;
+    this.highlightedPayloadHtml.set(payload, highlighted);
+    return highlighted;
   }
 
   /**

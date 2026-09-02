@@ -2,7 +2,13 @@
 // shapes, sanitised links, task-reference linking) and the HTML -> markdown
 // serialisation path the rich editor round-trips through.
 import { describe, expect, it } from 'vitest';
-import { htmlToMarkdown, linkTaskReferencesInHtml, markdownToHtml } from './markdown-utils';
+import {
+  highlightLines,
+  htmlToMarkdown,
+  linkTaskReferencesInHtml,
+  markdownToHtml,
+  MAX_HIGHLIGHT_CHARS,
+} from './markdown-utils';
 
 describe('markdownToHtml', () => {
   it('renders headings, lists and inline formatting', () => {
@@ -316,6 +322,14 @@ describe('markdownToHtml', () => {
       expect(html).not.toContain('md-code--hl');
       expect(html).not.toContain('hljs-');
       expect(html).toContain('<code>noop</code>');
+    });
+
+    it('exposes the guarded per-line highlighter for non-Markdown renderers', () => {
+      expect(highlightLines('public class Foo {}', 'csharp')?.join('\n')).toContain(
+        'hljs-keyword',
+      );
+      expect(highlightLines('plain', 'unknown-fixture')).toBeNull();
+      expect(highlightLines('x'.repeat(MAX_HIGHLIGHT_CHARS + 1), 'csharp')).toBeNull();
     });
   });
 

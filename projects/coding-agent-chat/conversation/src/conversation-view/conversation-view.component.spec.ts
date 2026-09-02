@@ -268,6 +268,64 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('renders typed C# source and captured Codex diffs with lowlight token classes', async () => {
+    const csharp = ['public class Foo', '{', '    public int X { get; set; }', '}'].join('\n');
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const fixture = await render([
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const sourcePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+
+    expect(sourcePayload?.classList).toContain('md-code--hl');
+    expect(sourcePayload?.querySelector('.hljs-keyword')).toBeTruthy();
+    expect(diffPayload?.classList).toContain('md-code--hl');
+    expect(diffPayload?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(diffPayload?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(diffPayload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+  });
+
+  it('uses JSON and XML grammars while unknown source languages stay plain text', async () => {
+    const json = '{"ok":true,"count":2}';
+    const html = '<!doctype html><html><body><p>Safe source</p></body></html>';
+    const unknown = '<widget>literal</widget>';
+    const fixture = await render([
+      msg('message.taskAgent', json, { content: [{ type: 'json', text: json }] }),
+      msg('message.taskAgent', html, {
+        content: [{ type: 'html-file', text: html, mediaType: 'text/html' }],
+      }),
+      msg('message.taskAgent', unknown, {
+        content: [{ type: 'code-block', text: unknown, language: 'unknown-fixture' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const jsonPayload = host.querySelector<HTMLElement>('[data-payload-type="json"]');
+    const htmlPayload = host.querySelector<HTMLElement>('[data-payload-type="html-file"]');
+    const sourcePayloads = host.querySelectorAll<HTMLElement>('[data-payload-type="code-block"]');
+
+    expect(jsonPayload?.querySelector('.hljs-attr')).toBeTruthy();
+    expect(jsonPayload?.querySelector('.hljs-literal')).toBeTruthy();
+    expect(htmlPayload?.querySelector('.hljs-tag')).toBeTruthy();
+    expect(htmlPayload?.textContent).toBe(html);
+    expect(sourcePayloads).toHaveLength(1);
+    expect(sourcePayloads[0].classList).not.toContain('md-code--hl');
+    expect(sourcePayloads[0].querySelector('[class^="hljs-"]')).toBeNull();
+    expect(sourcePayloads[0].textContent).toBe(unknown);
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',

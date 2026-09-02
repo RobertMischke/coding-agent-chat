@@ -40,7 +40,7 @@ const lowlight = createLowlight({
 });
 
 /** Fence label → registered highlight.js grammar name. */
-const HLJS_LANG: Record<string, string> = {
+export const HLJS_LANG: Readonly<Record<string, string>> = {
   ts: 'typescript', typescript: 'typescript', tsx: 'typescript',
   js: 'javascript', javascript: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
   py: 'python', python: 'python',
@@ -70,7 +70,7 @@ const HLJS_LANG: Record<string, string> = {
  * synchronous tokenization of a very large paste would jank the UI, and the
  * chat re-renders the whole body on every stream tick. ~1500 lines of code.
  */
-const MAX_HIGHLIGHT_CHARS = 60_000;
+export const MAX_HIGHLIGHT_CHARS = 60_000;
 
 /**
  * Optional URL transformers for image sources. The prompt editor renders
@@ -247,7 +247,7 @@ function safeLinkUrl(raw: string): string {
 const HIGHLIGHT_CACHE = new Map<string, readonly string[] | null>();
 const HIGHLIGHT_CACHE_MAX = 256;
 
-function highlightLines(source: string, lang: string | null): readonly string[] | null {
+export function highlightLines(source: string, lang: string | null): readonly string[] | null {
   if (!lang) return null;
   const grammar = HLJS_LANG[lang];
   if (!grammar || !lowlight.registered(grammar)) return null;
