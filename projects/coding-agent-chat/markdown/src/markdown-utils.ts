@@ -72,6 +72,9 @@ const HLJS_LANG: Record<string, string> = {
  */
 const MAX_HIGHLIGHT_CHARS = 60_000;
 
+/** Typed, non-Markdown payloads that the shared highlighter can render. */
+export type HighlightPayloadType = 'code-block' | 'diff' | 'json' | 'html-file';
+
 /**
  * Optional URL transformers for image sources. The prompt editor renders
  * `attachments/<file>` references as full API URLs while editing, then
@@ -273,6 +276,54 @@ function highlightLines(source: string, lang: string | null): readonly string[] 
   }
   HIGHLIGHT_CACHE.set(key, result);
   return result;
+}
+
+/**
+ * Highlight a typed, non-Markdown payload with the same grammar registry,
+ * size guard, per-line balancing and LRU cache used by fenced Markdown code.
+ *
+ * The returned HTML contains only escaped source text and class-based
+ * `hljs-*` spans, so callers can pass it through their normal HTML sanitizer.
+ * `null` asks the caller to render the original source as plain text when the
+ * language is absent/unknown, the payload is too large, or highlighting fails.
+ */
+export function highlightPayload(
+  source: string,
+  payloadType: HighlightPayloadType,
+  language?: string | null,
+): string | null {
+  const lang = payloadLanguage(payloadType, language);
+  const highlighted = highlightLines(source, lang);
+  const sourceLines = source.split('\n');
+  if (!highlighted || highlighted.length !== sourceLines.length) return null;
+  if (payloadType !== 'diff') return highlighted.join('\n');
+
+  // highlight.js 11 tags additions/deletions but leaves `@@` hunk headers as
+  // bare text. Keep the grammar output and add its standard meta class so the
+  // conversation renderer can distinguish all three visual diff line kinds.
+  return highlighted
+    .map((line, index) =>
+      sourceLines[index]?.startsWith('@@')
+        ? `<span class="hljs-meta">${line}</span>`
+        : line,
+    )
+    .join('\n');
+}
+
+function payloadLanguage(
+  payloadType: HighlightPayloadType,
+  language: string | null | undefined,
+): string | null {
+  switch (payloadType) {
+    case 'code-block':
+      return language?.trim().toLowerCase() || null;
+    case 'diff':
+      return 'diff';
+    case 'json':
+      return 'json';
+    case 'html-file':
+      return 'xml';
+  }
 }
 
 /** Serialise a lowlight hast tree into per-line HTML with balanced spans. */

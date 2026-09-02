@@ -268,6 +268,36 @@ describe('ConversationViewComponent', () => {
     expect(host.querySelector('[data-payload-type="html-file"] cac-markdown')).toBeNull();
   });
 
+  it('renders typed diffs and csharp blocks with the shared syntax highlighter', async () => {
+    const diff = [
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    const csharp = 'public class Foo\n{\n    public int X { get; set; }\n}';
+    const fixture = await render([
+      msg('message.taskAgent', diff, {
+        content: [{ type: 'diff', text: diff, format: 'git' }],
+      }),
+      msg('message.taskAgent', csharp, {
+        content: [{ type: 'code-block', text: csharp, language: 'csharp' }],
+      }),
+    ]);
+    const host = fixture.nativeElement as HTMLElement;
+    const diffPayload = host.querySelector<HTMLElement>('[data-payload-type="diff"]');
+    const codePayload = host.querySelector<HTMLElement>('[data-payload-type="code-block"]');
+
+    expect(diffPayload?.querySelector('.hljs-addition')?.textContent).toBe('+new');
+    expect(diffPayload?.querySelector('.hljs-deletion')?.textContent).toBe('-old');
+    expect(diffPayload?.querySelector('.hljs-meta')?.textContent).toContain('@@ -1 +1 @@');
+    expect(codePayload?.classList.contains('md-code--hl')).toBe(true);
+    expect(codePayload?.querySelector('.hljs-keyword')?.textContent).toBe('public');
+    expect(codePayload?.querySelector('[class*="hljs-"]')).toBeTruthy();
+  });
+
   it('keeps structured board summaries and moderate messages fully visible', async () => {
     const boardSummary = [
       '## Board summary',

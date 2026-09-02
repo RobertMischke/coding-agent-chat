@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { MarkdownViewComponent } from 'coding-agent-chat/markdown';
+import { highlightPayload, MarkdownViewComponent } from 'coding-agent-chat/markdown';
 import { ToolBurstChipComponent } from '../tool-burst-chip/tool-burst-chip.component';
 import { ConversationSessionCardComponent } from '../conversation-session-card/conversation-session-card.component';
 import { PixelProgressComponent } from '../pixel-progress/pixel-progress.component';
@@ -282,6 +282,23 @@ export class ConversationViewComponent {
   /** The scroll-root element — only read in virtualised mode for scroll math. */
   private readonly scrollRoot = viewChild<ElementRef<HTMLElement>>('scrollRoot');
   private lastUserEventId: string | null = null;
+
+  /**
+   * Highlight renderer-owned payloads without passing raw file contents
+   * through Markdown. A null result preserves the plain-text template path.
+   */
+  highlightedPayload(payload: MessageContentPayload): string | null {
+    switch (payload.type) {
+      case 'code-block':
+        return highlightPayload(payload.text, payload.type, payload.language);
+      case 'diff':
+      case 'json':
+      case 'html-file':
+        return highlightPayload(payload.text, payload.type);
+      default:
+        return null;
+    }
+  }
 
   /** First rendered row index of the virtual window. */
   readonly visibleStart = signal<number>(0);
